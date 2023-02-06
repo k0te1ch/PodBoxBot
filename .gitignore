@@ -1,0 +1,9 @@
+# Files
+settings.ini
+test.py
+
+# Directories
+/.vscode
+/.pytest_cache
+/PodBoxBot
+__pycache__
