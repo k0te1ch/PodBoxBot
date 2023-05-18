@@ -7,3 +7,8 @@ test.py
 /.pytest_cache
 /PodBoxBot
 __pycache__
+/src/files 
+#TODO CREATE FOLDER FILES
+
+#TEMP
+docker
