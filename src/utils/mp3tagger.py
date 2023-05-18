@@ -51,7 +51,7 @@ def audiotag(**info):
 
     begin = info["chapters"][-1].split(" - ")
     time1 = list(map(int, begin[0].split(":")))
-    added_chapter = audiofile.tag.chapters.set(bytes(begin[1], encoding='cp866'), (((time1[0] * 60 + time1[1]) * 60 + time1[2])*1000, audiofile.info.time_secs*1000))
+    added_chapter = audiofile.tag.chapters.set(bytes(begin[1], encoding='cp866'), (((time1[0] * 60 + time1[1]) * 60 + time1[2])*1000, audiofile.info.time_secs*1000-1))
     added_chapter.encoding = UTF_16_ENCODING
     added_chapter.title = begin[1]
     audiofile.tag.save()
