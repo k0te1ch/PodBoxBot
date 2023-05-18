@@ -6,8 +6,8 @@ from datetime import datetime
 def audiotag(**info):
     #TODO PHOTOPATH
     #TODO MUSICPATH
-    PHOTOSPATH = "src/files/cover.jpg"
-    MUSICPATH = "src/files/podcast.mp3"
+    PHOTOSPATH = "files/cover.jpg"
+    MUSICPATH = "files/podcast.mp3"
     musician = "Разговорный жанр"
     name = info["name"]
     audiofile = eyed3.load(f"{MUSICPATH}")
