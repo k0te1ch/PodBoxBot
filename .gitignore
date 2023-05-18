@@ -1,13 +1,13 @@
 # Files
 settings.ini
 test.py
+/src/files/*.mp3
 
 # Directories
 /.vscode
 /.pytest_cache
 /PodBoxBot
-__pycache__
-/src/files 
+__pycache__ 
 #TODO CREATE FOLDER FILES
 
 #TEMP
