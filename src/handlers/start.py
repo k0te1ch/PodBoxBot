@@ -31,10 +31,10 @@ async def getMP3(msg):
     markup.add(context[language].cancel)
     download_msg = await msg.reply(context[language].got_mp3)
     #TODO add src/files
-    for item in os.listdir("src/files"):
+    for item in os.listdir("files"):
         if item.endswith(".mp3"):
-            os.remove(os.path.join("src/files", item))
-    await downloadFile(str(await msg.audio.get_url()).replace(f"/var/lib/telegram-bot-api/{TOKEN}", ""), "src/files/podcast.mp3")
+            os.remove(os.path.join("files", item))
+    await downloadFile(str(await msg.audio.get_url()).replace(f"/var/lib/telegram-bot-api/{TOKEN}", ""), "files/podcast.mp3")
     #TODO add to settings dir to download
     await download_msg.edit_text(context[language].downloaded)
     return await msg.answer(context[language].ask_template, reply_markup=markup)
@@ -57,9 +57,9 @@ async def setTemplate(msg, state):
     audiotag(number = number, name = result[1], text = result[2], chapters = text[text.find("Chapters: |"):].splitlines()[1:])
 
     new_file_name = f'{number}_rz_{datetime.now().strftime("%d%m%Y")}.mp3'
-    os.rename("src/files/podcast.mp3", f"src/files/{new_file_name}")
+    os.rename("files/podcast.mp3", f"files/{new_file_name}")
     await state.finish()
-    return await msg.reply_audio(open(f"src/files/{new_file_name}", "rb"), context[language].done_mp3, reply_markup=ReplyKeyboardRemove())
+    return await msg.reply_audio(open(f"files/{new_file_name}", "rb"), context[language].done_mp3, reply_markup=ReplyKeyboardRemove())
 
 
 @dp.message_handler(ContextButton("cancel", ["ru", "fa"]), IsPrivate, IsAdmin, state=UploadFile.all_states)
