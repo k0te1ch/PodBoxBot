@@ -60,7 +60,7 @@ class Config:
             self.info[i] = config.get("Settings", i)
         #TODO log
 
-PATH = "settings.ini"
+PATH = f"{os.getcwd()}/settings.ini"
 FIELDS = ["token", "admins", "skip_updates", "parse_mode", "handlers_dir", "models_dir", "context_file", "handlers", "cover_rz_name", "cover_ps_name", "localserver"]
 SETTINGS = Config().getInfo()
 
