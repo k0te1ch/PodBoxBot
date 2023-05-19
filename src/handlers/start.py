@@ -33,7 +33,7 @@ async def getMP3(msg):
     for item in os.listdir(f"{FILES_PATH}"):
         if item.endswith(".mp3"):
             os.remove(os.path.join(f"{FILES_PATH}", item))
-    await downloadFile(str(await msg.audio.get_url()).replace(f"/var/lib/telegram-bot-api/{TOKEN}", PODCAST), f"")
+    await downloadFile(str(await msg.audio.get_url()).replace(f"/var/lib/telegram-bot-api/{TOKEN}", ""), PODCAST)
     #TODO add to settings dir to download
     await download_msg.edit_text(context[language].downloaded)
     return await msg.answer(context[language].ask_template, reply_markup=markup)
