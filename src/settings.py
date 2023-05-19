@@ -60,16 +60,26 @@ class Config:
             self.info[i] = config.get("Settings", i)
         #TODO log
 
-PATH = "Settings.ini"
-FIELDS = ["token", "admins", "skip_updates", "parse_mode", "handlers_dir", "models_dir", "context_file", "handlers"]
+PATH = "settings.ini"
+FIELDS = ["token", "admins", "skip_updates", "parse_mode", "handlers_dir", "models_dir", "context_file", "handlers", "cover_rz_name", "cover_ps_name", "localserver"]
 SETTINGS = Config().getInfo()
+
 TOKEN = SETTINGS["token"]
 ADMINS = SETTINGS["admins"].split(",")
 SKIP_UPDATES = False if SETTINGS["skip_updates"].lower() == "false" else True
 PARSE_MODE = None if SETTINGS["parse_mode"].lower() == "none" else SETTINGS["parse_mode"]
+LOCALSERVER = True if SETTINGS["localserver"].lower() == "true" else False
+CONTEXT_FILE = SETTINGS["context_file"]
+
 #TODO PROXY
 #TODO PROXY_AUTH
-HANDLERS_DIR = SETTINGS["handlers_dir"]
-MODELS_DIR = SETTINGS["models_dir"]
-CONTEXT_FILE = SETTINGS["context_file"]
 HANDLERS = SETTINGS["handlers"].split(",")
+
+
+SRC_PATH = f"{os.getcwd()}/src"
+FILES_PATH = f"{SRC_PATH}/files"
+PODCAST = f"{FILES_PATH}/podcast.mp3"
+HANDLERS_DIR = f'{SRC_PATH}/{SETTINGS["handlers_dir"]}'
+MODELS_DIR = f'{SRC_PATH}/{SETTINGS["models_dir"]}'
+COVER_RZ_PATH = f'{FILES_PATH}/{SETTINGS["cover_rz_name"]}'
+COVER_PS_PATH = f'{FILES_PATH}/{SETTINGS["cover_ps_name"]}'

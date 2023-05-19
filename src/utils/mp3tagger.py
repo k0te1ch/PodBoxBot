@@ -2,15 +2,13 @@ import os
 import eyed3
 from eyed3.id3 import UTF_16_ENCODING
 from datetime import datetime
+from settings import COVER_RZ_PATH, COVER_PS_PATH, PODCAST
 
 def audiotag(**info):
     #TODO PHOTOPATH
-    #TODO MUSICPATH
-    PHOTOSPATH = "files/cover.jpg"
-    MUSICPATH = "files/podcast.mp3"
     musician = "Разговорный жанр"
     name = info["name"]
-    audiofile = eyed3.load(f"{MUSICPATH}")
+    audiofile = eyed3.load(PODCAST)
     if audiofile.tag == None:
         audiofile.initTag((2, 4, 0))
     else:
@@ -20,17 +18,18 @@ def audiotag(**info):
     audiofile.tag.album_artist = musician
     audiofile.tag.title = name
     audiofile.tag.original_release_date = datetime.now().strftime("%Y-%m-%d")
-    if os.path.exists(f"{PHOTOSPATH}"):
-        with open(f"{PHOTOSPATH}", "rb") as f:
-            audiofile.tag.images.set(3, f.read(), "image/jpg", u"Discription")
+    if os.path.exists(COVER_RZ_PATH):
+        with open(COVER_RZ_PATH, "rb") as f:
+            audiofile.tag.images.set(3, f.read(), "image/jpg", u"PodBOX")
     if info["text"] != " ":
         audiofile.tag.comments.set(info["text"])
+        audiofile.tag.lyrics.set(info["text"])
     
     audiofile.tag.album_type = "single"
     audiofile.tag.artist_origin = eyed3.core.ArtistOrigin("Voronezh", "Voronezh region", "Russian Federation")
     audiofile.tag.artist_url = "https://podbox.ru/"
-    audiofile.tag.commercial_url = "boosty"
-    audiofile.tag.payment_url = "boosty"
+    audiofile.tag.commercial_url = "https://podbox.ru/donate/"
+    audiofile.tag.payment_url = "https://podbox.ru/donate/"
     audiofile.tag.user_url_frames.set("https://podbox.ru/")
     audiofile.tag.copyright = musician
     audiofile.tag.publisher = musician

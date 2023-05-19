@@ -14,7 +14,7 @@ MAIN_MODULE_NAME = os.path.basename(__file__)[:-3]
 
 try:
     from settings import TOKEN, SKIP_UPDATES, PARSE_MODE, HANDLERS_DIR, MODELS_DIR, \
-        CONTEXT_FILE, HANDLERS
+        CONTEXT_FILE, HANDLERS, LOCALSERVER
 except ModuleNotFoundError:
     click.echo(click.style(
         "Config file not found!\n"
@@ -85,12 +85,12 @@ class _NoneModule(object):
 
 
 def _get_bot_obj():
+    server = TelegramAPIServer.from_base('http://localhost') if LOCALSERVER else TelegramAPIServer.from_base('https://api.telegram.org')
     bot = Bot(
         token=TOKEN,
         parse_mode=PARSE_MODE,
-        server=TelegramAPIServer.from_base('http://localhost')
+        server=server
     )
-    #TODO LOCAL SERVER
     return bot
 
 
