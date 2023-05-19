@@ -5,7 +5,7 @@ from datetime import datetime
 from re import findall
 import os
 from main import dp, context
-from settings import TOKEN
+from settings import TOKEN, FILES_PATH, PODCAST
 from forms.uploadFile import UploadFile
 from utils.mp3tagger import audiotag
 from utils.http_methods import downloadFile
@@ -30,11 +30,10 @@ async def getMP3(msg):
     markup = ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add(context[language].cancel)
     download_msg = await msg.reply(context[language].got_mp3)
-    #TODO add src/files
-    for item in os.listdir("files"):
+    for item in os.listdir(f"{FILES_PATH}"):
         if item.endswith(".mp3"):
-            os.remove(os.path.join("files", item))
-    await downloadFile(str(await msg.audio.get_url()).replace(f"/var/lib/telegram-bot-api/{TOKEN}", ""), "files/podcast.mp3")
+            os.remove(os.path.join(f"{FILES_PATH}", item))
+    await downloadFile(str(await msg.audio.get_url()).replace(f"/var/lib/telegram-bot-api/{TOKEN}", PODCAST), f"")
     #TODO add to settings dir to download
     await download_msg.edit_text(context[language].downloaded)
     return await msg.answer(context[language].ask_template, reply_markup=markup)
@@ -43,7 +42,7 @@ async def getMP3(msg):
 async def setTemplate(msg, state):
     language = msg.from_user.language_code
     #TODO get number from site
-
+    #TODO Validate and parsing template
     reg = "Number: (\d+)\nTitle: (.*?)\nComment: (.*?)\nChapters: \|\n(.*?)\n"
     text = msg.text
     result = findall(reg, text)
@@ -57,9 +56,9 @@ async def setTemplate(msg, state):
     audiotag(number = number, name = result[1], text = result[2], chapters = text[text.find("Chapters: |"):].splitlines()[1:])
 
     new_file_name = f'{number}_rz_{datetime.now().strftime("%d%m%Y")}.mp3'
-    os.rename("files/podcast.mp3", f"files/{new_file_name}")
+    os.rename(PODCAST, f"{FILES_PATH}/{new_file_name}")
     await state.finish()
-    return await msg.reply_audio(open(f"files/{new_file_name}", "rb"), context[language].done_mp3, reply_markup=ReplyKeyboardRemove())
+    return await msg.reply_audio(open(f"{FILES_PATH}/{new_file_name}", "rb"), context[language].done_mp3, reply_markup=ReplyKeyboardRemove())
 
 
 @dp.message_handler(ContextButton("cancel", ["ru", "fa"]), IsPrivate, IsAdmin, state=UploadFile.all_states)
@@ -67,3 +66,5 @@ async def cancel(msg, state):
     language = msg.from_user.language_code
     await state.finish()
     return await msg.reply(context[language].register_canceled, reply_markup=ReplyKeyboardRemove())
+
+#TODO Поддержка послешоу (добавить кнопки)
