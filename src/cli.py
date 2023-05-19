@@ -10,7 +10,7 @@ from alembic import command as alembic
 from alembic.util.exc import CommandError
 
 from settings import HANDLERS, SKIP_UPDATES, HANDLERS_DIR, \
-    MODELS_DIR
+    MODELS_DIR, HANDLERS_NAME
 
 
 def get_alembic_conf():
@@ -46,7 +46,7 @@ def load_handlers():
         print(f"\r\t\t\t\t", end="")
 
         try:
-            importlib.import_module(f'{HANDLERS_DIR.replace("src/", "")}.{handler}')
+            importlib.import_module(f'{HANDLERS_NAME}.{handler}')
             click.echo(click.style("loaded", fg='bright_green'))
         except Exception:
             click.echo(click.style("error", fg='bright_red'))
