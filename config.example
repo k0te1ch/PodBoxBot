@@ -1,0 +1,82 @@
+# TELEGRAM BOT SETTINGS
+API_TOKEN = "123456789:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+SKIP_UPDATES = True
+
+# LOGGER SETTINGS
+# "TRACE", "DEBUG", "INFO", "SUCCESS", "WARNING", "ERROR", "CRITICAL"
+LOG_LEVEL = "DEBUG"
+
+# default tg_server is official api server
+# it can be for example:
+# from aiogram.bot.api import TelegramAPIServer
+# TG_SERVER = TelegramAPIServer.from_base('http://localhost:8081')
+TG_SERVER = None 
+
+# default parse_mode is None
+# it can be "html" or "markdown"
+PARSE_MODE = None
+
+# example: socks5://127.0.0.1:1080
+PROXY = None
+
+# example:
+# from aiohttp import BasicAuth
+# PROXY_AUTH = BasicAuth(
+#     USERNAME,
+#     PASSWORD
+# )
+PROXY_AUTH = None
+
+# if True, then bot will support work with DATABASE
+DATABASE = True
+
+# example:
+# MYSQL = mysql+pymysql://USER:PASS@HOST:PORT/DB?charset=utf8mb4
+# SQLITE = sqlite:///database.sqlite
+DATABASE_URL = "sqlite:///database.sqlite"
+
+# example:
+# redis://[:password@]host[:port][/db-number][?option=value]
+# redis://localhost/0
+# note: if REDIS_URL is set, APSCHEDULER & Aiogram (fsm_storage) use it. otherwise, they use memory
+REDIS_URL = None
+
+KEYBOARDS_DIR = "keyboards"
+HANDLERS_DIR = "handlers"
+MODELS_DIR = "models"
+CONTEXT_FILE = "context"
+
+# if REDIS_URL is set, APSCHEDULER uses redis to store jobs
+ENABLE_APSCHEDULER = True
+
+ADMINS = [
+    "k0te1ch",
+]
+
+HANDLERS = [
+    "middlewares",
+    "start",
+    "scheduler_example",
+    "admin_panel"
+]
+
+KEYBOARDS = [
+    "reply",
+    "admin"
+]
+
+LANGUAGES = [
+    "ru",
+    "en"
+]
+
+
+# SOURCES
+import os
+SRC_PATH = os.path.dirname(os.path.realpath(__file__))
+COVER_RZ_NAME = "cover.jpg"
+COVER_PS_NAME =  "pscover.jpg"
+FILES_PATH = f"{SRC_PATH}/files"
+PODCAST = f"{FILES_PATH}/podcast.mp3"
+COVER_RZ_PATH = f'{FILES_PATH}/{COVER_RZ_NAME}'
+COVER_PS_PATH = f'{FILES_PATH}/{COVER_PS_NAME}'

@@ -1,3 +1,4 @@
+#TODO CREATE VALIDATORS
 import re
 import os
 
