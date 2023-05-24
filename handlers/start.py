@@ -26,6 +26,7 @@ async def getType(msg, language, state):
         data['typeEpisode'] = "main" if msg.text == context[language].main_episode else "aftershow"
     await UploadFile.next()
     logger.opt(colors=True).debug(f"[<y>{msg.from_user.username}</y>]: Get type of episode")
+    typeEpisode = msg.text.lower()
     return await msg.reply(context[language].ask_mp3, reply_markup=keyboards["reply"][language].cancel)
 
 
