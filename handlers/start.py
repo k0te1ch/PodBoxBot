@@ -2,7 +2,7 @@ from aiogram.dispatcher.filters import CommandStart, Text, ContentTypeFilter
 from aiogram.types import ReplyKeyboardMarkup, ReplyKeyboardRemove, ContentType
 
 from datetime import datetime
-from re import findall
+from re import findall, MULTILINE
 import os
 from bot import dp, context, keyboards
 from config import API_TOKEN, FILES_PATH, PODCAST
@@ -54,11 +54,13 @@ async def setTemplate(msg, state, language):
     
     if typeEpisode == "main":
         logger.opt(colors=True).debug(f"[<y>{msg.from_user.username}</y>]: Choosed main episode")
-        reg = "Number: (\d+)\nTitle: (.*?)\nComment: (.*?)\nChapters: \|\n(.*?)$"
+        reg = r"Number: (\d+)\nTitle: (.*?)\nComment: (.*?)\nChapters: \|\n(.*?)$"
     elif typeEpisode == "aftershow":
         logger.opt(colors=True).debug(f"[<y>{msg.from_user.username}</y>]: Choosed aftershow episode")
-        reg = "Number: (\d+)\nTitle: (.*?)\nComment: (.*?)$"
-    result = findall(reg, msg.text)
+        reg = r"Number: (\d+)\nTitle: (.*?)\nComment: (.*?)$"
+
+    text = msg.text
+    result = findall(reg, text, MULTILINE)
 
     if len(result) < 1 or ((typeEpisode == "main" and len(result[0]) != 4) or (typeEpisode == "aftershow" and len(result[0]) != 3)):
         logger.opt(colors=True).debug(f"[<y>{msg.from_user.username}</y>]: Invalid input in tagging")
@@ -72,7 +74,6 @@ async def setTemplate(msg, state, language):
         typeEpisode = data["typeEpisode"]
     
     if typeEpisode == "main":
-        text = msg.text
         logger.opt(colors=True).debug(f"[<y>{msg.from_user.username}</y>]: Started audiotagging main episode")
         #TODO REFACTORING CHAPTERS AND AUDIOTAG
         audiotag_RZ(number = number, name = result[1], text = result[2], chapters = text[text.find("Chapters: |"):].splitlines()[1:])
