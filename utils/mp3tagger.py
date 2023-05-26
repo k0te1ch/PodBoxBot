@@ -14,7 +14,7 @@ def audiotag(**info):
 @logger.catch
 def audiotag_RZ(info):
     musician = "Разговорный жанр"
-    name = info["name"]
+    title = info["title"]
     audiofile = eyed3.load(PODCAST_PATH)
     if audiofile.tag == None:
         audiofile.initTag((2, 4, 0))
@@ -22,7 +22,7 @@ def audiotag_RZ(info):
         audiofile.tag.clear()
     audiofile.tag.artist = musician
     audiofile.tag.album = musician
-    audiofile.tag.title = f'{info["number"]}. {name}'
+    audiofile.tag.title = f'{info["number"]}. {title}'
     audiofile.tag.original_release_date = datetime.now().year
     #TODO CHECK THIS
     with open(COVER_RZ_PATH, "rb") as f:
@@ -64,7 +64,7 @@ def audiotag_RZ(info):
 @logger.catch
 def audiotag_PS(info):
     musician = "Разговорный жанр"
-    name = info["name"]
+    title = info["title"]
     audiofile = eyed3.load(PODCAST_PATH)
     if audiofile.tag == None:
         audiofile.initTag((2, 4, 0))
@@ -72,7 +72,7 @@ def audiotag_PS(info):
         audiofile.tag.clear()
     audiofile.tag.artist = musician
     audiofile.tag.album = musician
-    audiofile.tag.title = f'{info["number"]}. {name}'
+    audiofile.tag.title = f'{info["number"]}. {title}'
     audiofile.tag.original_release_date = datetime.now().year
     with open(COVER_PS_PATH, "rb") as f:
         audiofile.tag.images.set(3, f.read(), "image/jpg", u"")
