@@ -16,8 +16,8 @@ Chapters: |
 02:17:25 - Озвучили наших патронов и анонсировали послешоу"""
 
     result = validateTemplate(typeEpisode, text)
-    assert result == {'number': '600', 
-                      'title': '600. Название эпизода',
+    assert result == {'number': '0600', 
+                      'title': '0600. Название эпизода',
                       'comment': 'Описание эпизода', 
                       'chapters': [
                                 ['00:00:07', 'Вступление и что нового за неделю'],
@@ -35,8 +35,8 @@ Title: Название эпизода
 Comment: Описание эпизода"""
 
     result = validateTemplate(typeEpisode, text)
-    assert result == {'number': '600', 
-                      'title': '600. Название эпизода',
+    assert result == {'number': '0600', 
+                      'title': '0600. Название эпизода',
                       'comment': 'Описание эпизода'}
     
 
@@ -53,8 +53,8 @@ Chapters: |
 02:17:25 - Озвучили наших патронов и анонсировали послешоу"""
 
     result = validateTemplate(typeEpisode, text)
-    assert result == {'number': '600', 
-                      'title': '600. Название эпизода',
+    assert result == {'number': '0600', 
+                      'title': '0600. Название эпизода',
                       'comment': 'Описание эпизода\nChapters: |\n00:00:07 - Вступление и что нового за неделю\n00:28:53 - Название темы 1\n01:40:56 - Название темы 2\n02:17:25 - Озвучили наших патронов и анонсировали послешоу'}
     
 

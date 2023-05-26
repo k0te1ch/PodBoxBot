@@ -12,7 +12,7 @@ def audiotag(**info):
 
 
 @logger.catch
-def audiotag_RZ(**info):
+def audiotag_RZ(info):
     musician = "Разговорный жанр"
     name = info["name"]
     audiofile = eyed3.load(PODCAST_PATH)
@@ -62,7 +62,7 @@ def audiotag_RZ(**info):
 
 
 @logger.catch
-def audiotag_PS(**info):
+def audiotag_PS(info):
     musician = "Разговорный жанр"
     name = info["name"]
     audiofile = eyed3.load(PODCAST_PATH)
