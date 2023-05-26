@@ -22,7 +22,7 @@ def validateTemplate(type, text):
     
     res["title"] = f'{res["number"]}. {res["title"]}'
     if "chapters" in res:
-        res["chapters"] = list(filter(lambda x: x != "", res["chapters"].split("\n")))
+        res["chapters"] = list(map(lambda x: list(map(lambda x: x.strip(), re.split("-|—", x))), list(filter(lambda x: x != "", res["chapters"].split("\n")))))
     return res
 
 
