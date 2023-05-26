@@ -3,28 +3,34 @@ import eyed3
 from loguru import logger
 from eyed3.id3 import UTF_16_ENCODING
 from datetime import datetime
-from config import COVER_RZ_PATH, COVER_PS_PATH, PODCAST
+from config import COVER_RZ_PATH, COVER_PS_PATH, PODCAST_PATH
+
+@logger.catch
+def audiotag(**info):
+    #TODO
+    pass
 
 
 @logger.catch
 def audiotag_RZ(**info):
     musician = "Разговорный жанр"
     name = info["name"]
-    audiofile = eyed3.load(PODCAST)
+    audiofile = eyed3.load(PODCAST_PATH)
     if audiofile.tag == None:
         audiofile.initTag((2, 4, 0))
     else:
         audiofile.tag.clear()
     audiofile.tag.artist = musician
     audiofile.tag.album = musician
-    audiofile.tag.album_artist = musician
-    audiofile.tag.title = name
-    audiofile.tag.original_release_date = datetime.now().strftime("%Y-%m-%d")
+    audiofile.tag.title = f'{info["number"]}. {name}'
+    audiofile.tag.original_release_date = datetime.now().year
+    #TODO CHECK THIS
     with open(COVER_RZ_PATH, "rb") as f:
-        audiofile.tag.images.set(3, f.read(), "image/jpg", u"PodBOX")
-    if info["text"] != " ":
-        audiofile.tag.comments.set(info["text"])
-        audiofile.tag.lyrics.set(info["text"])
+        audiofile.tag.images.set(3, f.read(), "image/jpg", u"")
+    text = info["text"]
+    if text != " ":
+        audiofile.tag.comments.set(text)
+        audiofile.tag.lyrics.set(text)
     
     audiofile.tag.album_type = "single"
     audiofile.tag.artist_origin = eyed3.core.ArtistOrigin("Voronezh", "Voronezh region", "Russian Federation")
@@ -34,9 +40,9 @@ def audiotag_RZ(**info):
     audiofile.tag.user_url_frames.set("https://podbox.ru/")
     audiofile.tag.copyright = musician
     audiofile.tag.publisher = musician
-    audiofile.tag.genre = 186
-    audiofile.tag.release_date = datetime.now().strftime("%Y-%m-%d")
-    audiofile.tag.recording_date = datetime.now().strftime("%Y-%m-%d")
+    audiofile.tag.genre = 186 # Podcast
+    audiofile.tag.release_date = datetime.now().year
+    audiofile.tag.recording_date = datetime.now().year
     info["chapters"].insert(0, "00:00:00 - Заставка")
     for i in range(len(info["chapters"])-1):
         begin = info["chapters"][i].split(" - ")
@@ -59,21 +65,22 @@ def audiotag_RZ(**info):
 def audiotag_PS(**info):
     musician = "Разговорный жанр"
     name = info["name"]
-    audiofile = eyed3.load(PODCAST)
+    audiofile = eyed3.load(PODCAST_PATH)
     if audiofile.tag == None:
         audiofile.initTag((2, 4, 0))
     else:
         audiofile.tag.clear()
     audiofile.tag.artist = musician
     audiofile.tag.album = musician
-    audiofile.tag.album_artist = musician
-    audiofile.tag.title = name
-    audiofile.tag.original_release_date = datetime.now().strftime("%Y-%m-%d")
+    audiofile.tag.title = f'{info["number"]}. {name}'
+    audiofile.tag.original_release_date = datetime.now().year
     with open(COVER_PS_PATH, "rb") as f:
-        audiofile.tag.images.set(3, f.read(), "image/jpg", u"PodBOX")
+        audiofile.tag.images.set(3, f.read(), "image/jpg", u"")
+
+    text = info["text"]
     if info["text"] != " ":
-        audiofile.tag.comments.set(info["text"])
-        audiofile.tag.lyrics.set(info["text"])
+        audiofile.tag.comments.set(text)
+        audiofile.tag.lyrics.set(text)
     audiofile.tag.album_type = "single"
     audiofile.tag.artist_origin = eyed3.core.ArtistOrigin("Voronezh", "Voronezh region", "Russian Federation")
     audiofile.tag.artist_url = "https://podbox.ru/"
@@ -82,7 +89,7 @@ def audiotag_PS(**info):
     audiofile.tag.user_url_frames.set("https://podbox.ru/")
     audiofile.tag.copyright = musician
     audiofile.tag.publisher = musician
-    audiofile.tag.genre = 186
-    audiofile.tag.release_date = datetime.now().strftime("%Y-%m-%d")
-    audiofile.tag.recording_date = datetime.now().strftime("%Y-%m-%d")
+    audiofile.tag.genre = 186 # Podcast
+    audiofile.tag.release_date = datetime.now().year
+    audiofile.tag.recording_date = datetime.now().year
     audiofile.tag.save()
