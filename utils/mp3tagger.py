@@ -13,7 +13,6 @@ def audiotag(info):
 @logger.catch
 def audiotag_RZ(info):
     musician = "Разговорный жанр"
-    title = info["title"]
     audiofile = eyed3.load(PODCAST_PATH)
     if audiofile.tag == None:
         audiofile.initTag((2, 4, 0))
@@ -21,7 +20,7 @@ def audiotag_RZ(info):
         audiofile.tag.clear()
     audiofile.tag.artist = musician
     audiofile.tag.album = musician
-    audiofile.tag.title = f'{info["number"]}. {title}'
+    audiofile.tag.title = info["title"]
     audiofile.tag.original_release_date = datetime.now().year
     #TODO CHECK THIS
     with open(COVER_RZ_PATH, "rb") as f:
@@ -42,7 +41,7 @@ def audiotag_RZ(info):
     audiofile.tag.genre = 186 # Podcast
     audiofile.tag.release_date = datetime.now().year
     audiofile.tag.recording_date = datetime.now().year
-    info["chapters"].insert(0, "00:00:00 - Заставка")
+    info["chapters"].insert(0, ["00:00:00", "Заставка"]) #TODO REFACTOR THIS
     for i in range(len(info["chapters"])-1):
         begin = info["chapters"][i]
         end = info["chapters"][i+1]
@@ -63,7 +62,6 @@ def audiotag_RZ(info):
 @logger.catch
 def audiotag_PS(info):
     musician = "Разговорный жанр"
-    title = info["title"]
     audiofile = eyed3.load(PODCAST_PATH)
     if audiofile.tag == None:
         audiofile.initTag((2, 4, 0))
@@ -71,7 +69,7 @@ def audiotag_PS(info):
         audiofile.tag.clear()
     audiofile.tag.artist = musician
     audiofile.tag.album = musician
-    audiofile.tag.title = f'{info["number"]}. {title}'
+    audiofile.tag.title = info["title"]
     audiofile.tag.original_release_date = datetime.now().year
     with open(COVER_PS_PATH, "rb") as f:
         audiofile.tag.images.set(3, f.read(), "image/jpg", u"")
