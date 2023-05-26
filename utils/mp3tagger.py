@@ -1,4 +1,3 @@
-import os
 import eyed3
 from loguru import logger
 from eyed3.id3 import UTF_16_ENCODING
@@ -6,7 +5,7 @@ from datetime import datetime
 from config import COVER_RZ_PATH, COVER_PS_PATH, PODCAST_PATH
 
 @logger.catch
-def audiotag(**info):
+def audiotag(info):
     #TODO
     pass
 
@@ -27,10 +26,10 @@ def audiotag_RZ(info):
     #TODO CHECK THIS
     with open(COVER_RZ_PATH, "rb") as f:
         audiofile.tag.images.set(3, f.read(), "image/jpg", u"")
-    text = info["text"]
-    if text != " ":
-        audiofile.tag.comments.set(text)
-        audiofile.tag.lyrics.set(text)
+    comment = info["comment"]
+    if comment != " ":
+        audiofile.tag.comments.set(comment)
+        audiofile.tag.lyrics.set(comment)
     
     audiofile.tag.album_type = "single"
     audiofile.tag.artist_origin = eyed3.core.ArtistOrigin("Voronezh", "Voronezh region", "Russian Federation")
@@ -77,10 +76,10 @@ def audiotag_PS(info):
     with open(COVER_PS_PATH, "rb") as f:
         audiofile.tag.images.set(3, f.read(), "image/jpg", u"")
 
-    text = info["text"]
-    if info["text"] != " ":
-        audiofile.tag.comments.set(text)
-        audiofile.tag.lyrics.set(text)
+    comment = info["comment"]
+    if info["comment"] != " ":
+        audiofile.tag.comments.set(comment)
+        audiofile.tag.lyrics.set(comment)
     audiofile.tag.album_type = "single"
     audiofile.tag.artist_origin = eyed3.core.ArtistOrigin("Voronezh", "Voronezh region", "Russian Federation")
     audiofile.tag.artist_url = "https://podbox.ru/"
