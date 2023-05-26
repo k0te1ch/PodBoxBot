@@ -88,12 +88,12 @@ async def setTemplate(msg, state, language):
         logger.opt(colors=True).debug(f"[<y>{msg.from_user.username}</y>]: Started audiotagging main episode")
         #TODO REFACTORING AUDIOTAG
         audiotag_RZ(info)
-        new_file_name = f'{info["number"]}_rz_{datetime.now().strftime("%d%m%Y")}.mp3'
+        new_file_name = f'{info["number"].zfill(4)}_rz_{datetime.now().strftime("%d%m%Y")}.mp3'
     else:
         logger.opt(colors=True).debug(f"[<y>{msg.from_user.username}</y>]: Started audiotagging aftershow epidose")
         #TODO REFACTORING AUDIOTAG
         audiotag_PS(info)
-        new_file_name = f'{info["number"]}_postshow_{datetime.now().strftime("%d%m%Y")}.mp3'
+        new_file_name = f'{info["number"].zfill(4)}_postshow_{datetime.now().strftime("%d%m%Y")}.mp3'
     
     logger.opt(colors=True).debug(f"<g>[<y>{msg.from_user.username}</y>]: Audiotagging complete succsessful</g>")
     os.rename(PODCAST_PATH, f"{FILES_PATH}/{new_file_name}")

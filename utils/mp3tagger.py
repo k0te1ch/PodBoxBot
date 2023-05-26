@@ -22,7 +22,6 @@ def audiotag_RZ(info):
     audiofile.tag.album = musician
     audiofile.tag.title = info["title"]
     audiofile.tag.original_release_date = datetime.now().year
-    #TODO CHECK THIS
     with open(COVER_RZ_PATH, "rb") as f:
         audiofile.tag.images.set(3, f.read(), "image/jpg", u"")
     comment = info["comment"]
