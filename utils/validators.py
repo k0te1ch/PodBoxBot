@@ -20,7 +20,6 @@ def validateTemplate(type, text):
     for index, i in enumerate(map(lambda s: s.replace("\\n", "\n"), result[0])):
         res[headers[index]] = i
     
-    res["number"] = f"0{res['number']}" if int(res["number"]) < 1000 else str(res["number"])
     res["title"] = f'{res["number"]}. {res["title"]}'
     if "chapters" in res:
         res["chapters"] = list(map(lambda x: list(map(lambda x: x.strip(), re.split("-|—", x))), list(filter(lambda x: x != "", res["chapters"].split("\n")))))
