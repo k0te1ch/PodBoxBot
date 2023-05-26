@@ -44,16 +44,16 @@ def audiotag_RZ(info):
     audiofile.tag.recording_date = datetime.now().year
     info["chapters"].insert(0, "00:00:00 - Заставка")
     for i in range(len(info["chapters"])-1):
-        begin = info["chapters"][i].split(" - ")
-        end = info["chapters"][i+1].split(" - ")
-        time1 = list(map(int, begin[0].split(":")))
-        time2 = list(map(int, end[0].split(":")))
+        begin = info["chapters"][i]
+        end = info["chapters"][i+1]
+        time1 = list(map(int, begin[0].split(":"))) #TODO REFACTOR THIS
+        time2 = list(map(int, end[0].split(":"))) #TODO REFACTOR THIS
         added_chapter = audiofile.tag.chapters.set(bytes(begin[1], encoding='cp866'), (((time1[0] * 60 + time1[1]) * 60 + time1[2])*1000, ((time2[0] * 60 + time2[1]) * 60 + time2[2])*1000-1))
         added_chapter.encoding = UTF_16_ENCODING
         added_chapter.title = begin[1]
 
-    begin = info["chapters"][-1].split(" - ")
-    time1 = list(map(int, begin[0].split(":")))
+    begin = info["chapters"][-1]
+    time1 = list(map(int, begin[0].split(":"))) #TODO REFACTOR THIS
     added_chapter = audiofile.tag.chapters.set(bytes(begin[1], encoding='cp866'), (((time1[0] * 60 + time1[1]) * 60 + time1[2])*1000, audiofile.info.time_secs*1000-1))
     added_chapter.encoding = UTF_16_ENCODING
     added_chapter.title = begin[1]
