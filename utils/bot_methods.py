@@ -1,3 +1,4 @@
+#TODO MAKE THIS SHIT
 def reload_bot():
     pass
 

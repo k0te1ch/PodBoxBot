@@ -26,7 +26,7 @@ def validateTemplate(type, text):
     return res
 
 
-def validatePath(path, encoding="UTF-8"):
+def validatePath(path: str, encoding="UTF-8"):
     if os.path.exists(path):
         return 
     with open(path, "w", encoding=encoding) as f:

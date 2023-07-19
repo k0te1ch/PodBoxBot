@@ -1,7 +1,8 @@
-from aiogram.dispatcher.filters import ChatTypeFilter
-from aiogram.types import ChatType, Message
+from aiogram.enums import ChatType
+from aiogram.types import Message
+from filters.chat_type import ChatTypeFilter
 
-from bot import context
+from utils.context import context
 from config import ADMINS, LANGUAGES
 
 

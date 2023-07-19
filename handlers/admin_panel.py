@@ -1,4 +1,8 @@
-from aiogram.dispatcher.filters import CommandStart, Text, Command
+
+#TODO REBUILD THIS
+#! BECAUSE IT ISN'T WORK!
+
+from aiogram.filters import CommandStart, Text, Command
 from aiogram.types import ReplyKeyboardRemove, CallbackQuery
 from loguru import logger
 from utils.bot_methods import reload_bot, shutdown_bot
