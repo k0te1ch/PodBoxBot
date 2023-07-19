@@ -3,9 +3,9 @@ import inspect
 import os
 import re
 
-from aiogram import Bot, Dispatcher, executor
-from aiogram.contrib.fsm_storage.memory import MemoryStorage
-from aiogram.contrib.fsm_storage.redis import RedisStorage2
+from aiogram import Bot, Dispatcher
+from aiogram.fsm.storage.redis import RedisStorage
+from aiogram.fsm.storage.memory import MemoryStorage
 from apscheduler.jobstores.memory import MemoryJobStore
 from apscheduler.jobstores.redis import RedisJobStore
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -13,6 +13,7 @@ from redis import Redis
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import scoped_session, sessionmaker
+from handlers import start_handler
 
 # LOGGER
 try:
@@ -37,10 +38,9 @@ MAIN_MODULE_NAME = os.path.basename(__file__)[:-3]
 
 try:
     from config import (ADMINS, API_TOKEN, CONTEXT_FILE, DATABASE,
-                        DATABASE_URL, ENABLE_APSCHEDULER, HANDLERS,
-                        HANDLERS_DIR, KEYBOARDS, KEYBOARDS_DIR, MODELS_DIR,
-                        PARSE_MODE, PROXY, PROXY_AUTH, REDIS_URL, SKIP_UPDATES,
-                        TG_SERVER)
+                        DATABASE_URL, ENABLE_APSCHEDULER, KEYBOARDS,
+                        KEYBOARDS_DIR, MODELS_DIR, PARSE_MODE, PROXY,
+                        PROXY_AUTH, REDIS_URL, SKIP_UPDATES, TG_SERVER)
     logger.debug("Loading settings from config")
 except ModuleNotFoundError:
     logger.critical("Config file not found! Please create config.py file according to config.py.example")
@@ -67,99 +67,6 @@ class _SQLAlchemy(object):
     def metadata(self):
         return self.Model.metadata
 
-
-class _Context(object):
-    def __init__(self, _context_obj):
-        self._context_obj = _context_obj
-
-    def __getattr__(self, name):
-        r = getattr(self._context_obj, name, None)
-
-        if r is None:
-            return f"\"{name}\" is not defined."
-
-        if isinstance(r, str):
-            frame = inspect.currentframe()
-            try:
-                caller_locals = frame.f_back.f_locals
-                r = r.format_map(caller_locals)
-            finally:
-                del frame
-
-            return r
-        
-        elif isinstance(r, list):
-            return r
-
-        elif isinstance(r, type):
-            return _Context(r)
-
-    def __getitem__(self, name):
-        r = getattr(self._context_obj, name, None)
-
-        if r is None:
-            return f"\"{name}\" is not defined."
-
-        if isinstance(r, str):
-            frame = inspect.currentframe()
-            try:
-                caller_locals = frame.f_back.f_locals
-                r = r.format_map(caller_locals)
-            finally:
-                del frame
-
-            return r
-        
-        elif isinstance(r, list):
-            return r
-
-        elif isinstance(r, type):
-            return _Context(r)
-        
-
-class _Keyboards(object):
-    def __init__(self, _context_obj):
-        self._context_obj = _context_obj
-
-    def __getattr__(self, name):
-        r = getattr(self._context_obj, name, None)
-
-        if r is None:
-            return f"\"{name}\" is not defined."
-
-        if isinstance(r, str):
-            frame = inspect.currentframe()
-            try:
-                caller_locals = frame.f_back.f_locals
-                r = r.format_map(caller_locals)
-            finally:
-                del frame
-
-            return r
-        elif isinstance(r, type):
-            return _Keyboards(r)
-        return r
-
-    def __getitem__(self, name):
-        r = getattr(self._context_obj, name, None)
-
-        if r is None:
-            return f"\"{name}\" is not defined."
-
-        if isinstance(r, str):
-            frame = inspect.currentframe()
-            try:
-                caller_locals = frame.f_back.f_locals
-                r = r.format_map(caller_locals)
-            finally:
-                del frame
-
-            return r
-        elif isinstance(r, type):
-            return _Keyboards(r)
-        return r
-
-
 class _NotDefinedModule(Exception):
     pass
 
@@ -177,19 +84,24 @@ class _NoneModule(object):
 
 # GET TG BOT OBJECT
 def _get_bot_obj():
-    from config import TG_SERVER
-    if not TG_SERVER:
-        from aiogram.bot.api import TELEGRAM_PRODUCTION
-        TG_SERVER = TELEGRAM_PRODUCTION
-        logger.opt(colors=True).debug(f"The standard api tg server is used <light-blue>({TG_SERVER.base[:TG_SERVER.base.find('/bot')]})</light-blue>")
-    else:
+    from config import TG_SERVER, LOCAL
+    #TODO CHECK THIS
+    if TG_SERVER == None and LOCAL:
+        from aiogram.client.telegram import TelegramAPIServer
+        from aiogram.client.session.aiohttp import AiohttpSession
+        TG_SERVER = AiohttpSession(
+            api=TelegramAPIServer.from_base('http://localhost:8082')
+        )
+        logger.opt(colors=True).debug(f"The standard api tg server is used <light-blue>({TG_SERVER.api.base[:TG_SERVER.api.base.find('/bot')]})</light-blue>")
+    elif TG_SERVER != None and LOCAL:
         logger.opt(colors=True).info(f"Telegram bot configured for work with custom server <light-blue>({TG_SERVER.base[:TG_SERVER.base.find('/bot')]})</light-blue>")
+    #TODO logging
+    #TODO proxy
+    #TODO server
     bot = Bot(
         token=API_TOKEN,
-        proxy=PROXY,
-        proxy_auth=PROXY_AUTH,
         parse_mode=PARSE_MODE,
-        server=TG_SERVER
+        session = TG_SERVER
     )
     logger.debug('Bot is configured')
     return bot
@@ -215,7 +127,7 @@ def _get_dp_obj(bot, redis):
     logger.debug("Dispatcher configurate:")
     if not isinstance(redis, _NoneModule):
         cfg = redis.connection_pool.connection_kwargs
-        storage = RedisStorage2(
+        storage = RedisStorage(
             host=cfg.get("host", "localhost"),
             port=cfg.get("port", 6379),
             db=cfg.get("db", 0),
@@ -225,8 +137,11 @@ def _get_dp_obj(bot, redis):
     else:
         storage = MemoryStorage()
         logger.debug('Used by MemoryStorage')
-    dp = Dispatcher(bot, storage=storage)
-
+    dp = Dispatcher(storage=storage)
+    #TODO отказ от структуры загрузки всех handlerов (?)
+    dp.include_routers(start_handler.router)
+    from aiogram.utils.callback_answer import CallbackAnswerMiddleware
+    dp.callback_query.middleware(CallbackAnswerMiddleware())
     logger.debug("Dispatcher is configured")
     return dp
 
@@ -240,29 +155,6 @@ def _get_db_obj():
 
     logger.debug("Datebase loaded")
     return db
-
-
-# GET CONTEXT OBJECT
-def _get_context_obj():
-    if CONTEXT_FILE is not None:
-        _module = importlib.import_module(CONTEXT_FILE)
-        context = _Context(_module)
-    else:
-        context = _NoneModule("text", "CONTEXT_FILE")
-
-    logger.debug("Context file loaded")
-    return context
-
-@logger.catch
-def _get_keyboards_obj():
-    keyboards = [m[:-3] for m in os.listdir(KEYBOARDS_DIR) if m.endswith(".py") and m[:-3] in KEYBOARDS]
-    logger.opt(colors=True).debug(f"Loading <y>{len(keyboards)}</y> keyboards")
-    tmp = {}
-    for keyboard in keyboards:
-        tmp[keyboard] = _Keyboards(importlib.import_module(f'{KEYBOARDS_DIR}.{keyboard}'))
-        logger.opt(colors=True).debug(f"Loading <y>{keyboard}</y>...   <light-green>loaded</light-green>")
-    logger.opt(colors=True).debug(f"Keyboards loaded")
-    return tmp
 
 # GET SCHEDULER OBJECT
 def _get_scheduler_obj(redis):
@@ -291,25 +183,11 @@ def _get_scheduler_obj(redis):
     logger.debug("Scheduler configured")
     return scheduler
 
-
-__all__ = [
-    "bot",
-    "dp",
-    "db",
-    "redis",
-    "context",
-    "keyboards",
-    "scheduler"
-]
-
-
 if __name__ == MAIN_MODULE_NAME:
     bot = _get_bot_obj()
     redis = _get_redis_obj()
     dp = _get_dp_obj(bot, redis)
     db = _get_db_obj() if DATABASE else None
-    context = _get_context_obj()
-    keyboards = _get_keyboards_obj()
     scheduler = _get_scheduler_obj(redis)
 
 

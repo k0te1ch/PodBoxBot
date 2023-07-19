@@ -1,6 +1,7 @@
 from loguru import logger
 
-from bot import bot
+#TODO
+#from bot import bot
 from config import API_TOKEN
 
 

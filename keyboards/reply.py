@@ -1,26 +1,31 @@
-from aiogram.types import ReplyKeyboardMarkup
+from aiogram.types import KeyboardButton
+from aiogram.utils.keyboard import ReplyKeyboardBuilder
 
-from bot import context
+from utils.context import context
 
 
 class ru:
     lang = "ru"
 
     #TODO PREBUILD BUTTONS
-    cancel = ReplyKeyboardMarkup(resize_keyboard=True)
-    typeEpisode = ReplyKeyboardMarkup(resize_keyboard=True)
+    cancel = ReplyKeyboardBuilder()
+    typeEpisode = ReplyKeyboardBuilder()
 
-    cancel.add(context[lang].cancel)
+    cancel.add(KeyboardButton(text = context[lang].cancel))
+    cancel = cancel.as_markup(resize_keyboard=True)
 
-    typeEpisode.row(context[lang].main_episode, context[lang].episode_aftershow)
+    typeEpisode.row(KeyboardButton(text = context[lang].main_episode), KeyboardButton(text = context[lang].episode_aftershow))
+    typeEpisode = typeEpisode.as_markup(resize_keyboard=True)
 
 
 class en:
     lang = "en"
 
-    cancel = ReplyKeyboardMarkup(resize_keyboard=True)
-    typeEpisode = ReplyKeyboardMarkup(resize_keyboard=True)
+    cancel = ReplyKeyboardBuilder()
+    typeEpisode = ReplyKeyboardBuilder()
 
-    cancel.add(context[lang].cancel)
+    cancel.add(KeyboardButton(text = context[lang].cancel))
+    cancel = cancel.as_markup(resize_keyboard=True)
 
-    typeEpisode.row(context[lang].main_episode, context[lang].episode_aftershow)
+    typeEpisode.row(KeyboardButton(text = context[lang].main_episode), KeyboardButton(text = context[lang].episode_aftershow))
+    typeEpisode = typeEpisode.as_markup(resize_keyboard=True)

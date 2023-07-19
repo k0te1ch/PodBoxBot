@@ -1,12 +1,19 @@
 import inspect
+from datetime import datetime
+from typing import Callable, Dict, Any, Awaitable
 
-from aiogram.dispatcher.handler import current_handler
+from aiogram import BaseMiddleware
+from aiogram.types import Message, CallbackQuery
+
+
+from aiogram.dispatcher.flags import get_flag
+from aiogram.utils.chat_action import ChatActionSender
 from aiogram.dispatcher.middlewares import BaseMiddleware
 
 from bot import db, dp
 from config import LANGUAGES
 
-
+"""
 class GeneralMiddleware(BaseMiddleware):
     def __init__(self):
         super(GeneralMiddleware, self).__init__()
@@ -46,7 +53,35 @@ class GeneralMiddleware(BaseMiddleware):
         handler = getattr(self, handler_name, None)
         if not handler:
             return None
-        await handler(obj, data, *args)
+        await handler(obj, data, *args)"""
 
+class GeneralMiddleware(BaseMiddleware):
+    async def __call__(
+        self,
+        handler: Callable[[Message, Dict[str, Any]], Awaitable[Any]],
+        event: Message,
+        data: Dict[str, Any]
+    ) -> Any:
+        return await handler(event, data)
+
+class ChatActionMiddleware(BaseMiddleware):
+    async def __call__(
+        self,
+        handler: Callable[[Message, Dict[str, Any]], Awaitable[Any]],
+        event: Message,
+        data: Dict[str, Any]
+    ) -> Any:
+        long_operation_type = get_flag(data, "long_operation")
+
+        # Если такого флага на хэндлере нет
+        if not long_operation_type:
+            return await handler(event, data)
+
+        # Если флаг есть
+        async with ChatActionSender(
+                action=long_operation_type, 
+                chat_id=event.chat.id
+        ):
+            return await handler(event, data)
 
 dp.middleware.setup(GeneralMiddleware())

@@ -1,0 +1,30 @@
+[tool.poetry]
+name = "podboxbot"
+version = "0.0.4"
+description = ""
+authors = ["k0te1ch <khvostov40@gmail.com>"]
+license = "LICENSE"
+readme = "README.md"
+
+
+[tool.poetry.dependencies]
+python = "~=3.10"
+aiogram = {version = "=3.0.0b7", allow-prereleases = true}
+click = "^8.1.6"
+alembic = "^1.11.1"
+loguru = "^0.7.0"
+redis = "^4.6.0"
+apscheduler = "^3.10.1"
+eyed3 = "^0.9.7"
+
+
+[tool.poetry.group.testing.dependencies]
+pytest = "^7.4.0"
+pytest-asyncio = "^0.21.1"
+aiogram-tests = {git = "https://github.com/555Russich/aiogram_tests"}
+responses = "^0.23.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
