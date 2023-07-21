@@ -111,8 +111,8 @@ async def setTemplate(msg: Message, state: FSMContext) -> None:
     logger.opt(colors=True).debug(f"<g>[<y>{msg.from_user.username}</y>]: Audiotagging complete succsessful</g>")
     os.rename(PODCAST_PATH, f"{FILES_PATH}/{new_file_name}") #TODO USE AIOFILES
 
-    logger.opt(colors=True).debug(f"[<y>{msg.from_user.username}</y>]: Upload MP3 file")
-    temp = await temp.edit_text("Теги проставлены.\nЗагрузка началась, подождите около 5-10 минут")
+    logger.opt(colors=True).debug(f"[<y>{msg.from_user.username}</y>]: Upload MP3 file") 
+    temp = await temp.edit_text("Теги проставлены.\nЗагрузка началась, подождите около 2-5 минут") #TODO ADD THIS TO CONTEXT
     #TODO Посмотреть вариант отслеживания загрузки
 
     await msg.reply_audio(FSInputFile(f"{FILES_PATH}/{new_file_name}", new_file_name), context["ru"].done_mp3, reply_markup=ReplyKeyboardRemove())
