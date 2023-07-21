@@ -274,7 +274,7 @@ async def _setTemplate(stateData: dict, text: str):
     answer_messages = calls.send_message.fetchone()
     audio_message = calls.send_audio.fetchone()
     assert answer_messages.text == "Проставляем теги"
-    assert edited_message.text == "Теги проставлены.\nЗагрузка началась, подождите около 5-10 минут"
+    assert edited_message.text == "Теги проставлены.\nЗагрузка началась, подождите около 2-5 минут"
     assert audio_message.caption == "Вот твой готовый файл!"
     assert calls.delete_message.fetchone()
 
