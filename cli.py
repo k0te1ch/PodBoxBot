@@ -75,7 +75,6 @@ async def _run():
     await bot.dp.start_polling(bot.bot, skip_updates=SKIP_UPDATES)
     
 
-
 @cli.command()
 @logger.catch
 def run():

@@ -1,13 +1,22 @@
-FROM python:3.9.16-slim
+# Build image
+FROM python:3.10.10-slim-bullseye as base
 
-WORKDIR /usr/src/bot
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+COPY requirements.txt .
+RUN pip install --no-cache-dir --upgrade pip \
+ && pip install --no-cache-dir -r requirements.txt
 
-COPY requirements.txt ./
-RUN pip install --upgrade pip
-#RUN pip install --no-cache-dir --user -r requirements.txt
-RUN pip install --user -r requirements.txt
-RUN rm -rf requirements.txt
 
-COPY . .
+# Тестовый образ
+FROM base as test
+CMD [ "python", "-m pytest", "--rootdir ." ]
 
+
+# Итоговый образ, в котором будет работать бот
+FROM base as production
+COPY --from=base /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+WORKDIR /app
+COPY . /app
 CMD [ "python", "bot.py", "run"]
