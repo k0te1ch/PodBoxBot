@@ -1,8 +1,9 @@
 import re
 import os
+from typing import Optional
 
 
-def validateTemplate(type, text):
+def validateTemplate(type, text) -> Optional[dict]:
     headers = ["number", "title", "comment"]
     if type == "main":
         reg = r"Number: (\d+)\\nTitle: (.*?)\\nComment: (.*?)\\nChapters: \|\\n(.*?)$"
@@ -26,7 +27,7 @@ def validateTemplate(type, text):
     return res
 
 
-def validatePath(path: str, encoding="UTF-8"):
+def validatePath(path: str, encoding="UTF-8") -> None:
     if os.path.exists(path):
         return 
     with open(path, "w", encoding=encoding) as f:

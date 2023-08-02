@@ -1,36 +1,41 @@
+from typing import Optional, Union
+
 from aiogram.enums import ChatType
 from aiogram.types import Message
-from filters.chat_type import ChatTypeFilter
 
-from utils.context import context
 from config import ADMINS, LANGUAGES
+from filters.chat_type import ChatTypeFilter
+from utils.context import context
 
 
-def IsGroup(m):
+async def IsGroup(m) -> bool:
     """
     This filter checks whether the chat is group or super group
     :return: bool
     """
-    return ChatTypeFilter([ChatType.GROUP, ChatType.SUPER_GROUP])
+    c = ChatTypeFilter([ChatType.GROUP, ChatType.SUPERGROUP])
+    return await c(m)
 
 
-def IsPrivate(m):
+async def IsPrivate(m) -> bool:
     """
     This filter checks whether the chat is private
     :return: bool
     """
-    return ChatTypeFilter(ChatType.PRIVATE)
+    c = ChatTypeFilter(ChatType.PRIVATE)
+    return await c(m)
 
 
-def IsChannel(m):
+async def IsChannel(m) -> bool:
     """
     This filter checks whether the chat is a channel
     :return: bool
     """
-    return ChatTypeFilter(ChatType.CHANNEL)
+    c = ChatTypeFilter(ChatType.CHANNEL)
+    return await c(m)
 
 
-def IsAdmin(m):
+def IsAdmin(m) -> bool:
     """
     This filter checks whether the user is an administrator (in the list of administrators in the settings)
     :return: bool
@@ -38,13 +43,14 @@ def IsAdmin(m):
     return (m.from_user.username in ADMINS)
 
 
-def ContextButton(context_key: any, classes: list = LANGUAGES):
+def ContextButton(context_key: Union[str, list], classes: list = LANGUAGES):
     """
     This filter checks button's text when have a multi-language context
     example: ContextButton("cancel", ["ru", "en"])
     """
-    def inner(m):
-        if not(isinstance(m, Message) and m.text):
+
+    def inner(m) -> Optional[bool]:
+        if not (isinstance(m, Message) and m.text):
             return
 
         for cls in classes:
@@ -61,4 +67,5 @@ def ContextButton(context_key: any, classes: list = LANGUAGES):
                 else:
                     if m.text == attr:
                         return True
+
     return inner

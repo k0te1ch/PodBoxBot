@@ -5,9 +5,9 @@ services:
     image: aiogram/telegram-bot-api:latest
     restart: always
     environment:
-      TELEGRAM_API_ID: ${TELEGRAM_API_ID}
-      TELEGRAM_API_HASH: ${TELEGRAM_API_HASH}
-      TELEGRAM_LOCAL: 1
+      TELEGRAM_API_ID: ${TELEGRAM_SERVER_API_ID}
+      TELEGRAM_API_HASH: ${TELEGRAM_SERVER_API_HASH}
+      TELEGRAM_LOCAL: ${LOCAL}
     ports:
       - 8081:8081
     volumes:
@@ -15,6 +15,7 @@ services:
   
   aiogram-bot:
     image: bot
+    stop_signal: SIGINT
     restart: always
     build: .
     depends_on:
@@ -23,6 +24,12 @@ services:
       - api
     volumes:
       - telegram-bot-api-data:/var/lib/telegram-bot-api
+      - .env:/app/.env
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50"
+        max-file: "4"
 
 volumes:
   telegram-bot-api-data:
