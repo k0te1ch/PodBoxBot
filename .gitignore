@@ -3,6 +3,7 @@ test.py
 test2.py
 database.sqlite
 files/*.mp3
+files/*.pkl
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -129,6 +130,7 @@ celerybeat.pid
 *.sage.py
 
 # Environments
+*.env
 .env
 .venv
 env/

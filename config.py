@@ -5,30 +5,59 @@ from typing import Optional
 
 from dotenv import load_dotenv
 
-env_path = Path('.')/'.env'
+env_path = Path(".") / ".env"
 load_dotenv(dotenv_path=env_path)
 
-def getEnvBool(env_name: str) -> Optional[bool]:
-    env_val = os.getenv(env_name)
-    if type(env_val) != str or not env_val.lower() in ["true", "false", "1", "0"]:
-        return None
-    
-    if env_val in ["1", "0"]:
-        return bool(int(env_val))
 
-    return env_val.lower() == "true"
+def getEnvBool(env_name: str) -> Optional[bool]:
+    env_val = os.getenv(env_name, "").lower()
+    if env_val in {"true", "1"}:
+        return True
+    elif env_val in {"false", "0"}:
+        return False
+    return None
+
 
 # TELEGRAM BOT SETTINGS
 API_TOKEN = os.getenv("TELEGRAM_API_TOKEN")
-SKIP_UPDATES = getEnvBool(os.getenv("SKIP_UPDATES"))
+SKIP_UPDATES = getEnvBool("SKIP_UPDATES")
 
 # FTP SETTINGS
 FTP_SERVER = os.getenv("FTP_SERVER")
 FTP_LOGIN = os.getenv("FTP_LOGIN")
 FTP_PASSWORD = os.getenv("FTP_PASSWORD")
 
+# WP SETTINGS
+WP_URL = os.getenv("WP_URL").rstrip("/")
+WP_LOGIN = os.getenv("WP_LOGIN")
+WP_PASSWORD = os.getenv("WP_PASSWORD")
+
 # LOGGER SETTINGS
-LOG_LEVEL = os.getenv("LOG_LEVEL")
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+from loguru import logger
+import sys
+
+logger.remove()
+logger.add(
+    sys.stdout,
+    colorize=True,
+    format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level}</level>::<blue>{module}</blue>::<cyan>{function}</cyan>::<cyan>{line}</cyan> | <level>{message}</level>",
+    level=LOG_LEVEL,
+    backtrace=True,
+    diagnose=True,
+)
+MODULE_PATH = os.path.dirname(os.path.realpath(__file__))
+if not os.path.exists(f"{MODULE_PATH}/logs"):
+    os.mkdir(f"{MODULE_PATH}/logs")
+
+logger.add(
+    MODULE_PATH + "/logs/file_{time:YYYY-MM-DD_HH-mm-ss}.log",
+    rotation="5 MB",
+    format="{time:YYYY-MM-DD HH:mm:ss} | {level}::{module}::{function}::{line} | {message}",
+    level="TRACE",
+    backtrace=True,
+    diagnose=True,
+)
 
 # default tg_server is official api server
 TG_SERVER = os.getenv("TG_SERVER")
@@ -54,7 +83,7 @@ CONTEXT_FILE = os.getenv("CONTEXT_FILE")
 
 ENABLE_APSCHEDULER = os.getenv("ENABLE_APSCHEDULER")
 
-ADMINS = json.loads(os.getenv('ADMINS'))
+ADMINS = json.loads(os.getenv("ADMINS"))
 
 HANDLERS = json.loads(os.getenv("HANDLERS"))
 
@@ -66,9 +95,11 @@ LANGUAGES = json.loads(os.getenv("LANGUAGES"))
 # SOURCES
 SRC_PATH = os.path.dirname(os.path.realpath(__file__))
 COVER_RZ_NAME = os.getenv("COVER_RZ_NAME")
-COVER_PS_NAME =  os.getenv("COVER_PS_NAME")
+COVER_PS_NAME = os.getenv("COVER_PS_NAME")
 PODCAST = os.getenv("PODCAST")
+WP_COOKIE_FILENAME = os.getenv("WP_COOKIE_FILENAME")
 FILES_PATH = f"{SRC_PATH}/{os.getenv('FILES_PATH')}"
 PODCAST_PATH = f"{FILES_PATH}/{PODCAST}"
-COVER_RZ_PATH = f'{FILES_PATH}/{COVER_RZ_NAME}'
-COVER_PS_PATH = f'{FILES_PATH}/{COVER_PS_NAME}'
+COVER_RZ_PATH = f"{FILES_PATH}/{COVER_RZ_NAME}"
+COVER_PS_PATH = f"{FILES_PATH}/{COVER_PS_NAME}"
+WP_COOKIE_PATH = f"{FILES_PATH}/{WP_COOKIE_FILENAME}"

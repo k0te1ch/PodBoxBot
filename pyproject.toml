@@ -19,6 +19,9 @@ eyed3 = "^0.9.7"
 python-dotenv = "^1.0.0"
 aiomysql = "^0.2.0"
 pymysql = "^1.1.0"
+lxml = "^5.1.0"
+feedparser = "^6.0.11"
+fake-useragent = "^1.4.0"
 
 
 [tool.poetry.group.testing.dependencies]
