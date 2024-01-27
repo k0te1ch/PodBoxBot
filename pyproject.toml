@@ -22,6 +22,7 @@ pymysql = "^1.1.0"
 lxml = "^5.1.0"
 feedparser = "^6.0.11"
 fake-useragent = "^1.4.0"
+requests = "^2.31.0"
 
 
 [tool.poetry.group.testing.dependencies]
