@@ -1,25 +1,32 @@
 import os
 import shutil
-from datetime import datetime, timezone, timedelta
-from typing import cast
+from datetime import datetime
 
 from aiogram import Bot, F, Router
-from aiogram.filters import CommandStart, StateFilter, Text
+from aiogram.filters import CommandStart, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, FSInputFile, Message, ReplyKeyboardRemove
 from loguru import logger
 
-from config import FILES_PATH, FTP_LOGIN, FTP_PASSWORD, FTP_SERVER, LOCAL, PODCAST_PATH
+from config import (
+    FILES_PATH,
+    FTP_LOGIN,
+    FTP_PASSWORD,
+    FTP_SERVER,
+    LOCAL,
+    PODCAST_PATH,
+    TIMEZONE,
+)
 from forms.uploadFile import UploadFile
-from utils.bot_methods import uploadToFTP
+from utils.FTP import uploadToFTP, checkFileFTP, getLastPostID
 from utils.context import context
 from utils.dispatcher_filters import ContextButton, IsAdmin, IsPrivate
 from utils.keyboards import keyboards
-from utils.mp3tagger import audiotag
+from utils.mp3tagger import audioTag
 from utils.validators import validatePath, validateTemplate
 from utils.wordpress import WordPress
 
-timeZone = timezone(timedelta(hours=3))  # TODO TO ENV
+
 router = Router(name="podcastHandler")
 router.message.filter(IsPrivate, IsAdmin)
 
@@ -88,15 +95,13 @@ async def getMP3(
         shutil.move(f"/var/lib/telegram-bot-api/{API_TOKEN}/music/{g}", PODCAST_PATH)
     else:
         await bot.download(msg.audio.file_id, PODCAST_PATH, timeout=60)
-
+    typeEpisode = (await state.get_data())["typeEpisode"]
     numberLastEpisode = str(
-        int(WordPress.getLastPostID()) + 1
+        int(await getLastPostID(typeEpisode, FTP_SERVER, FTP_LOGIN, FTP_PASSWORD)) + 1
     )  # Используется в контексте
     await download_msg.edit_text(context[language].downloaded)
     await msg.answer(
-        context.ask_template[(await state.get_data())["typeEpisode"]].replace(
-            "600", numberLastEpisode
-        ),
+        context.ask_template[typeEpisode].replace("600", numberLastEpisode),
         reply_markup=keyboards["podcastHandler"][language].cancel,
     )
     await state.set_state(UploadFile.template)
@@ -106,7 +111,6 @@ async def getMP3(
 async def setTemplate(
     msg: Message, state: FSMContext, language: str, username: str
 ) -> None:
-    # TODO get number from site
     # TODO REFACTORING
     typeEpisode = (await state.get_data())["typeEpisode"]
 
@@ -127,9 +131,8 @@ async def setTemplate(
     logger.opt(colors=True).debug(
         f"[<y>{username}</y>]: Started audiotagging {'main' if typeEpisode == 'main' else 'aftershow'} epidose"
     )
-    audiotag(info, typeEpisode)
-    # TODO timezone to env
-    new_file_name = f'{info["number"].zfill(4)}_{"rz" if typeEpisode == "main" else "postshow"}_{datetime.now(timeZone).strftime("%d%m%Y")}.mp3'
+    audioTag(info, typeEpisode)
+    new_file_name = f'{info["number"].zfill(4)}_{"rz" if typeEpisode == "main" else "postshow"}_{datetime.now(TIMEZONE).strftime("%d%m%Y")}.mp3'
 
     logger.opt(colors=True).debug(
         f"<g>[<y>{username}</y>]: Audiotagging complete succsessful</g>"
@@ -143,7 +146,9 @@ async def setTemplate(
     await msg.reply_audio(
         FSInputFile(f"{FILES_PATH}/{new_file_name}", new_file_name),
         context[language].done_mp3,
-        reply_markup=keyboards["podcastHandler"][language].audioMenu,
+        reply_markup=keyboards["podcastHandler"][language].audioMenuMain
+        if typeEpisode == "main"
+        else keyboards["podcastHandler"][language].audioMenuPost,
     )
     # TODO add inline button for upload
     await temp.delete()
@@ -152,59 +157,79 @@ async def setTemplate(
 
 
 # TODO LOGGING and refactoring (in future)
-@router.callback_query(Text("audioMenu"))
+@router.callback_query(F.data == "audioMenu")
 async def audioMenu(callback: CallbackQuery, language: str, username: str):
     logger.opt(colors=True).debug(f"[<y>{username}</y>]: AudioMenu")
-    await callback.answer()
-    # TODO проблема с послешоу
-    return await callback.message.edit_reply_markup(
-        "Операции с подкастом:",
-        reply_markup=keyboards["podcastHandler"][language].audioMenu,
-    )
+
+    if "rz" in callback.message.audio.file_name:
+        await callback.message.edit_reply_markup(
+            "Операции с подкастом:",
+            reply_markup=keyboards["podcastHandler"][language].audioMenuMain,
+        )
+    else:
+        await callback.message.edit_reply_markup(
+            "Операции с подкастом:",
+            reply_markup=keyboards["podcastHandler"][language].audioMenuPost,
+        )
+
+    return await callback.answer()
 
 
 # TODO LOGGING and refactoring (in future)
-@router.callback_query(Text("FTPMenu"))
+@router.callback_query(F.data == "FTPMenu")
 async def FTPMenu(callback: CallbackQuery, language: str, username: str):
     logger.opt(colors=True).debug(f"[<y>{username}</y>]: FTPMenu")
-    await callback.answer()
-    return await callback.message.edit_reply_markup(
+
+    await callback.message.edit_reply_markup(
         reply_markup=keyboards["podcastHandler"][language].FTPMenu
     )
+    return await callback.answer()
 
 
 # TODO LOGGING and refactoring (in future)
-@router.callback_query(Text("FTP_upload"))
-async def uploadFTP(callback: CallbackQuery, language: str, username: str):
+@router.callback_query(F.data == "FTP_upload")
+async def uploadFTP(callback: CallbackQuery, username: str):
     logger.opt(colors=True).debug(f"[<y>{username}</y>]: FTP_upload")
+    if not await checkFileFTP(
+        callback.message.audio.file_name, FTP_SERVER, FTP_LOGIN, FTP_PASSWORD
+    ):
+        await uploadToFTP(
+            f"{FILES_PATH}/{callback.message.audio.file_name}",
+            callback.message.audio.file_name,
+            FTP_SERVER,
+            FTP_LOGIN,
+            FTP_PASSWORD,
+        )
+    else:
+        logger.opt(colors=True).debug(f"[<y>{username}</y>]: Файл уже загружен")
+        return callback.answer("Файл уже загружен", show_alert=True)
 
-    await uploadToFTP(
-        f"{FILES_PATH}/{callback.message.audio.file_name}",
-        callback.message.audio.file_name,
-        FTP_SERVER,
-        FTP_LOGIN,
-        FTP_PASSWORD,
-    )
-    logger.opt(colors=True).debug(f"[<y>{username}</y>]: Загружено")
+    if await checkFileFTP(
+        callback.message.audio.file_name, FTP_SERVER, FTP_LOGIN, FTP_PASSWORD
+    ):
+        logger.opt(colors=True).debug(f"[<y>{username}</y>]: Загружено на FTP")
+        # TODO добавить уведомление
+    else:
+        logger.opt(colors=True).debug(
+            f"[<y>{username}</y>]: <r>Ошибка при загрузке на FTP</r>"
+        )
+        await uploadFTP(callback, username)
     return await callback.answer(
         text="Файл успешно загружен на FTP", show_alert=True
-    )  # TODO context #TODO Проверку бы добавить...
+    )  # TODO context
 
 
-# TODo create buttons in keyboards
-
-
-@router.callback_query(Text("WPMenu"))
+@router.callback_query(F.data == "WPMenu")
 async def WPMenu(callback: CallbackQuery, language: str, username: str):
     logger.opt(colors=True).debug(f"[<y>{username}</y>]: WPMenu")
 
-    await callback.answer()
-    return await callback.message.edit_reply_markup(
+    await callback.message.edit_reply_markup(
         reply_markup=keyboards["podcastHandler"][language].WPMenu
     )
+    return await callback.answer()
 
 
-@router.callback_query(Text("WP_upload"))
+@router.callback_query(F.data == "WP_upload")
 async def uploadWP(callback: CallbackQuery, language: str, username: str):
     logger.opt(colors=True).debug(f"[<y>{username}</y>]: WP_upload")
 

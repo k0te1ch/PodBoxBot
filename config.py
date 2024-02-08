@@ -1,5 +1,6 @@
 import json
 import os
+from datetime import timezone, timedelta
 from pathlib import Path
 from typing import Optional
 
@@ -17,6 +18,10 @@ def getEnvBool(env_name: str) -> Optional[bool]:
         return False
     return None
 
+
+# PODCAST SETTINGS
+PODCAST_GENRE = 186  # Just constant
+TIMEZONE = timezone(timedelta(hours=int(os.getenv("TIMEZONE"))))
 
 # TELEGRAM BOT SETTINGS
 API_TOKEN = os.getenv("TELEGRAM_API_TOKEN")
@@ -98,7 +103,10 @@ COVER_RZ_NAME = os.getenv("COVER_RZ_NAME")
 COVER_PS_NAME = os.getenv("COVER_PS_NAME")
 PODCAST = os.getenv("PODCAST")
 WP_COOKIE_FILENAME = os.getenv("WP_COOKIE_FILENAME")
+
 FILES_PATH = f"{SRC_PATH}/{os.getenv('FILES_PATH')}"
+LOGS_PATH = f"{SRC_PATH}/{os.getenv('LOGS_PATH')}"
+
 PODCAST_PATH = f"{FILES_PATH}/{PODCAST}"
 COVER_RZ_PATH = f"{FILES_PATH}/{COVER_RZ_NAME}"
 COVER_PS_PATH = f"{FILES_PATH}/{COVER_PS_NAME}"

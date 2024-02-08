@@ -29,8 +29,11 @@ class ru:
     # Admin panel
     admin_panel_open: str = "Админ панель"
     admin_panel_close: str = "Админ панель закрыта"
-    admin_panel_main: list = [("Бот", "bot")]
-    bot_commands: list = [("Выключить бота", "shutdown_bot")]
+    admin_panel_main: list = [("Бот", "botPanel")]
+    bot_commands: list = [
+        ("Выключить бота", "shutdown_bot"),
+        ("Прислать лог-файлы", "send_logs"),
+    ]
 
 
 class en:

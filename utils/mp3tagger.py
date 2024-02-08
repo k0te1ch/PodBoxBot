@@ -1,76 +1,75 @@
 from typing import List, Tuple
 import eyed3
+from eyed3 import AudioFile
 from loguru import logger
 from eyed3.id3 import UTF_16_ENCODING
 from datetime import datetime, timedelta, timezone
 from eyed3.id3.tag import Tag
-from config import COVER_RZ_PATH, COVER_PS_PATH, PODCAST_PATH
-
-# TODO timezone to settings
-timeZone = timezone(timedelta(hours=3))
-PODCAST_GENRE = 186  # TODO TO CONFIG
+from config import COVER_RZ_PATH, COVER_PS_PATH, PODCAST_PATH, TIMEZONE, PODCAST_GENRE
 
 
+@logger.catch
 def time_to_milliseconds(time_str: str) -> int:
     hours, minutes, seconds = map(int, time_str.split(":"))
     return ((hours * 60) + minutes) * 60 + seconds
 
 
-def set_chapters(tag: Tag, chapters: List[Tuple[str, str]]) -> None:
-    for i, (start_time, title) in enumerate(chapters):
-        time_start = time_to_milliseconds(start_time)
-        time_end = (
+@logger.catch
+def set_chapters(audioFile: AudioFile, chapters: List[Tuple[str, str]]) -> None:
+    tag: Tag = audioFile.tag
+    for i, (startTime, title) in enumerate(chapters):
+        timeStart = time_to_milliseconds(startTime)
+        timeEnd = (
             time_to_milliseconds(chapters[i + 1][0])
             if i < len(chapters) - 1
-            else tag.frame_set("TLEN").text[0]
+            else int(audioFile.info.time_secs)
         )
-        added_chapter = tag.chapters.set(
+        addedChapter = tag.chapters.set(
             bytes(f"CHAP{i+1}", encoding="cp866"),
-            (time_start, time_end - 1),
+            (timeStart, timeEnd - 1),
         )
-        added_chapter.encoding = UTF_16_ENCODING
-        added_chapter.title = title
+        addedChapter.encoding = UTF_16_ENCODING
+        addedChapter.title = title
 
 
 @logger.catch
-def audiotag(info: dict, type: str) -> None:
+def audioTag(info: dict, type: str) -> None:
+    year = datetime.now(TIMEZONE).year
     musician = "Разговорный жанр"  # TODO to env
-    with eyed3.load(PODCAST_PATH) as audiofile:
-        if audiofile is None:
-            return
+    audioFile = eyed3.load(PODCAST_PATH)
+    if audioFile is None:
+        return
 
-        if audiofile.tag == None:
-            audiofile.initTag((2, 4, 0))
-        else:
-            audiofile.tag.clear()
-        tags = ("artist", "album", "title", "title", "original_release_date")
+    if audioFile.tag is None:
+        audioFile.initTag((2, 4, 0))
+    else:
+        audioFile.tag.clear()
 
-        # if all(i in d for i in tags)
-        audiofile.tag.artist = musician
-        audiofile.tag.album = musician
-        audiofile.tag.title = info["title"]
-        audiofile.tag.original_release_date = datetime.now(timeZone).year
-        COVER_PATH = COVER_RZ_PATH if type == "main" else COVER_PS_PATH
-        with open(COVER_PATH, "rb") as f:
-            audiofile.tag.images.set(3, f.read(), "image/jpg", "")
-        comment = info["comment"]
-        if comment != " ":
-            audiofile.tag.comments.set(comment)
-            audiofile.tag.lyrics.set(comment)
+    audioFile.tag.artist = musician
+    audioFile.tag.album = musician
+    audioFile.tag.title = info["title"]
+    audioFile.tag.original_release_date = datetime.now(TIMEZONE).year
+    COVER_PATH = COVER_RZ_PATH if type == "main" else COVER_PS_PATH
+    with open(COVER_PATH, "rb") as f:
+        audioFile.tag.images.set(3, f.read(), "image/jpg", "")
+    comment = info["comment"]
+    if comment != " ":
+        audioFile.tag.comments.set(comment)
+        audioFile.tag.lyrics.set(comment)
 
-        audiofile.tag.album_type = "single"
-        audiofile.tag.artist_origin = eyed3.core.ArtistOrigin(
-            "Voronezh", "Voronezh region", "Russian Federation"
-        )  # TODO to settings
-        audiofile.tag.artist_url = "https://podbox.ru/"  # TODO to settings
-        audiofile.tag.commercial_url = "https://podbox.ru/donate/"  # TODO to settings
-        audiofile.tag.payment_url = "https://podbox.ru/donate/"  # TODO to settings
-        audiofile.tag.user_url_frames.set("https://podbox.ru/")  # TODO to settings
-        audiofile.tag.copyright = musician
-        audiofile.tag.publisher = musician
-        audiofile.tag.genre = PODCAST_GENRE
-        audiofile.tag.release_date = datetime.now(timeZone).year
-        audiofile.tag.recording_date = datetime.now(timeZone).year
-        if type == "main":
-            set_chapters(audiofile.tag, info.get("chapters", []))
-        audiofile.tag.save()
+    audioFile.tag.album_type = "single"
+    audioFile.tag.artist_origin = eyed3.core.ArtistOrigin(
+        "Voronezh", "Voronezh region", "Russian Federation"
+    )  # TODO to settings
+    audioFile.tag.artist_url = "https://podbox.ru/"  # TODO to settings
+    audioFile.tag.commercial_url = "https://podbox.ru/donate/"  # TODO to settings
+    audioFile.tag.payment_url = "https://podbox.ru/donate/"  # TODO to settings
+    audioFile.tag.user_url_frames.set("https://podbox.ru/")  # TODO to settings
+    audioFile.tag.copyright = musician
+    audioFile.tag.publisher = musician
+    audioFile.tag.genre = PODCAST_GENRE
+    audioFile.tag.release_date = year
+    audioFile.tag.recording_date = year
+    if type == "main":
+        set_chapters(audioFile, info.get("chapters", []))
+    audioFile.tag.save()

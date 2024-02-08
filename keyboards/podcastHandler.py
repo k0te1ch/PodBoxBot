@@ -20,10 +20,14 @@ class ru:
     )
     typeEpisode = typeEpisode.as_markup(resize_keyboard=True)
 
-    audioMenu = InlineKeyboardBuilder()
-    audioMenu.add(InlineKeyboardButton(text="FTP", callback_data="FTPMenu"))
-    audioMenu.add(InlineKeyboardButton(text="Сайт", callback_data="WPMenu"))
-    audioMenu = audioMenu.as_markup()
+    audioMenuMain = InlineKeyboardBuilder()
+    audioMenuMain.add(InlineKeyboardButton(text="FTP", callback_data="FTPMenu"))
+    audioMenuMain.add(InlineKeyboardButton(text="Сайт", callback_data="WPMenu"))
+    audioMenuMain = audioMenuMain.as_markup()
+
+    audioMenuPost = InlineKeyboardBuilder()
+    audioMenuPost.add(InlineKeyboardButton(text="FTP", callback_data="FTPMenu"))
+    audioMenuPost = audioMenuPost.as_markup()
 
     FTPMenu = InlineKeyboardBuilder()
     FTPMenu.add(

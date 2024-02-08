@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "podboxbot"
-version = "0.0.4"
+version = "0.1.1"
 description = ""
 authors = ["k0te1ch <khvostov40@gmail.com>"]
 license = "LICENSE"
@@ -9,7 +9,7 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "~=3.10"
-aiogram = {version = "=3.0.0b7", allow-prereleases = true}
+aiogram = "~=3.3.0"
 click = "^8.1.6"
 alembic = "^1.11.1"
 loguru = "^0.7.0"

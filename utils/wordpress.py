@@ -4,9 +4,12 @@ import os
 from lxml import etree
 import re
 import feedparser
-from config import WP_URL, WP_LOGIN, WP_PASSWORD, WP_COOKIE_PATH
-from datetime import datetime, timezone, timedelta
+from config import WP_URL, WP_LOGIN, WP_PASSWORD, WP_COOKIE_PATH, TIMEZONE
+from datetime import datetime
 from fake_useragent import UserAgent
+
+
+# TODO make this async
 
 
 class WordPress:
@@ -112,14 +115,13 @@ class WordPress:
         for time, chapterName in info["chapters"]:
             chapters += f"[skipto time={time}]{time}[/skipto] — {chapterName}\n"
 
-        timeZone = timezone(timedelta(hours=3))  # TODO TO ENV
-        time = datetime.now(timeZone)
+        time = datetime.now(TIMEZONE)
 
         timeStr = f"{time.day} {('января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря')[time.month-1]} {time.year}"  # TODO Locale settings!
 
-        form = {
+        form = {  # TODO refactor this (name.replace...)
             "post_title": f"Разговорный жанр — {podcastID}",
-            "content": f"""<span style="font-size: large;">{name}</span><code>
+            "content": f"""<span style="font-size: large;">{name.replace(podcastID+". ", "")}</span><code>
 </code>
 <b><i>Описание:</i></b>
 <code>{summary}
@@ -174,6 +176,6 @@ class WordPress:
         self._session.post(f"{WP_URL}/wp-admin/post.php", data=form)
 
     @staticmethod
-    def getLastPostID() -> str:
+    def getLastPostID() -> str:  # Deprecated
         feed = feedparser.parse(f"{WP_URL}/feed/podcast/")
         return feed["entries"][0]["itunes_episode"]
