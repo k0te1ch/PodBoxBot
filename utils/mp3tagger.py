@@ -3,7 +3,7 @@ import eyed3
 from eyed3 import AudioFile
 from loguru import logger
 from eyed3.id3 import UTF_16_ENCODING
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 from eyed3.id3.tag import Tag
 from config import COVER_RZ_PATH, COVER_PS_PATH, PODCAST_PATH, TIMEZONE, PODCAST_GENRE
 
@@ -16,6 +16,8 @@ def time_to_milliseconds(time_str: str) -> int:
 
 @logger.catch
 def set_chapters(audioFile: AudioFile, chapters: List[Tuple[str, str]]) -> None:
+    if len(chapters) == 0:
+        return
     tag: Tag = audioFile.tag
     for i, (startTime, title) in enumerate(chapters):
         timeStart = time_to_milliseconds(startTime)

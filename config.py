@@ -1,6 +1,6 @@
 import json
 import os
-from datetime import timezone, timedelta
+import pytz
 from pathlib import Path
 from typing import Optional
 
@@ -21,7 +21,7 @@ def getEnvBool(env_name: str) -> Optional[bool]:
 
 # PODCAST SETTINGS
 PODCAST_GENRE = 186  # Just constant
-TIMEZONE = timezone(timedelta(hours=int(os.getenv("TIMEZONE"))))
+TIMEZONE = pytz.timezone(os.getenv("TIMEZONE"))
 
 # TELEGRAM BOT SETTINGS
 API_TOKEN = os.getenv("TELEGRAM_API_TOKEN")

@@ -1,8 +1,10 @@
 import requests
+from requests import Response
 import pickle
 import os
 from lxml import etree
 import re
+from loguru import logger
 import feedparser
 from config import WP_URL, WP_LOGIN, WP_PASSWORD, WP_COOKIE_PATH, TIMEZONE
 from datetime import datetime
@@ -101,9 +103,12 @@ class WordPress:
         self._session.close()
 
     def uploadPost(self, info: dict) -> str:
+        logger.debug("Starting post upload process")
         post = self._session.get(
             f"{WP_URL}/wp-admin/post-new.php?post_type=podcast"
         ).content
+
+        logger.debug("Retrieved post content from WordPress")
 
         #! TODO check if exist
 
@@ -173,9 +178,18 @@ class WordPress:
             if not field["name"] in form:
                 form[field["name"]] = field["value"]
 
-        self._session.post(f"{WP_URL}/wp-admin/post.php", data=form)
+        logger.debug("Submitting post data to WordPress")
+        response: Response = self._session.post(
+            f"{WP_URL}/wp-admin/post.php", data=form
+        )
+        logger.debug(
+            f"Uploaded post with response code: {response.status_code}"
+        )  # TODO
 
     @staticmethod
     def getLastPostID() -> str:  # Deprecated
         feed = feedparser.parse(f"{WP_URL}/feed/podcast/")
         return feed["entries"][0]["itunes_episode"]
+
+
+wp: WordPress = WordPress()
