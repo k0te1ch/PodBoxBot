@@ -24,7 +24,6 @@ from utils.dispatcher_filters import ContextButton, IsAdmin, IsPrivate
 from utils.keyboards import keyboards
 from utils.mp3tagger import audioTag
 from utils.validators import validatePath, validateTemplate
-from utils.wordpress import WordPress
 
 
 router = Router(name="podcastHandler")
@@ -243,9 +242,9 @@ async def uploadWP(callback: CallbackQuery, language: str, username: str):
     info["slug"] = callback.message.audio.file_name.replace(".mp3", "")
     info["duration"] = callback.message.audio.duration
 
-    from utils.wordpress import WordPress
+    from utils.wordpress import wordpress
 
-    with WordPress() as wp:
+    with wordpress as wp:
         wp.uploadPost(info)
 
     logger.opt(colors=True).debug(f"[<y>{username}</y>]: Загружено")

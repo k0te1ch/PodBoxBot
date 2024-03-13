@@ -192,4 +192,4 @@ class WordPress:
         return feed["entries"][0]["itunes_episode"]
 
 
-wp: WordPress = WordPress()
+wordpress: WordPress = WordPress()
