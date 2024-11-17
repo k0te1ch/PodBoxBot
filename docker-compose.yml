@@ -1,4 +1,4 @@
-version: '3.7'
+version: '3.8'
 
 services:
   api:
@@ -12,6 +12,8 @@ services:
       - 8081:8081
     volumes:
       - telegram-bot-api-data:/var/lib/telegram-bot-api
+    networks:
+      - aiogramnetwork
   
   aiogram-bot:
     image: bot
@@ -20,8 +22,11 @@ services:
     build: .
     depends_on:
       - api
+      - redis
     links:
       - api
+    networks:
+      - aiogramnetwork
     volumes:
       - telegram-bot-api-data:/var/lib/telegram-bot-api
       - .env:/app/.env
@@ -31,5 +36,27 @@ services:
         max-size: "50"
         max-file: "4"
 
+  redis:
+    container_name: redis-container
+    image: redis:7.2.4-alpine
+    restart: always
+    stop_signal: SIGINT
+    command: "redis-server"
+    healthcheck:
+        test: [ "CMD", "redis-cli","ping" ]
+    ports:
+      - 6379:6379
+    volumes:
+      - redisdata:/data
+    networks:
+      - aiogramnetwork
+
+networks:
+  aiogramnetwork:
+    driver: bridge
+
 volumes:
+  redisdata:
+    driver: local
   telegram-bot-api-data:
+    driver: local
