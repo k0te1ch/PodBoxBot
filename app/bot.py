@@ -10,6 +10,7 @@ from filters.middlewares import GeneralMiddleware
 from loguru import logger
 from services.none_module import _NoneModule
 from services.redis import redis
+from utils.bot_methods import send_release_note
 
 # TODO: Создать отдельную директорию для middlewares (зачем?)
 # TODO: Объекты бота вывести в отдельную директорию и как-то их подгружать (избавимся от bot.py возможно)
@@ -55,6 +56,17 @@ def _get_bot_obj() -> Bot:
     return bot
 
 
+@logger.catch
+async def on_startup():
+    # Запускаем стартап задачи параллельно с поллингом
+    await send_release_note()
+
+
+@logger.catch
+async def on_shutdown():
+    pass
+
+
 # GET DISPATCHER OBJECT
 def _get_dp_obj(bot, redis):
     logger.debug("Dispatcher configurate:")
@@ -68,6 +80,9 @@ def _get_dp_obj(bot, redis):
     dp.message.middleware(GeneralMiddleware())
     dp.callback_query.middleware(GeneralMiddleware())
     dp.include_routers(*ROUTERS)
+
+    dp.startup.register(on_startup)
+    dp.shutdown.register(on_shutdown)
 
     logger.debug("Dispatcher is configured")
     return dp

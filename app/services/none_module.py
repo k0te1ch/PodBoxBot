@@ -5,7 +5,7 @@ class _NotDefinedModule(Exception):
     pass
 
 
-class _NoneModule:
+class _NoneModule(object):
 
     def __init__(self, module_name, attr_name) -> None:
         self.module_name = module_name

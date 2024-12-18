@@ -1,8 +1,8 @@
 from pathlib import Path
 import pytest
 from unittest import mock
-from config import PODCAST_GENRE, PODCAST_NAME
-from utils.MP3_methods import audio_tag
+from app.config import PODCAST_CITY, PODCAST_COUNTRY, PODCAST_DISTRICT, PODCAST_GENRE, PODCAST_LINK, PODCAST_NAME, SUPPORT_LINK
+from app.utils.MP3_methods import audio_tag
 
 import eyed3
 import pytz
@@ -10,19 +10,20 @@ import pytz
 
 @pytest.fixture
 def mock_paths():
-    """Мокаем глобальные переменные для путей к файлам"""
+    """Мокаем только те объекты, которые реально используются"""
     with (
-        mock.patch("utils.MP3_methods.PODCAST_PATH", Path("/mocked/podcast.mp3")),
-        mock.patch("utils.MP3_methods.COVER_RZ_PATH", Path("/mocked/cover_rz.jpg")),
-        mock.patch("utils.MP3_methods.COVER_PS_PATH", Path("/mocked/cover_ps.jpg")),
-        mock.patch("utils.MP3_methods.PODCAST_GENRE", PODCAST_GENRE),
-        mock.patch("utils.MP3_methods.TIMEZONE", pytz.timezone("Europe/Moscow")),
+        mock.patch("app.utils.MP3_methods.PODCAST_PATH", Path("/mocked/podcast.mp3")),
+        mock.patch("app.utils.MP3_methods.COVER_RZ_PATH", Path("/mocked/cover_rz.jpg")),
+        mock.patch("app.utils.MP3_methods.COVER_PS_PATH", Path("/mocked/cover_ps.jpg")),
+        mock.patch("app.utils.MP3_methods.PODCAST_GENRE", 186),
+        mock.patch("app.utils.MP3_methods.TIMEZONE", pytz.timezone("Europe/Moscow")),
     ):
         yield
 
 
-def check_common_tag_settings(mock_audio_file, expected_title, expected_comment):
+def check_common_tag_settings(mock_audio_file, expected_title, expected_comment, year):
     """Проверка общих настроек тегов"""
+    # Проверка основных тегов
     assert mock_audio_file.tag.artist == PODCAST_NAME, "Artist tag was not set correctly"
     assert mock_audio_file.tag.album == PODCAST_NAME, "Album tag was not set correctly"
     assert mock_audio_file.tag.title == expected_title, f"Title tag was not set correctly: {expected_title}"
@@ -30,10 +31,29 @@ def check_common_tag_settings(mock_audio_file, expected_title, expected_comment)
 
     # Проверка комментариев
     mock_audio_file.tag.comments.set.assert_called_with(expected_comment)
+    mock_audio_file.tag.lyrics.set.assert_called_with(expected_comment)
+
+    # Проверка вызовов методов для URL и изображений
+    mock_audio_file.tag.user_url_frames.set.assert_called_once()
+    mock_audio_file.tag.images.set.assert_called_once()
 
     # Проверка дополнительных полей
     assert mock_audio_file.tag.copyright == PODCAST_NAME, "Copyright tag was not set correctly"
     assert mock_audio_file.tag.publisher == PODCAST_NAME, "Publisher tag was not set correctly"
+    assert mock_audio_file.tag.original_release_date == year, "Original release date was not set correctly"
+    assert mock_audio_file.tag.release_date == year, "Release date was not set correctly"
+    assert mock_audio_file.tag.recording_date == year, "Recording date was not set correctly"
+    assert mock_audio_file.tag.album_type == "single", "Album type was not set correctly"
+
+    # Проверка ссылок
+    assert mock_audio_file.tag.artist_url == PODCAST_LINK, "Artist URL was not set correctly"
+    assert mock_audio_file.tag.commercial_url == SUPPORT_LINK, "Commercial URL was not set correctly"
+    assert mock_audio_file.tag.payment_url == SUPPORT_LINK, "Payment URL was not set correctly"
+
+    # Проверка происхождения артиста
+    assert mock_audio_file.tag.artist_origin == eyed3.core.ArtistOrigin(
+        PODCAST_CITY, PODCAST_DISTRICT, PODCAST_COUNTRY
+    ), "Artist origin was not set correctly"
 
 
 @pytest.mark.parametrize(
@@ -61,10 +81,10 @@ def test_audio_tag(mock_open, mock_eyed3_load, mock_audio_file, mock_paths, audi
     mock_audio_file.tag.clear.assert_called_once()
 
     # Проверка установки тегов
-    check_common_tag_settings(mock_audio_file, "Test Title", "Test Comment")
+    check_common_tag_settings(mock_audio_file, "Test Title", "Test Comment", 2024)
 
     # Проверка открытия правильного файла обложки в зависимости от типа
-    mock_open.assert_called_once_wit(expected_cover_path, "rb")
+    mock_open.assert_called_once_with(expected_cover_path, "rb")
 
     # Проверка сохранения тегов
     mock_audio_file.tag.save.assert_called_once()
@@ -77,7 +97,7 @@ def test_audio_tag(mock_open, mock_eyed3_load, mock_audio_file, mock_paths, audi
 @mock.patch("eyed3.load")
 @mock.patch("builtins.open", new_callable=mock.mock_open, read_data=b"mocked_image_data")
 def test_audio_tag_tag_handling(
-    mock_open, mock_eyed3_load, mock_audio_file, mock_paths, tag_exists, expected_cover_path
+    mock_open, mock_eyed3_load, mock_audio_file, mock_paths, tag_exists, audio_type, expected_cover_path
 ):
     """Тестирование обработки случая, когда тег отсутствует или существует"""
     mock_eyed3_load.return_value = mock_audio_file
@@ -95,7 +115,7 @@ def test_audio_tag_tag_handling(
     }
 
     # Вызов функции
-    audio_tag(info, "main")
+    audio_tag(info, audio_type)
 
     if tag_exists:
         # Проверяем, что при наличии тега, он был очищен
@@ -132,6 +152,7 @@ def test_audio_tag_variable_info(
     info,
     expected_title,
     expected_comment,
+    audio_type,
     expected_cover_path
 ):
     """Тестирование различных вариантов данных в info"""
@@ -139,13 +160,13 @@ def test_audio_tag_variable_info(
     mock_audio_file.tag = mock.Mock(spec=eyed3.id3.Tag)
 
     # Вызов функции
-    audio_tag(info, "main")
+    audio_tag(info, audio_type)
 
     # Проверка установки тегов
-    check_common_tag_settings(mock_audio_file, expected_title, expected_comment)
+    check_common_tag_settings(mock_audio_file, expected_title, expected_comment, 2024)
 
     # Проверка открытия файла обложки
-    mock_open.assert_called_once_with("/mocked/cover_rz.jpg", "rb")
+    mock_open.assert_called_once_with(expected_cover_path, "rb")
 
     # Проверка сохранения тегов
     mock_audio_file.tag.save.assert_called_once()

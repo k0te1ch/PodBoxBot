@@ -12,6 +12,7 @@ from config import DATABASE_URL, ENABLE_APSCHEDULER, SKIP_UPDATES
 from handlers import COMMANDS
 from loguru import logger
 from services import init_scheduler_jobs, scheduler
+from utils.bot_methods import send_release_note
 
 
 @logger.catch
@@ -57,6 +58,8 @@ def cli(ctx):
     pass
 
 
+
+
 @logger.catch
 async def _run():
     logger.info("Connecting to Telegram...")
@@ -89,7 +92,6 @@ async def _run():
 @logger.catch
 def run():
     asyncio.run(_run())
-
 
 
 @logger.catch

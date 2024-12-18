@@ -1,0 +1,73 @@
+default_stages: [commit]
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-merge-conflict
+      - id: detect-private-key
+      - id: debug-statements
+
+  - repo: https://github.com/asottile/pyupgrade
+    rev: v3.15.2
+    hooks:
+      - id: pyupgrade
+        args: [--py310-plus]
+
+  - repo: https://github.com/PyCQA/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        args: ["--profile", "black"]
+
+  - repo: https://github.com/psf/black
+    rev: 24.3.0
+    hooks:
+      - id: black
+
+  -   repo: https://github.com/PyCQA/autoflake
+      rev: v2.3.1
+      hooks:
+      -   id: autoflake
+
+  - repo: https://github.com/PyCQA/flake8
+    rev: 7.0.0
+    hooks:
+      - id: flake8
+        additional_dependencies: [flake8-isort, Flake8-pyproject]
+
+  - repo:  https://github.com/python-jsonschema/check-jsonschema
+    rev: 0.28.1
+    hooks:
+      - id: check-github-workflows
+      - id: check-dependabot
+
+  - repo: https://github.com/pre-commit/pygrep-hooks
+    rev: v1.10.0
+    hooks:
+      - id: python-use-type-annotations
+      - id: python-check-blanket-noqa
+      - id: python-no-eval
+
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+    -   id: detect-secrets
+        args: ['--baseline', '.secrets.baseline']
+
+  # run pip-audit from custom action
+  # because default is not support poetry
+  - repo: https://github.com/koyeung/ko-poetry-audit-plugin.git
+    rev: 0.8.0a1
+    hooks:
+      - id: poetry-audit
+
+  - repo: https://github.com/Lucas-C/pre-commit-hooks-safety
+    rev: v1.3.3
+    hooks:
+    - id: python-safety-dependencies-check
+      files: pyproject.toml
+      args: ["--ignore=70612"]

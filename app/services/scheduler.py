@@ -6,7 +6,7 @@ from config import TIMEZONE
 from loguru import logger
 from redis.asyncio import Redis
 from services.none_module import _NoneModule
-from services.redis import redis
+from services import redis
 
 
 # TODO: Аннотации
@@ -39,58 +39,8 @@ async def init_scheduler_jobs() -> None:
     """
     Инициализация задач для планировщика
     """
-
-    from datetime import date, datetime, time, timedelta
-
-    from apscheduler.triggers.cron import CronTrigger
-    from handlers.schedule_handler import next_day, next_para
-    from utils import scheduleParser
-
-    try:
-        for time_str in await scheduleParser.get_time():
-            time_list = time_str.split(" - ")
-
-            hour_start, minute_start = map(int, time_list[0].split(":"))
-            start = datetime.combine(date.today(), time(hour=hour_start, minute=minute_start)) - timedelta(minutes=5)
-            try:
-                scheduler.add_job(
-                    next_para,
-                    trigger=CronTrigger(hour=start.hour, minute=start.minute, timezone=TIMEZONE),
-                    args=[time_list[0]],
-                    name=f"para-{time_list[0]}",
-                    replace_existing=True,
-                    timezone=TIMEZONE,
-                )
-            except JobLookupError as e:
-                logger.error(f"Error adding job para-{time_list[0]}: {str(e)}")
-
-        try:
-            scheduler.add_job(
-                next_day,
-                trigger=CronTrigger(hour=0, timezone=TIMEZONE),
-                name="next_day",
-                replace_existing=True,
-                timezone=TIMEZONE,
-            )
-        except JobLookupError as e:
-            logger.error(f"Error adding job next_day: {str(e)}")
-
-        try:
-            scheduler.add_job(
-                scheduleParser.updateTable,
-                "interval",
-                name="Update table",
-                replace_existing=True,
-                seconds=600,
-                timezone=TIMEZONE,
-            )
-
-        except JobLookupError as e:
-            logger.error(f"Error adding job Update table: {str(e)}")
-
-        logger.success("Scheduler jobs initialized successfully")
-    except Exception as e:
-        logger.error(f"Failed to initialize scheduler jobs: {str(e)}")
+    
+    pass
 
 
 scheduler: AsyncIOScheduler = _get_scheduler_obj(redis)

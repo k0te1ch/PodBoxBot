@@ -5,36 +5,63 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from loguru import logger
+from typing import Any, Type, TypeVar
 import pytz
 
 # TODO: Add loading of .env from launch arguments
 
+T = TypeVar("T")
 
-def loadEnv():
+
+def load_env():
     env_file = os.getenv("ENVFILE", ".env")
     if env_file.endswith(".env"):
         env_path = Path.cwd() / env_file
-        load_dotenv(dotenv_path=env_path, override=True)
+        os.environ.clear()
+        load_dotenv(dotenv_path=str(env_path), override=True)
+
+
+def get_env_value(env_name: str, default: Any = None, value_type: Type[T] = str) -> T:
+    """
+    Общая функция для получения значения переменной окружения с приведением к указанному типу.
+
+    :param env_name: Имя переменной окружения.
+    :param default: Значение по умолчанию, если переменная не определена.
+    :param value_type: Тип, к которому следует привести значение (str, bool, int, float).
+    :return: Значение переменной окружения указанного типа.
+    """
+    env_val = os.getenv(env_name, default)
+    if env_val is None or (isinstance(env_val, str) and env_val.strip().lower() in ["none", ""]):
+        return default
+
+    if value_type is bool:
+        return parse_bool(env_val, default)
+    try:
+        return value_type(env_val)
+    except (ValueError, TypeError):
+        return default
+
+
+def parse_bool(value: Any, default: bool = False) -> bool:
+    """
+    Преобразует строку в логическое значение.
+    """
+    value_lower = str(value).strip().lower()
+    if value_lower in ["true", "1"]:
+        return True
+    elif value_lower in ["false", "0"]:
+        return False
+    return default
 
 
 def get_env_bool(env_name: str, default: bool = False) -> bool:
-    env_val = os.getenv(env_name)
-    if env_val is None or not isinstance(env_val, str) or env_val.lower() not in ["true", "false", "1", "0"]:
-        return default
-
-    env_val_lower = env_val.lower()
-    if env_val_lower in ["1", "0"]:
-        return bool(int(env_val_lower))
-
-    return env_val_lower == "true"
+    return get_env_value(env_name, default, bool)
 
 
-def get_env_str(env_key: str, default: str = None, required: bool = False) -> str | None:
-    env_val = os.getenv(env_key, default)
-    if env_val is None or (isinstance(env_val, str) and env_val.lower() == "none"):
-        if required:
-            raise NameError(f'name "{env_key}" is not defined in your env file')
-        return None
+def get_env_str(env_name: str, default: str = None, required: bool = False) -> str | None:
+    env_val = get_env_value(env_name, default, str)
+    if env_val is None and required:
+        raise NameError(f'name "{env_name}" is not defined in your env file')
     return env_val
 
 
@@ -59,7 +86,7 @@ def set_up_logger(log_level: str, logs_path: Path):
     )
 
 
-loadEnv()
+load_env()
 
 # SOURCES OF PROJECT
 PROJECT_PATH = Path.cwd()
@@ -79,6 +106,9 @@ PODCAST_LINK = get_env_str("PODCAST_LINK", required=True)
 API_TOKEN = get_env_str("TELEGRAM_API_TOKEN", required=True)
 SKIP_UPDATES = get_env_bool("SKIP_UPDATES", default=False)
 FORWARD_CHAT_ID = get_env_str("FORWARD_CHAT_ID", required=True)
+
+API_ID = get_env_str("TELEGRAM_SERVER_API_ID", required=True)
+API_HASH = get_env_str("TELEGRAM_SERVER_API_HASH", required=True)
 
 # FTP SETTINGS
 FTP_SERVER = get_env_str("FTP_SERVER", required=True)

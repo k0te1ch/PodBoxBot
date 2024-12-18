@@ -6,7 +6,8 @@ from config import FORWARD_CHAT_ID
 from filters.dispatcher_filters import IsAdmin, IsPrivate
 from services import context
 from services.keyboards import keyboards
-from utils.validators import generate_podcast_text, validate_template
+from utils.podcast_methods import generate_podcast_text
+from utils.validators import validate_template
 
 
 router = Router(name="audio_handler")

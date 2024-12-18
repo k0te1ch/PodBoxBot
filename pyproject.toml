@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "podboxbot"
-version = "0.1.2"
+version = "0.2.0"
 description = ""
 authors = ["k0te1ch <khvostov40@gmail.com>"]
 license = "LICENSE"
@@ -23,6 +23,8 @@ lxml = "^5.1.0"
 feedparser = "^6.0.11"
 fake-useragent = "^1.4.0"
 requests = "^2.31.0"
+telethon = "^1.38.1"
+toml = "^0.10.2"
 
 
 [tool.poetry.group.testing.dependencies]

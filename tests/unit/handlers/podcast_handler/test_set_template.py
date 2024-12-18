@@ -1,5 +1,4 @@
-from datetime import datetime
-from pathlib import Path
+import eyed3
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from aiogram.types import Message
@@ -10,6 +9,8 @@ from app.services.keyboards import keyboards
 from aiogram_tests.types.dataset import MESSAGE, USER
 import tempfile
 from aiogram_tests.requester import Calls
+from pathlib import Path
+from datetime import datetime
 
 
 @pytest.fixture
@@ -57,8 +58,8 @@ async def test_set_template(
     files_path = configure_paths
     state_data = {"typeEpisode": typeEpisode}
 
-    # Настраиваем mock-ответ от validate_template для успешного кейса
-    valid_info = {"number": "42"}
+    # Настроим mock-ответ от validate_template для успешного кейса
+    valid_info = {"number": "42", "title": "Podcast Episode Title"}
     mock_validate_template.return_value = valid_info
 
     # Создаём моки для бота, пользователя, сообщения и состояния
@@ -67,7 +68,7 @@ async def test_set_template(
     user = USER.as_object(username=username, language_code=language)
     msg = MESSAGE.as_object(text="Some valid template text", from_user=user)
 
-    # Мок ответа для msg.answer
+    # Мокируем ответ от msg.answer
     temp_msg_mock = MagicMock(spec=Message)
     temp_msg_mock.delete = AsyncMock()
 
@@ -75,37 +76,46 @@ async def test_set_template(
         "app.handlers.podcast_handler.Message.answer", new=AsyncMock(return_value=temp_msg_mock)
     ) as mock_answer:
         with patch("pathlib.Path.rename") as mock_rename:
-            # Запускаем тестируемый обработчик
-            calls: Calls = await bot.query(message=msg)
+            with patch("pathlib.Path.exists", return_value=True):  # Мокируем существование файла
+                with patch("pathlib.Path.stat", return_value=MagicMock(st_size=12345)):
+                    with patch("eyed3.load") as mock_eyed3_load:
+                        # Мокируем возвращаемый объект от eyed3.load
+                        mock_af = MagicMock()
+                        mock_af.info.time_secs = 123
+                        mock_af.tag.artist = "Test Artist"  # Мокируем корректное значение для исполнителя
+                        mock_eyed3_load.return_value = mock_af
 
-            # Проверяем вызов validate_template
-            mock_validate_template.assert_called_once_with(msg.text)
+                        # Запускаем тестируемый обработчик
+                        calls: Calls = await bot.query(message=msg)
 
-            # Проверяем вызов аудиотегирования
-            mock_audio_tag.assert_called_once_with(valid_info, typeEpisode)
+                        # Проверяем вызов validate_template
+                        mock_validate_template.assert_called_once_with(msg.text)
 
-            # Проверяем переименование файла
-            mock_rename.assert_called_once()
-            new_file_name = (
-                f'0042_{"rz" if typeEpisode == "main" else "postshow"}_{datetime.now().strftime("%d%m%Y")}.mp3'
-            )
-            assert mock_rename.call_args.args[0].name == new_file_name
+                        # Проверяем вызов аудиотегирования
+                        mock_audio_tag.assert_called_once_with(valid_info, typeEpisode)
 
-            # Проверяем удаление временного сообщения
-            temp_msg_mock.delete.assert_called()
+                        # Проверяем переименование файла
+                        mock_rename.assert_called_once()
+                        new_file_name = (
+                            f'0042_{"rz" if typeEpisode == "main" else "postshow"}_{datetime.now().strftime("%d%m%Y")}.mp3'
+                        )
+                        assert mock_rename.call_args.args[0].name == new_file_name
 
-            # Проверяем отправку аудиофайла
-            mp3_reply = calls.send_audio.fetchone()
-            assert mp3_reply.caption == context[language].done_mp3
-            assert mp3_reply.reply_markup == (
-                keyboards["podcast_handler"][language].audioMenuMain
-                if typeEpisode == "main"
-                else keyboards["podcast_handler"][language].audioMenuPost
-            )
+                        # Проверяем удаление временного сообщения
+                        temp_msg_mock.delete.assert_called()
 
-            # Проверяем, что состояние было очищено
-            state_context = await state_context_factory(handler, message=msg)
-            assert await state_context.get_state() is None, "State was not cleared"
+                        # Проверяем отправку аудиофайла
+                        mp3_reply = calls.send_audio.fetchone()
+                        assert mp3_reply.caption == context[language].done_mp3
+                        assert mp3_reply.reply_markup == (
+                            keyboards["podcast_handler"][language].audioMenuMain
+                            if typeEpisode == "main"
+                            else keyboards["podcast_handler"][language].audioMenuPost
+                        )
+
+                        # Проверяем, что состояние было очищено
+                        state_context = await state_context_factory(handler, message=msg)
+                        assert await state_context.get_state() is None, "State was not cleared"
 
 
 @pytest.mark.asyncio

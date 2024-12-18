@@ -1,6 +1,3 @@
-import pytest
-from unittest.mock import patch, Mock, MagicMock
-from app.utils.wordpress import WordPress
 from config import WP_URL
 
 

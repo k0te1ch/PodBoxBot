@@ -40,12 +40,21 @@ class WordPress:
     get_last_post_id: Get the ID of the last uploaded post.
     """
 
+    _instance = None
     _session: requests.Session = requests.Session()
     _filename: str = WP_COOKIE_PATH
     _userAgent: UserAgent = UserAgent().random
 
+    def __new__(cls, *args, **kwargs):
+        if not cls._instance:
+            cls._instance = super(WordPress, cls).__new__(cls)
+        return cls._instance
+
     def __init__(self):
-        self._make_session()
+        if not hasattr(self, "_initialized"):
+            self._initialized = True  # Флаг, чтобы инициализация выполнялась только раз
+            self._session = None
+            self._make_session()
 
     def __enter__(self):
         return self
@@ -201,5 +210,3 @@ class WordPress:
         feed = feedparser.parse(f"{WP_URL}/feed/podcast/")
         return feed["entries"][0]["itunes_episode"]
 
-
-wordpress: WordPress = WordPress()

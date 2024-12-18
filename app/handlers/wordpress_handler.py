@@ -32,9 +32,9 @@ async def upload_WP(callback: CallbackQuery, language: str, username: str):
     info["slug"] = callback.message.audio.file_name.replace(".mp3", "")
     info["duration"] = callback.message.audio.duration
 
-    from utils.wordpress import wordpress
+    from utils.wordpress import WordPress
 
-    with wordpress as wp:
+    with WordPress() as wp:
         wp.upload_post(info)
 
     logger.opt(colors=True).debug(f"[<y>{username}</y>]: Загружено")
