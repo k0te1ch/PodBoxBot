@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "podboxbot"
-version = "0.2.0"
+version = "0.2.1"
 description = ""
 authors = ["k0te1ch <khvostov40@gmail.com>"]
 license = "LICENSE"
