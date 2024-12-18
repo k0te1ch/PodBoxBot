@@ -2,11 +2,11 @@ import json
 import os
 import sys
 from pathlib import Path
+from typing import Any, TypeVar
 
+import pytz
 from dotenv import load_dotenv
 from loguru import logger
-from typing import Any, Type, TypeVar
-import pytz
 
 # TODO: Add loading of .env from launch arguments
 
@@ -21,7 +21,7 @@ def load_env():
         load_dotenv(dotenv_path=str(env_path), override=True)
 
 
-def get_env_value(env_name: str, default: Any = None, value_type: Type[T] = str) -> T:
+def get_env_value(env_name: str, default: Any = None, value_type: type[T] = str) -> T:
     """
     Общая функция для получения значения переменной окружения с приведением к указанному типу.
 
@@ -147,6 +147,7 @@ CONTEXT_FILE = get_env_str("CONTEXT_FILE")
 ENABLE_APSCHEDULER = get_env_bool("ENABLE_APSCHEDULER", default=False)
 
 ADMINS = json.loads(get_env_str("ADMINS", default="[]"))
+ADMINS_ID = json.loads(get_env_str("ADMINS_ID", default="[]"))
 HANDLERS = json.loads(get_env_str("HANDLERS", default="[]"))
 KEYBOARDS = json.loads(get_env_str("KEYBOARDS", default="[]"))
 LANGUAGES = json.loads(get_env_str("LANGUAGES", default="[]"))

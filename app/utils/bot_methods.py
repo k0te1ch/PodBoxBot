@@ -1,25 +1,18 @@
 import asyncio
-from datetime import datetime
 import os
-from pathlib import Path
 import re
-from aiogram import exceptions
-from typing import AsyncGenerator, Callable, Optional, Union
-import aiofiles
 import zipfile
+from collections.abc import AsyncGenerator, Callable
+from pathlib import Path
+
+import aiofiles
 import toml
-from aiogram.types import User
-from loguru import logger
-
-
-from aiogram.types.input_file import DEFAULT_CHUNK_SIZE, InputFile
-
-
-from config import FILES_PATH, LOGS_PATH, LOCAL, PODCAST_PATH
-from aiogram import Bot
+from aiogram import Bot, exceptions
 from aiogram.types import Message
+from aiogram.types.input_file import DEFAULT_CHUNK_SIZE, InputFile
+from config import ADMINS_ID, FILES_PATH, LOCAL, LOGS_PATH, PODCAST_PATH
+from loguru import logger
 from services import redis
-
 
 # TODO: Рестарт бота
 
@@ -70,10 +63,10 @@ def get_zip_logs(log_name: str) -> Path | None:
 class CustomFSInputFile(InputFile):
     def __init__(
         self,
-        path: Union[str, Path],
-        filename: Optional[str] = None,
+        path: str | Path,
+        filename: str | None = None,
         chunk_size: int = DEFAULT_CHUNK_SIZE,
-        progress_callback: Optional[Callable[[int], None]] = None,
+        progress_callback: Callable[[int], None] | None = None,
     ):
         """
         Represents object for uploading files from filesystem with progress tracking.
@@ -100,7 +93,7 @@ class CustomFSInputFile(InputFile):
                 total_read += len(chunk)
                 if total_read // self.size * 100 != prev_percent:
                     prev_percent = total_read // self.size * 100
-                    
+
                     logger.debug(f"Uploading: {(total_read / self.size) * 100:.2f}%")
                     if self.progress_callback:
                         await self.progress_callback(total_read)
@@ -119,7 +112,7 @@ async def monitor_file_progress(
     total_size: int,
     progress_callback: Callable[[int, int], None],
     poll_interval: float = 0.5,
-) -> True|False:
+) -> True | False:
     """
     Отслеживает прогресс скачивания файла, мониторя файловую систему.
 
@@ -127,7 +120,7 @@ async def monitor_file_progress(
     :param total_size: Общий размер файла в байтах.
     :param progress_callback: Callback для отслеживания прогресса.
     :param poll_interval: Интервал опроса файловой системы (в секундах).
-    :return bool: Возвращает True при успехе или False при неудаче 
+    :return bool: Возвращает True при успехе или False при неудаче
     """
     logger.debug("Monitor task created")
 
@@ -176,7 +169,9 @@ async def monitor_file_progress(
         return False
 
 
-async def send_message_to_users_handler(user_id: int, text: str, disable_notification: bool = False, parse_mode: str = "html") -> bool:
+async def send_message_to_users_handler(
+    user_id: int, text: str, disable_notification: bool = False, parse_mode: str = "html"
+) -> bool:
     """
     Safe messages sender
     :param bot:
@@ -187,6 +182,7 @@ async def send_message_to_users_handler(user_id: int, text: str, disable_notific
     """
     # TODO: Logging
     from bot import bot
+
     try:
         await bot.send_message(user_id, text, disable_notification=disable_notification, parse_mode=parse_mode)
     except exceptions.TelegramForbiddenError:
@@ -209,7 +205,9 @@ async def send_message_to_users_handler(user_id: int, text: str, disable_notific
     return False
 
 
-async def send_message_to_users(text: str, users_list: list[int], disable_notification: bool = False, parse_mode: str = "html") -> int:
+async def send_message_to_users(
+    text: str, users_list: list[int], disable_notification: bool = False, parse_mode: str = "html"
+) -> int:
     """
     Simple broadcaster
     :return: Count of messages
@@ -233,7 +231,7 @@ async def send_release_note() -> None:
         return
     release_note = await get_release_note()
 
-    await send_message_to_users(release_note, [680209790], True, parse_mode="markdown")
+    await send_message_to_users(release_note, ADMINS_ID, True, parse_mode="markdown")
 
 
 async def get_release_note():
@@ -269,17 +267,18 @@ async def get_release_note():
     return formatted_notes.strip()
 
 
-async def check_version() -> True|False:
+async def check_version() -> True | False:
     bot_version = await redis.get("bot_version")
     current_bot_version = await get_version()
-    
+
     if not current_bot_version:
         return False
-    
+
     if current_bot_version != bot_version:
         await redis.set("bot_version", current_bot_version)
         return True
     return False
+
 
 async def get_version() -> str | None:
     # Открываем файл с использованием aiofiles
