@@ -1,0 +1,65 @@
+// ###############################
+// #### Logging Configuration ####
+// ###############################
+
+discovery.docker "all_containers" {
+  host = "unix:///var/run/docker.sock"
+}
+
+// Общий relabel-блок для всех контейнеров
+discovery.relabel "all_containers_relabel" {
+  targets = discovery.docker.all_containers.targets
+
+  // Извлекаем имя контейнера (убираем префиксы)
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    target_label  = "container_name"
+    replacement   = "$1"
+    regex         = "/?([a-zA-Z0-9_.-]+)$"
+  }
+
+  // Удаляем стандартную метку job чтобы она не мешала
+  rule {
+    action = "labeldrop"
+    regex  = "job"
+  }
+
+  // Назначаем job в зависимости от имени контейнера
+  rule {
+    source_labels = ["container_name"]
+    regex         = "^(loki|alloy|grafana|prometheus|cadvisor)$"
+    target_label  = "job"
+    replacement   = "monitoring_logs"
+  }
+
+  // Для всех остальных контейнеров - app_logs
+  rule {
+    target_label = "job"
+    replacement  = "app_logs"
+  }
+
+  // Общая метка instance
+  rule {
+    target_label = "instance"
+    replacement  = "docker-host"
+  }
+}
+
+// Источник Loki
+loki.source.docker "all_logs" {
+  host          = "unix:///var/run/docker.sock"
+  targets       = discovery.relabel.all_containers_relabel.output
+  forward_to    = [loki.write.loki_endpoint.receiver]
+}
+
+// Отправка в Loki
+loki.write "loki_endpoint" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+
+  external_labels = {
+    source      = "alloy",
+    environment = "production",
+  }
+}

@@ -1,0 +1,10 @@
+topics:
+  - name: publisher.ftp
+    partitions: 1
+    replication_factor: 1
+    config:
+      cleanup.policy: delete
+      retention.ms: 604800000  # 7 дней
+  - name: publisher.ftp.result
+    partitions: 1
+    replication_factor: 1

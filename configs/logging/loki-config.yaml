@@ -1,0 +1,53 @@
+# loki-config.yaml
+
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+  grpc_listen_port: 0
+
+# Настройка Ingester остаётся без replication_factor в ring
+ingester:
+  lifecycler:
+    ring:
+      kvstore:
+        store: inmemory   # in-memory ring вместо Consul :contentReference[oaicite:2]{index=2}
+    final_sleep: 0s
+  chunk_idle_period: 5m
+  chunk_retain_period: 30s
+  max_chunk_age: 1h
+
+schema_config:
+  configs:
+    - from: 2025-05-11
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h       # ежедневная ротация индекса :contentReference[oaicite:3]{index=3}
+
+storage_config:
+  filesystem:
+    directory: /loki/chunks  # куда TSDB складывает чунки :contentReference[oaicite:4]{index=4}
+
+limits_config:
+  retention_period: 168h     # 7 дней
+  allow_structured_metadata: true
+
+table_manager:
+  retention_deletes_enabled: true
+  retention_period: 168h
+
+query_scheduler:
+  max_outstanding_requests_per_tenant: 2048
+
+# —————————————————————————————————————
+# ГЛОБАЛЬНЫЙ БЛОК common (только здесь задаём replication_factor)
+# —————————————————————————————————————
+common:
+  path_prefix: /tmp/loki      # общий префикс для всего Loki :contentReference[oaicite:5]{index=5}
+  replication_factor: 1       # single-node (кворум = 1) :contentReference[oaicite:6]{index=6}
+  ring:
+    kvstore:
+      store: inmemory         # повторно задаём in-memory ring :contentReference[oaicite:7]{index=7}

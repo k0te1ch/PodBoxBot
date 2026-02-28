@@ -1,16 +1,18 @@
 import pytest
-from aiogram_tests.types.dataset import MESSAGE, USER
 from aiogram.filters import Command
+from aiogram_tests.types.dataset import MESSAGE, USER
+from app.config import LANGUAGES
+from app.forms.upload_file import UploadFile
 from app.handlers.podcast_handler import start
 from app.services.context import context
-from app.forms.upload_file import UploadFile
-from app.config import LANGUAGES
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("username", ["test_of_test"])
 @pytest.mark.parametrize("language", LANGUAGES)
-async def test_start_command(language, username, handler_factory, bot_factory, state_context_factory):
+async def test_start_command(
+    language, username, handler_factory, bot_factory, state_context_factory
+):
     # Настройка обработчика и команды start
     handler_func = start
     command = Command(commands=["start"])
@@ -32,4 +34,4 @@ async def test_start_command(language, username, handler_factory, bot_factory, s
     assert sent_message.text == expected_text
 
     # Проверка установки состояния FSM
-    assert (await state_context.get_state()) == UploadFile.typeEpisode
+    assert (await state_context.get_state()) == UploadFile.type_episode

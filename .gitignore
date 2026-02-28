@@ -4,6 +4,7 @@ test2.py
 database.sqlite
 files/*.mp3
 files/*.pkl
+anon.session
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

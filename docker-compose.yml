@@ -1,62 +1,318 @@
-version: '3.8'
-
 services:
   api:
+    container_name: podboxbot_telegram_api
     image: aiogram/telegram-bot-api:latest
     restart: always
     environment:
       TELEGRAM_API_ID: ${TELEGRAM_SERVER_API_ID}
       TELEGRAM_API_HASH: ${TELEGRAM_SERVER_API_HASH}
       TELEGRAM_LOCAL: ${LOCAL}
-    ports:
+    expose:
       - 8081:8081
     volumes:
       - telegram-bot-api-data:/var/lib/telegram-bot-api
     networks:
-      - aiogramnetwork
-  
-  aiogram-bot:
-    image: bot
+      - podboxbot_network
+
+  bot:
+    image: podboxbot_bot:latest
+    container_name: podboxbot_bot
     stop_signal: SIGINT
     restart: always
-    build: .
+    build:
+      context: .
+      dockerfile: ./app/bot/Dockerfile
     depends_on:
-      - api
-      - redis
-    links:
-      - api
+      api:
+        condition: service_started
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      schema-registry:
+        condition: service_healthy
     networks:
-      - aiogramnetwork
+      - podboxbot_network
     volumes:
       - telegram-bot-api-data:/var/lib/telegram-bot-api
       - .env:/app/.env
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "50"
-        max-file: "4"
+      - files:/app/files
 
   redis:
-    container_name: redis-container
-    image: redis:7.2.4-alpine
-    restart: always
-    stop_signal: SIGINT
-    command: "redis-server"
+    image: redis:7.4-alpine
+    container_name: podboxbot_redis
+    expose:
+    - "6379"
+    command: >
+      sh -c '
+        mkdir -p /usr/local/etc/redis &&
+        echo "bind 0.0.0.0" > /usr/local/etc/redis/redis.conf &&
+        echo "requirepass ${REDIS_PASSWORD}" >> /usr/local/etc/redis/redis.conf &&
+        echo "appendonly yes" >> /usr/local/etc/redis/redis.conf &&
+        echo "appendfsync everysec" >> /usr/local/etc/redis/redis.conf &&
+        echo "user default on +@all ~* >${REDIS_PASSWORD}" > /usr/local/etc/redis/users.acl &&
+        redis-server /usr/local/etc/redis/redis.conf --aclfile /usr/local/etc/redis/users.acl
+      '
+    env_file:
+      - .env
     healthcheck:
-        test: [ "CMD", "redis-cli","ping" ]
-    ports:
-      - 6379:6379
+      test: ["CMD-SHELL", "redis-cli -h 127.0.0.1 -a \"$REDIS_PASSWORD\" ping || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+    tty: true
+    stdin_open: true
     volumes:
       - redisdata:/data
     networks:
-      - aiogramnetwork
+      - podboxbot_network
+
+  # KAFKA
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    container_name: podboxbot_kafka
+    restart: always
+    environment:
+      # --- Основные настройки KRaft ---
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_NODE_ID: 1
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+
+      # --- Поведение брокера ---
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+
+      # --- Хранилище данных ---
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+
+      # --- Безопасность и производительность ---
+      KAFKA_NUM_PARTITIONS: 3
+      KAFKA_DELETE_TOPIC_ENABLE: "true"
+    expose:
+      - 9092
+      - 9093
+    networks:
+      - podboxbot_network
+    healthcheck:
+      test: ["CMD", "kafka-topics", "--bootstrap-server", "kafka:9092", "--list"]
+      interval: 30s
+      retries: 5
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+
+
+  schema-registry:
+    image: confluentinc/cp-schema-registry:7.5.0
+    container_name: podboxbot_schema-registry
+    depends_on:
+      kafka:
+        condition: service_healthy
+    expose:
+      - 8081
+    environment:
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://kafka:9092
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+    networks:
+      - podboxbot_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/subjects"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  schema-watcher:
+    build:
+      context: .
+      dockerfile: ./app/schema-watcher/Dockerfile
+    container_name: podboxbot_schema_watcher
+    restart: always
+    depends_on:
+      kafka:
+        condition: service_healthy
+      schema-registry:
+        condition: service_healthy
+    volumes:
+      - ./app/shared/schemas:/app/shared/schemas
+    networks:
+      - podboxbot_network
+    environment:
+      - SCHEMA_REGISTRY_URL=http://schema-registry:8081
+
+
+  # PUBLISHERS
+
+  publisher_ftp:
+    container_name: podboxbot_publisher_ftp
+    build:
+      context: .
+      dockerfile: ./app/publishers/FTP/Dockerfile
+    restart: always
+    depends_on:
+      kafka:
+        condition: service_healthy
+      schema-registry:
+        condition: service_healthy
+      pushgateway:
+        condition: service_started
+    networks:
+      - podboxbot_network
+    volumes:
+      - files:/app/files
+
+  # METRICS AND MONITORING
+
+  pushgateway:
+    container_name: podboxbot_pushgateway
+    restart: always
+    image: prom/pushgateway
+    expose:
+      - "9091:9091"
+    networks:
+      - monitoring
+      - podboxbot_network
+
+  prometheus:
+    container_name: podboxbot_prometheus
+    restart: always
+    image: prom/prometheus
+    volumes:
+      - ./configs/metrics/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    expose:
+      - "9090:9090"
+    networks:
+      - monitoring
+
+  kafdrop:
+    image: obsidiandynamics/kafdrop:latest
+    container_name: podboxbot_kafdrop
+    restart: always
+    environment:
+      KAFKA_BROKERCONNECT: "kafka:9092"
+      JVM_OPTS: "-Xms32M -Xmx64M"
+    ports:
+      - "9000:9000"
+    depends_on:
+      - kafka
+    networks:
+      - podboxbot_network
+
+  alloy:
+    container_name: podboxbot_alloy
+    image: grafana/alloy:latest
+    expose:
+      - "9080:9080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./configs/logging/config.alloy:/etc/alloy/config.alloy
+    command: ["run", "/etc/alloy/config.alloy"]
+    networks:
+      - monitoring
+    restart: always
+
+  grafana:
+    container_name: podboxbot_grafana
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - ./configs/grafana/datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
+      - grafana_data:/var/lib/grafana
+    networks:
+      - monitoring
+    depends_on:
+      - loki
+      - prometheus
+    restart: always
+
+  loki:
+    image: grafana/loki:main
+    container_name: podboxbot_loki
+    expose:
+      - "3100:3100"
+    volumes:
+      - ./configs/logging/loki-config.yaml:/etc/loki/local-config.yaml
+      - loki_data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - monitoring
+    restart: always
+
+  node-exporter:
+    image: prom/node-exporter
+    container_name: podboxbot_node-exporter
+    expose:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/rootfs'
+    restart: always
+    networks:
+      - monitoring
+      - podboxbot_network
+
+  kafka_exporter:
+      image: danielqsj/kafka-exporter:latest
+      container_name: podboxbot_kafka_exporter
+      expose:
+        - "9308:9308"
+      command:
+        - "--kafka.server=kafka:9092"
+      networks:
+        - podboxbot_network
+        - monitoring
+      depends_on:
+        - kafka
+      restart: always
+
+  redis_exporter:
+    image: oliver006/redis_exporter:latest
+    container_name: podboxbot_redis_exporter
+    depends_on:
+      - redis
+    environment:
+      - REDIS_ADDR=redis:6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+    expose:
+      - "9121"
+    networks:
+      - podboxbot_network
+      - monitoring
 
 networks:
-  aiogramnetwork:
+  podboxbot_network:
+    driver: bridge
+  monitoring:
     driver: bridge
 
 volumes:
   redisdata:
     driver: local
   telegram-bot-api-data:
+    driver: local
+  grafana_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  loki_data:
+    driver: local
+  kafka_data:
+    driver: local
+  files:
     driver: local

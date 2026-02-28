@@ -1,16 +1,17 @@
+import tempfile
+from datetime import datetime
+from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import eyed3
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 from aiogram.types import Message
+from aiogram_tests.requester import Calls
+from aiogram_tests.types.dataset import MESSAGE, USER
+from app.forms.upload_file import UploadFile
 from app.handlers.podcast_handler import set_template
 from app.services.context import context
-from app.forms.upload_file import UploadFile
 from app.services.keyboards import keyboards
-from aiogram_tests.types.dataset import MESSAGE, USER
-import tempfile
-from aiogram_tests.requester import Calls
-from pathlib import Path
-from datetime import datetime
 
 
 @pytest.fixture
@@ -55,7 +56,6 @@ async def test_set_template(
     username,
     language,
 ):
-    files_path = configure_paths
     state_data = {"typeEpisode": typeEpisode}
 
     # Настроим mock-ответ от validate_template для успешного кейса
@@ -63,7 +63,9 @@ async def test_set_template(
     mock_validate_template.return_value = valid_info
 
     # Создаём моки для бота, пользователя, сообщения и состояния
-    handler = handler_factory(set_template, state=UploadFile.template, state_data=state_data)
+    handler = handler_factory(
+        set_template, state=UploadFile.template, state_data=state_data
+    )
     bot = await bot_factory(handler)
     user = USER.as_object(username=username, language_code=language)
     msg = MESSAGE.as_object(text="Some valid template text", from_user=user)
@@ -73,10 +75,13 @@ async def test_set_template(
     temp_msg_mock.delete = AsyncMock()
 
     with patch(
-        "app.handlers.podcast_handler.Message.answer", new=AsyncMock(return_value=temp_msg_mock)
+        "app.handlers.podcast_handler.Message.answer",
+        new=AsyncMock(return_value=temp_msg_mock),
     ) as mock_answer:
         with patch("pathlib.Path.rename") as mock_rename:
-            with patch("pathlib.Path.exists", return_value=True):  # Мокируем существование файла
+            with patch(
+                "pathlib.Path.exists", return_value=True
+            ):  # Мокируем существование файла
                 with patch("pathlib.Path.stat", return_value=MagicMock(st_size=12345)):
                     with patch("eyed3.load") as mock_eyed3_load:
                         # Мокируем возвращаемый объект от eyed3.load
@@ -96,9 +101,7 @@ async def test_set_template(
 
                         # Проверяем переименование файла
                         mock_rename.assert_called_once()
-                        new_file_name = (
-                            f'0042_{"rz" if typeEpisode == "main" else "postshow"}_{datetime.now().strftime("%d%m%Y")}.mp3'
-                        )
+                        new_file_name = f'0042_{"rz" if typeEpisode == "main" else "postshow"}_{datetime.now().strftime("%d%m%Y")}.mp3'
                         assert mock_rename.call_args.args[0].name == new_file_name
 
                         # Проверяем удаление временного сообщения
@@ -108,14 +111,18 @@ async def test_set_template(
                         mp3_reply = calls.send_audio.fetchone()
                         assert mp3_reply.caption == context[language].done_mp3
                         assert mp3_reply.reply_markup == (
-                            keyboards["podcast_handler"][language].audioMenuMain
+                            keyboards["podcast_handler"][language].audio_menu_main
                             if typeEpisode == "main"
-                            else keyboards["podcast_handler"][language].audioMenuPost
+                            else keyboards["podcast_handler"][language].audio_menu_post
                         )
 
                         # Проверяем, что состояние было очищено
-                        state_context = await state_context_factory(handler, message=msg)
-                        assert await state_context.get_state() is None, "State was not cleared"
+                        state_context = await state_context_factory(
+                            handler, message=msg
+                        )
+                        assert (
+                            await state_context.get_state() is None
+                        ), "State was not cleared"
 
 
 @pytest.mark.asyncio
@@ -130,20 +137,23 @@ async def test_set_template_invalid_input(
     username,
     language,
 ):
-    files_path = configure_paths
     state_data = {"typeEpisode": "main"}
 
     # Устанавливаем mock-ответ validate_template как None для проверки обработки невалидного ввода
     mock_validate_template.return_value = None
 
     # Создаём моки для бота, пользователя, сообщения и состояния
-    handler = handler_factory(set_template, state=UploadFile.template, state_data=state_data)
+    handler = handler_factory(
+        set_template, state=UploadFile.template, state_data=state_data
+    )
     bot = await bot_factory(handler)
     user = USER.as_object(username=username, language_code=language)
     msg = MESSAGE.as_object(text="Invalid template", from_user=user)
 
     # Мокаем метод msg.reply
-    with patch("app.handlers.podcast_handler.Message.reply", new=AsyncMock()) as mock_reply:
+    with patch(
+        "app.handlers.podcast_handler.Message.reply", new=AsyncMock()
+    ) as mock_reply:
         calls: Calls = await bot.query(message=msg)
 
         # Проверяем вызов validate_template

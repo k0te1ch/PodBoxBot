@@ -1,21 +1,23 @@
 import pytest
-from aiogram_tests.types.dataset import MESSAGE, USER
 from aiogram.types import ReplyKeyboardRemove
+from aiogram_tests.types.dataset import MESSAGE, USER
+from app.config import LANGUAGES
+from app.filters.dispatcher_filters import ContextButton
+from app.forms.upload_file import UploadFile
 from app.handlers.podcast_handler import cancel
 from app.services.context import context
-from app.forms.upload_file import UploadFile
-from app.filters.dispatcher_filters import ContextButton
-from app.config import LANGUAGES
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("username", ["test_user", "test_of_test"])
 @pytest.mark.parametrize("language", LANGUAGES)
-async def test_cancel_command(language, username, handler_factory, bot_factory, state_context_factory):
+async def test_cancel_command(
+    language, username, handler_factory, bot_factory, state_context_factory
+):
     # Настройка обработчика и команды для cancel
     handler_func = cancel
     command = ContextButton("cancel")
-    state = UploadFile.typeEpisode
+    state = UploadFile.type_episode
 
     # Создание обработчика, бота и контекста с использованием фабрик
     handler = handler_factory(handler_func, command=command, state=state)

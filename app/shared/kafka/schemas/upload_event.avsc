@@ -1,0 +1,20 @@
+{
+  "type": "record",
+  "name": "UploadEvent",
+  "namespace": "podboxbot",
+  "fields": [
+    {"name": "event_type", "type": "string", "doc": "Тип события: request | progress | result"},
+    {"name": "file_name", "type": "string"},
+    {"name": "path", "type": "string"},
+    {"name": "username", "type": "string"},
+    {"name": "metadata", "type": ["null", {"type": "map", "values": "string"}], "default": null},
+    {"name": "bytes_uploaded", "type": ["null", "long"], "default": null},
+    {"name": "total_bytes", "type": ["null", "long"], "default": null},
+    {"name": "progress", "type": ["null", "float"], "default": null},
+    {"name": "transfer_speed", "type": ["null", "float"], "doc": "Байт/сек", "default": null},
+    {"name": "status", "type": ["null", "string"], "default": null},
+    {"name": "error", "type": ["null", "string"], "default": null},
+    {"name": "message_id", "type": ["null", "string"], "default": null},
+    {"name": "chat_id", "type": ["null", "string"], "default": null}
+  ]
+}
