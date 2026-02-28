@@ -166,9 +166,9 @@ class WordPress:
 <!--more--><b><i>Таймлайн:</i></b>
 {chapters}
 <code>
-</code>Всё это вы услышите в {podcastID}-м эпи{podcastID}-м эпи{podcastID}-м эпи{podcastID}дкаста «та «-м эпизоде подкаста «Разговорный жанр».
+</code>Всё это вы услышите в {podcastID}-м эпизоде подкаста «Разговорный жанр».
 [podlove-template template="subscriptions"]
-<span style="font-size: small;">Дата записи: {timeStr}<{timeStr}<{timeStr}<{timeStr}</span>""",
+<span style="font-size: small;">Дата записи: {timeStr}</span>""",
             "post_name": f"Разговорный жанр — {podcastID}",
             "post_category[]": "3",
             "newcategory": "Название новой рубрики",
