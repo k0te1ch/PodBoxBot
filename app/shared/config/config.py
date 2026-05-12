@@ -1,7 +1,4 @@
-# config.py
-# author: k0te1ch
-# last update: 08.05.2025
-# version: 1.1.0
+# config.py — shared config for microservices (Pydantic-settings)
 
 import os
 import sys
@@ -10,68 +7,103 @@ from pathlib import Path
 from typing import Any, TypeVar
 
 import pytz
-from dotenv import load_dotenv
 from loguru import logger
+from pydantic import Field, field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 T = TypeVar("T")
 
-# === ENV LOADING ===
 
+# === ENV FILE DISCOVERY ===
 
-def find_env_file() -> Path:
-    """
-    Ищет .env рядом с main-скриптом, запускаемым из микросервиса
-    """
+def _find_env_file() -> str:
+    """Ищет .env рядом с main-скриптом микросервиса."""
     import __main__
 
-    main_path = Path(__main__.__file__)
+    main_path = Path(getattr(__main__, "__file__", ""))
     env_path = main_path.parent / ".env"
-    if not env_path.exists():
-        raise FileNotFoundError(f".env not found in {main_path.parent}")
-    return env_path
+    if env_path.exists():
+        return str(env_path)
+    # Fallback: cwd
+    cwd_env = Path.cwd() / ".env"
+    if cwd_env.exists():
+        return str(cwd_env)
+    return ".env"
 
 
-def load_env():
-    env_file = find_env_file()
-    env_path = Path.cwd() / env_file
-    path = os.environ["PATH"]
-    os.environ.clear()
-    os.environ["PATH"] = path
-    load_dotenv(dotenv_path=env_path, override=True)
+class SharedSettings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=_find_env_file(),
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
+    # Logger
+    LOG_LEVEL: str = "INFO"
+    FILES_PATH: str = "files"
+    LOGS_PATH: str = "logs"
+    LOGS_ZIP_NAME: str = "logs.zip"
+    TIMEZONE: str = "UTC"
+    DEBUG: bool = False
+
+    # Kafka
+    KAFKA_SERVER: str = "kafka:9092"
+    SCHEMA_REGISTRY_URL: str = "http://schema-registry:8081"
+    UPLOAD_TOPIC: str = "publisher.ftp.upload"
+
+    # FTP
+    FTP_SERVER: str | None = None
+    FTP_LOGIN: str | None = None
+    FTP_PASSWORD: str | None = None
+    FTP_POSTSHOW_DIR: str = "postshow"
+
+    # WordPress
+    WP_URL: str | None = None
+    WP_LOGIN: str | None = None
+    WP_PASSWORD: str | None = None
+    WP_UPLOAD_TOPIC: str = "publisher.wordpress.upload"
+    WP_COOKIE_PATH: str = "/app/data/cookie.pkl"
+
+    # Metrics
+    PUSHGATEWAY_URL: str = "http://localhost:9091"
+
+    def get(
+        self,
+        key: str,
+        type_: Callable[[str], T] = str,
+        default: Any = None,
+        required: bool = False,
+    ) -> T:
+        """Backward-compatible getter matching the old config.get() API."""
+        val = getattr(self, key, None)
+        if val is None:
+            # Fallback to env vars not in the model
+            raw = os.getenv(key)
+            if raw is None or raw.strip().lower() in ("none", ""):
+                if required:
+                    raise KeyError(f"Required environment variable '{key}' is missing.")
+                return default
+            try:
+                if type_ is bool:
+                    return raw.lower() in {"true", "1", "yes", "on"}
+                return type_(raw)
+            except Exception:
+                return default
+        return val
+
+
+# Singleton
+settings = SharedSettings()
+
+# === Backward-compatible module-level alias ===
+config = settings
 
 # === PATHS ===
-
 PROJECT_PATH = Path.cwd()
 SRC_PATH = Path(__file__).parent
 
 
-# === ENV PARSING ===
-def _cast(value: str, type_: Callable[[str], T]) -> T:
-    if type_ == bool:
-        return value.lower() in {"true", "1", "yes", "on"}
-    return type_(value)
-
-
-def get(
-    key: str,
-    type: Callable[[str], T] = str,
-    default: Any = None,
-    required: bool = False,
-) -> T:
-    raw = os.getenv(key)
-    if raw is None or raw.strip().lower() in {"none", ""}:
-        if required:
-            raise KeyError(f"Required environment variable '{key}' is missing.")
-        return default
-    try:
-        return _cast(raw, type)
-    except Exception:
-        return default
-
-
 # === LOGGING ===
-
 
 def set_up_logger(level: str = "INFO", logs_path: Path = PROJECT_PATH / "logs"):
     logger.remove()
@@ -93,16 +125,4 @@ def set_up_logger(level: str = "INFO", logs_path: Path = PROJECT_PATH / "logs"):
     )
 
 
-load_env()
-
-# === SETTINGS ===
-
-LOG_LEVEL = get("LOG_LEVEL", default="INFO")
-FILES_PATH: Path = PROJECT_PATH / get("FILES_PATH", default="files")
-LOGS_PATH: Path = PROJECT_PATH / get("LOGS_PATH", default="logs")
-LOGS_ZIP_NAME = get("LOGS_ZIP_NAME", default="logs.zip")
-
-TIMEZONE = pytz.timezone(get("TIMEZONE", default="UTC"))
-DEBUG = get("DEBUG", type=bool, default=False)
-
-set_up_logger(LOG_LEVEL, LOGS_PATH)
+set_up_logger(settings.LOG_LEVEL, PROJECT_PATH / settings.LOGS_PATH)

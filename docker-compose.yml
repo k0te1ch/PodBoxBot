@@ -8,7 +8,7 @@ services:
       TELEGRAM_API_HASH: ${TELEGRAM_SERVER_API_HASH}
       TELEGRAM_LOCAL: ${LOCAL}
     expose:
-      - 8081:8081
+      - 8081
     volumes:
       - telegram-bot-api-data:/var/lib/telegram-bot-api
     networks:
@@ -22,6 +22,8 @@ services:
     build:
       context: .
       dockerfile: ./app/bot/Dockerfile
+    environment:
+      TG_SERVER: "http://api:8081"
     depends_on:
       api:
         condition: service_started
@@ -140,7 +142,7 @@ services:
       schema-registry:
         condition: service_healthy
     volumes:
-      - ./app/shared/schemas:/app/shared/schemas
+      - ./app/shared/kafka/schemas:/app/shared/schemas
     networks:
       - podboxbot_network
     environment:
@@ -165,7 +167,27 @@ services:
     networks:
       - podboxbot_network
     volumes:
+      - .env:/app/.env
       - files:/app/files
+
+  publisher_wordpress:
+    container_name: podboxbot_publisher_wordpress
+    build:
+      context: .
+      dockerfile: ./app/publishers/WordPress/Dockerfile
+    restart: always
+    depends_on:
+      kafka:
+        condition: service_healthy
+      schema-registry:
+        condition: service_healthy
+      pushgateway:
+        condition: service_started
+    networks:
+      - podboxbot_network
+    volumes:
+      - .env:/app/.env
+      - wordpress_data:/app/data
 
   # METRICS AND MONITORING
 
@@ -174,7 +196,7 @@ services:
     restart: always
     image: prom/pushgateway
     expose:
-      - "9091:9091"
+      - 9091
     networks:
       - monitoring
       - podboxbot_network
@@ -187,7 +209,7 @@ services:
       - ./configs/metrics/prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus_data:/prometheus
     expose:
-      - "9090:9090"
+      - 9090
     networks:
       - monitoring
 
@@ -209,7 +231,7 @@ services:
     container_name: podboxbot_alloy
     image: grafana/alloy:latest
     expose:
-      - "9080:9080"
+      - 9080
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./configs/logging/config.alloy:/etc/alloy/config.alloy
@@ -240,7 +262,7 @@ services:
     image: grafana/loki:main
     container_name: podboxbot_loki
     expose:
-      - "3100:3100"
+      - 3100
     volumes:
       - ./configs/logging/loki-config.yaml:/etc/loki/local-config.yaml
       - loki_data:/loki
@@ -253,7 +275,7 @@ services:
     image: prom/node-exporter
     container_name: podboxbot_node-exporter
     expose:
-      - "9100:9100"
+      - 9100
     volumes:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
@@ -271,7 +293,7 @@ services:
       image: danielqsj/kafka-exporter:latest
       container_name: podboxbot_kafka_exporter
       expose:
-        - "9308:9308"
+        - 9308
       command:
         - "--kafka.server=kafka:9092"
       networks:
@@ -313,6 +335,8 @@ volumes:
   loki_data:
     driver: local
   kafka_data:
+    driver: local
+  wordpress_data:
     driver: local
   files:
     driver: local

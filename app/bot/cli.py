@@ -20,7 +20,7 @@ from config import (
     SKIP_UPDATES,
 )
 from handlers import COMMANDS
-from services import init_scheduler_jobs, scheduler
+from services.scheduler import init_scheduler_jobs, scheduler
 
 
 @logger.catch

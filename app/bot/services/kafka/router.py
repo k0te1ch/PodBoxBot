@@ -24,3 +24,7 @@ class KafkaEventRouter:
             await handler(event)
         except Exception:
             logger.exception(f"Error handling Kafka event: {event_type}")
+
+
+# Singleton instance — используется хендлерами через import
+router = KafkaEventRouter()

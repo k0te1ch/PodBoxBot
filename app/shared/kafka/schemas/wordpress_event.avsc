@@ -1,0 +1,20 @@
+{
+  "type": "record",
+  "name": "WordPressEvent",
+  "namespace": "podboxbot",
+  "fields": [
+    {"name": "event_type", "type": "string", "doc": "Тип события: request | result"},
+    {"name": "username", "type": "string"},
+    {"name": "status", "type": ["null", "string"], "default": null, "doc": "pending | success | failure"},
+    {"name": "error", "type": ["null", "string"], "default": null},
+    {"name": "chat_id", "type": ["null", "string"], "default": null},
+    {"name": "message_id", "type": ["null", "string"], "default": null},
+    {"name": "number", "type": "string", "doc": "Номер эпизода"},
+    {"name": "title", "type": "string"},
+    {"name": "comment", "type": "string", "doc": "Описание эпизода"},
+    {"name": "chapters", "type": {"type": "array", "items": {"type": "array", "items": "string"}}, "doc": "Таймлайн [[time, name], ...]"},
+    {"name": "tags", "type": {"type": "array", "items": "string"}},
+    {"name": "slug", "type": "string", "doc": "Slug файла (имя без .mp3)"},
+    {"name": "duration", "type": ["null", "long"], "default": null, "doc": "Длительность в секундах"}
+  ]
+}

@@ -22,8 +22,8 @@ RUN sed -i 's/# ru_RU.UTF-8 UTF-8/ru_RU.UTF-8 UTF-8/' /etc/locale.gen && \
 ENV LANG=ru_RU.UTF-8
 ENV LC_ALL=ru_RU.UTF-8
 
-# Устанавливаем Poetry
-RUN python -m pip install --upgrade pip && \
+# Устанавливаем Poetry и необходимые инструменты сборки
+RUN python -m pip install --upgrade pip setuptools wheel && \
     python -m pip install --upgrade poetry
 
 # Копируем файлы зависимостей и устанавливаем их
