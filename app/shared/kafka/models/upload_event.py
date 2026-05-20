@@ -6,9 +6,7 @@ class UploadEvent(BaseModel):
     file_name: str = Field(..., min_length=1)
     path: str = Field(..., min_length=1)
     username: str = Field(..., min_length=1)
-    metadata: dict[str, str] | None = Field(
-        None, description="Произвольные метаданные о файле"
-    )
+    metadata: dict[str, str] | None = Field(None, description="Произвольные метаданные о файле")
 
     bytes_uploaded: int | None = Field(None, ge=0)
     total_bytes: int | None = Field(None, ge=0)
@@ -21,6 +19,7 @@ class UploadEvent(BaseModel):
     chat_id: str | None = Field(None, description="ID чата, если применимо")
 
     @field_validator("status")
+    @classmethod
     def validate_status(cls, v):
         if v is None:
             return v

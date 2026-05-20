@@ -26,9 +26,7 @@ class TelegramUpdater:
             text = f"📤 Загрузка *{file_name}*\nПрогресс: {pct:.1f}%"
 
         try:
-            await self.bot.edit_message_text(
-                chat_id=chat_id, message_id=message_id, text=text, parse_mode="Markdown"
-            )
+            await self.bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=text, parse_mode="Markdown")
         except Exception as e:
             logger.error(f"Ошибка обновления Telegram-сообщения: {e}")
 
@@ -57,8 +55,6 @@ class TelegramUpdater:
                 text += f"\n`{error}`"
 
         try:
-            await self.bot.edit_message_text(
-                chat_id=chat_id, message_id=message_id, text=text, parse_mode="Markdown"
-            )
+            await self.bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=text, parse_mode="Markdown")
         except Exception as e:
             logger.error(f"Ошибка обновления Telegram-сообщения: {e}")

@@ -98,8 +98,7 @@ class WordPress:
 
         if (
             s.status_code == 200
-            and f'document.location.href="{WP_URL.replace("https", "http")}/wp-login.php'
-            in s.text
+            and f'document.location.href="{WP_URL.replace("https", "http")}/wp-login.php' in s.text
         ):
             cookie_matches = re.findall(r'document\.cookie="(.*?)";', s.text)
             for match in cookie_matches:
@@ -110,18 +109,14 @@ class WordPress:
                         self._session.cookies[name.strip()] = value.strip()
 
         s = self._session.post(url, data=form)
-        if (
-            s.status_code == 200
-            and f'document.location.href="{WP_URL.replace("https", "http")}/wp-admin'
-            in s.text
-        ):
+        if s.status_code == 200 and f'document.location.href="{WP_URL.replace("https", "http")}/wp-admin' in s.text:
             return self._dump_cookies()
         return False
 
     def _check_session(self) -> bool:
         return (
-            not f'document.location.href="{WP_URL.replace("https", "http")}/wp-login.php?redirect_to='
-            in self._session.get(f"{WP_URL}/wp-admin/").text
+            f'document.location.href="{WP_URL.replace("https", "http")}/wp-login.php?redirect_to='
+            not in self._session.get(f"{WP_URL}/wp-admin/").text
         )
 
     def _make_session(self) -> requests.Session:
@@ -136,9 +131,7 @@ class WordPress:
 
     def upload_post(self, info: dict) -> str:
         logger.debug("Starting post upload process")
-        post = self._session.get(
-            f"{WP_URL}/wp-admin/post-new.php?post_type=podcast"
-        ).content
+        post = self._session.get(f"{WP_URL}/wp-admin/post-new.php?post_type=podcast").content
 
         logger.debug("Retrieved post content from WordPress")
 
@@ -154,11 +147,11 @@ class WordPress:
 
         time = datetime.now(TIMEZONE)
 
-        timeStr = f"{time.day} {('января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря')[time.month-1]} {time.year}"  # TODO Locale settings!
+        timeStr = f"{time.day} {('января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря')[time.month - 1]} {time.year}"  # TODO Locale settings!
 
         form = {  # TODO refactor this (name.replace...)
             "post_title": f"Разговорный жанр — {podcastID}",
-            "content": f"""<span style="font-size: large;">{name.replace(podcastID+". ", "")}</span><code>
+            "content": f"""<span style="font-size: large;">{name.replace(podcastID + ". ", "")}</span><code>
 </code>
 <b><i>Описание:</i></b>
 <code>{summary}
@@ -183,9 +176,7 @@ class WordPress:
             "episode_contributor[0][3][comment]": "",
             "_podlove_meta[recording_date]": time.strftime("%Y-%m-%d"),
             "_podlove_meta[slug]": info["slug"],
-            "_podlove_meta[chapters]": "\n".join(
-                map(lambda x: " ".join(x), info["chapters"])
-            ),
+            "_podlove_meta[chapters]": "\n".join(" ".join(x) for x in info["chapters"]),
             "_podlove_meta[duration]": info["duration"],
             "_podlove_meta[episode_assets][1]": "on",
             "trackback_url": "",
@@ -200,28 +191,21 @@ class WordPress:
             "_wp_original_http_referer": f"{WP_URL}/wp-admin/profile.php",
             "tax_input[post_tag]": ",".join(info["tags"]),
             "newtag[post_tag]": "",
-            "tax_input[shows]": "0",
             "_podlove_meta[subtitle]": "",
             "_thumbnail_id": "6038",
         }
         form_element = html_dom.find('.//form[@name="post"]')
         for field in form_element.xpath('.//input[@type="hidden"]'):
             field = field.attrib
-            if not field["name"] in form:
+            if field["name"] not in form:
                 form[field["name"]] = field["value"]
 
         logger.debug("Submitting post data to WordPress")
-        response: Response = self._session.post(
-            f"{WP_URL}/wp-admin/post.php", data=form
-        )
-        logger.debug(
-            f"Uploaded post with response code: {response.status_code}"
-        )  # TODO
+        response: Response = self._session.post(f"{WP_URL}/wp-admin/post.php", data=form)
+        logger.debug(f"Uploaded post with response code: {response.status_code}")  # TODO
 
     @staticmethod
     def get_last_post_ID() -> str:  # Deprecated
-        warnings.warn(
-            "get_last_post_ID is deprecated", DeprecationWarning, stacklevel=2
-        )
+        warnings.warn("get_last_post_ID is deprecated", DeprecationWarning, stacklevel=2)
         feed = feedparser.parse(f"{WP_URL}/feed/podcast/")
         return feed["entries"][0]["itunes_episode"]

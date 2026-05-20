@@ -20,9 +20,7 @@ router.message.filter(IsPrivate, IsAdmin)
 async def admin(msg: Message, username: str):
     """Handle the /admin command"""
     logger.opt(colors=True).debug(f"[<y>{username}</y>]: Admin panel called")
-    return await msg.answer(
-        context.AdminPanel.opened, reply_markup=KEYBOARDS.admin_panel_kb
-    )
+    return await msg.answer(context.AdminPanel.opened, reply_markup=KEYBOARDS.admin_panel_kb)
 
 
 @router.callback_query(F.data == "bot_panel")
@@ -30,9 +28,7 @@ async def bot_panel(callback: CallbackQuery, username: str):
     """Handle the transition to the bot management panel"""
     logger.opt(colors=True).debug(f"[<y>{username}</y>]: Bot management panel selected")
 
-    await callback.message.edit_text(
-        "Bot operations", reply_markup=KEYBOARDS.bot_commands_kb
-    )
+    await callback.message.edit_text("Bot operations", reply_markup=KEYBOARDS.bot_commands_kb)
     return callback.answer()
 
 
@@ -59,9 +55,7 @@ async def restart(callback: CallbackQuery, username: str):
 @router.callback_query(F.data == "admin_back")
 async def back(callback: CallbackQuery, username: str):
     """Handle the return to the main admin panel menu"""
-    logger.opt(colors=True).debug(
-        f"[<y>{username}</y>]: Return to the main admin panel menu"
-    )
+    logger.opt(colors=True).debug(f"[<y>{username}</y>]: Return to the main admin panel menu")
 
     await callback.message.edit_text(
         context.AdminPanel.opened,
@@ -96,7 +90,5 @@ async def tests_panel(callback: CallbackQuery, username: str):
     """Handle the transition to the tests panel"""
     logger.opt(colors=True).debug(f"[<y>{username}</y>]: Tests panel selected")
 
-    await callback.message.edit_text(
-        "Test operations for the bot", reply_markup=KEYBOARDS.tests_commands_kb
-    )
+    await callback.message.edit_text("Test operations for the bot", reply_markup=KEYBOARDS.tests_commands_kb)
     return callback.answer()

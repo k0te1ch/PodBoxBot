@@ -60,7 +60,7 @@ class GeneralMiddleware(BaseMiddleware):
 
         callback_name = getattr(getattr(handler_info, "callback", None), "__name__", "unknown")
         logger.opt(colors=True).debug(
-            f"<y>[{event.from_user.username or "unknown"}]</y>: Called {callback_name} callback"
+            f"<y>[{event.from_user.username or 'unknown'}]</y>: Called {callback_name} callback"
         )
 
         # Выполняем целевой обработчик

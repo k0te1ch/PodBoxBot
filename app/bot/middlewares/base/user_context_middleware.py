@@ -18,9 +18,7 @@ class UserContextMiddleware(BaseMiddleware):
 
     async def get_user(self, event: Message | CallbackQuery) -> User:
         """Извлекает объект пользователя из события"""
-        if isinstance(event, Message):
-            return event.from_user
-        elif isinstance(event, CallbackQuery):
+        if isinstance(event, (Message, CallbackQuery)):
             return event.from_user
         raise ValueError(f"Неизвестный тип события: {type(event)}")
 
@@ -51,9 +49,7 @@ class UserContextMiddleware(BaseMiddleware):
         if "username" in handler_params:
             data["username"] = user.username or "unknown"
 
-        callback_name = getattr(
-            getattr(handler_info, "callback", None), "__name__", "unknown"
-        )
+        callback_name = getattr(getattr(handler_info, "callback", None), "__name__", "unknown")
         logger.debug(f"[{user.username or 'unknown'}]: Called {callback_name} callback")
 
         return await handler(event, data)

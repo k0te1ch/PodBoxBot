@@ -19,9 +19,7 @@ class ru:
     got_mp3: str = "Вижу MP3, начинаю загрузку"
     done_mp3: str = "Вот твой готовый файл!"
     set_tags: str = "Проставляем теги"
-    downloaded: str = (
-        "MP3 загружено! Теперь пришли описание эпизода в соответствии с шаблоном ниже, ничего не меняя, кроме значений полей:"
-    )
+    downloaded: str = "MP3 загружено! Теперь пришли описание эпизода в соответствии с шаблоном ниже, ничего не меняя, кроме значений полей:"
     done_tag: str = "Теги проставлены.\nЗагрузка началась, подождите около 2-5 минут"
     canceled: str = "Отменено"
 
@@ -32,8 +30,8 @@ class ru:
     # Admin panel
     admin_panel_open: str = "Админ панель"
     admin_panel_close: str = "Админ панель закрыта"
-    admin_panel_main: list = [("Бот", "botPanel")]
-    bot_commands: list = [
+    admin_panel_main: list = [("Бот", "botPanel")]  # noqa: RUF012
+    bot_commands: list = [  # noqa: RUF012
         ("Выключить бота", "shutdown_bot"),
         ("Прислать лог-файлы", "send_logs"),
     ]
@@ -47,18 +45,12 @@ class en:
     invalid_input: str = "Invalid input!"
 
     # Start handler
-    ask_typeEpisode: str = (
-        "Hello <b>{msg.from_user.first_name}</b>, what are we adding?"
-    )
+    ask_typeEpisode: str = "Hello <b>{msg.from_user.first_name}</b>, what are we adding?"
     ask_mp3: str = "Loading <u><b>{type_episode}</b></u>. Waiting for MP3 file"
     got_mp3: str = "I see an MP3, I start downloading"
     done_mp3: str = "Here is your finished file!"
-    done_tag: str = (
-        "The tags are attached.\nThe download has started, wait about 2-5 minutes"
-    )
-    downloaded: str = (
-        "MP3 downloaded! Now came the description of the episode in accordance with the template below, without changing anything except the values of the fields:"
-    )
+    done_tag: str = "The tags are attached.\nThe download has started, wait about 2-5 minutes"
+    downloaded: str = "MP3 downloaded! Now came the description of the episode in accordance with the template below, without changing anything except the values of the fields:"
     canceled: str = "Canceled"
 
     # Reply keyboard
@@ -68,26 +60,25 @@ class en:
     # Admin panel
     admin_panel_open: str = "Admin panel"
     admin_panel_close: str = "Admin panel closed"
-    admin_panel_main: list = [("Bot", "bot")]
-    bot_commands: list = [
+    admin_panel_main: list = [("Bot", "bot")]  # noqa: RUF012
+    bot_commands: list = [  # noqa: RUF012
         ("Turn off the bot", "shutdown_bot"),
         ("Send log files", "send_logs"),
     ]
 
 
 class AdminPanel:
-    # region AdminPanel
     opened = "Админ панель"
 
-    panels: list = [("Бот", "bot_panel"), ("Тесты", "tests_panel")]
+    panels: list = [("Бот", "bot_panel"), ("Тесты", "tests_panel")]  # noqa: RUF012
 
-    bot_commands: list = [
+    bot_commands: list = [  # noqa: RUF012
         ("Выключить бота", "shutdown_bot"),
         ("Перезагрузить бота", "restart_bot"),
         ("Прислать лог-файлы", "send_logs"),
         ("Назад", "admin_back"),
     ]
 
-    test_news_commands: list = [
+    test_news_commands: list = [  # noqa: RUF012
         ("Назад", "admin_back"),
     ]

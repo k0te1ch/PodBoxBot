@@ -11,10 +11,9 @@ from aiogram import Bot, exceptions
 from aiogram.enums import ParseMode
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.types import Message
-from aiogram.types.input_file import DEFAULT_CHUNK_SIZE, InputFile
 from loguru import logger
 
-from config import ADMINS_ID, FILES_PATH, LOCAL, LOGS_PATH, PODCAST_PATH
+from config import ADMINS_ID, FILES_PATH, LOGS_PATH
 from services import redis
 
 # TODO: Рестарт бота
@@ -77,21 +76,17 @@ async def send_release_note() -> None:
         return
     release_note = await get_release_note()
 
-    await broadcast_message_to_users(
-        release_note, ADMINS_ID, True, parse_mode=ParseMode.MARKDOWN_V2
-    )
+    await broadcast_message_to_users(release_note, ADMINS_ID, True, parse_mode=ParseMode.MARKDOWN_V2)
 
 
 async def get_release_note():
     # Открываем файл с использованием aiofiles
-    async with aiofiles.open("CHANGELOG.md", "r") as f:
+    async with aiofiles.open("CHANGELOG.md") as f:
         content = await f.read()
 
     # Извлекаем версию и дату из первой строки или другого места
     version_pattern = re.compile(r"# (\d+\.\d+\.\d+)")
-    date_pattern = re.compile(
-        r"\((\d{1,2}\.\d{1,2}\.\d{4})\)"
-    )  # Ожидаем дату в формате ДД.ММ.ГГГГ
+    date_pattern = re.compile(r"\((\d{1,2}\.\d{1,2}\.\d{4})\)")  # Ожидаем дату в формате ДД.ММ.ГГГГ
 
     version_match = version_pattern.search(content)
     date_match = date_pattern.search(content)
@@ -100,9 +95,7 @@ async def get_release_note():
     date = date_match.group(1) if date_match else "Неизвестно"
 
     # Оформление текста с использованием Markdown
-    formatted_notes = (
-        f"*Бот обновлён!* \n\n*Список изменений (версия {version}, от {date}):*\n\n"
-    )
+    formatted_notes = f"*Бот обновлён!* \n\n*Список изменений (версия {version}, от {date}):*\n\n"
 
     # Разбиваем на секции (Добавлено, Улучшено, Исправлено) с поддержкой списков
     sections = ["Добавлено", "Улучшено", "Исправлено"]
@@ -134,7 +127,7 @@ async def check_version() -> bool:
 
 async def get_version() -> str | None:
     # Открываем файл с использованием aiofiles
-    async with aiofiles.open("pyproject.toml", "r") as f:
+    async with aiofiles.open("pyproject.toml") as f:
         content = await f.read()
 
     # Загружаем данные с помощью toml
@@ -190,17 +183,13 @@ async def send_message_to_user(
             logger.info(f"Target [ID:{user_id}]: сообщение успешно отправлено")
             sent_any = True
         except exceptions.TelegramForbiddenError:
-            logger.error(
-                f"Target [ID:{user_id}]: бот заблокирован пользователем или доступ запрещён"
-            )
+            logger.error(f"Target [ID:{user_id}]: бот заблокирован пользователем или доступ запрещён")
             break
         except exceptions.TelegramNotFound:
             logger.error(f"Target [ID:{user_id}]: неверный ID пользователя")
             break
         except exceptions.TelegramRetryAfter as e:
-            logger.error(
-                f"Target [ID:{user_id}]: превышен лимит запросов. Ожидание {e.retry_after} секунд"
-            )
+            logger.error(f"Target [ID:{user_id}]: превышен лимит запросов. Ожидание {e.retry_after} секунд")
             await asyncio.sleep(e.retry_after)
             return await send_message_to_user(
                 user_id,
@@ -269,16 +258,12 @@ async def broadcast_message_to_users(
     finally:
         logger.info(f"{count} messages successfully sent")
         if failed_users:
-            logger.warning(
-                f"Failed to send messages to {len(failed_users)} users: {failed_users}"
-            )
+            logger.warning(f"Failed to send messages to {len(failed_users)} users: {failed_users}")
 
     return count
 
 
-def split_into_messages(
-    header: str, separator: str, items: list[str], max_length: int = 4096
-) -> list[str]:
+def split_into_messages(header: str, separator: str, items: list[str], max_length: int = 4096) -> list[str]:
     """
     Splits a list of text items into Telegram messages based on a maximum byte length
     If any message exceeds the limit, it is split into smaller messages while preserving formatting
@@ -333,18 +318,11 @@ async def pin_message(
             message_id=message_id,
             disable_notification=disable_notification,
         )
-        logger.info(
-            "[{username}]: The message (id={message_id}) in chat {chat_id} is pinned"
-        )
+        logger.info("[{username}]: The message (id={message_id}) in chat {chat_id} is pinned")
     except TelegramBadRequest as e:
-        if (
-            e.message
-            != "Bad Request: not enough rights to manage pinned messages in the chat"
-        ):
+        if e.message != "Bad Request: not enough rights to manage pinned messages in the chat":
             raise e
-        logger.warning(
-            f"[{username}]: Недостаточно прав для закрепления сообщения в чате"
-        )
+        logger.warning(f"[{username}]: Недостаточно прав для закрепления сообщения в чате")
         await callback_message.answer(
             "Ошибка при закреплении: для закрепления сообщения в чате не достаточно прав бота - повысьте права бота в чате"
         )

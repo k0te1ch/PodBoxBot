@@ -2,6 +2,7 @@ import yaml
 from kafka.admin import KafkaAdminClient, NewTopic
 from kafka.errors import TopicAlreadyExistsError
 from loguru import logger
+
 from shared.config import config
 
 

@@ -92,7 +92,7 @@ async def get_type(msg: Message, state: FSMContext, language: str, username: str
     await state.update_data(type_episode=type_episode)
     logger.debug(f"[{username}]: Выбран тип эпизода: {type_episode}")
 
-    type_episode_text = (
+    type_episode_text = (  # noqa: F841 — used by context format_map
         "основной эпизод" if type_episode == "main" else "эпизод послешоу"
     )
     await msg.reply(
@@ -104,9 +104,7 @@ async def get_type(msg: Message, state: FSMContext, language: str, username: str
 
 @logger.catch
 @router.message(UploadFile.mp3, F.audio)
-async def get_MP3(
-    msg: Message, state: FSMContext, bot: Bot, language: str, username: str
-):
+async def get_MP3(msg: Message, state: FSMContext, bot: Bot, language: str, username: str):
     """Обработка загрузки MP3."""
     await clear_old_mp3_files()
 
@@ -114,24 +112,14 @@ async def get_MP3(
     download_msg = await msg.reply(context[language].got_mp3)
 
     async def progress_callback(bytes_uploaded: int):
-        await telegram_progress_callback(
-            bytes_uploaded, download_msg, msg.audio.file_size
-        )
+        await telegram_progress_callback(bytes_uploaded, download_msg, msg.audio.file_size)
 
     monitor_task = asyncio.create_task(
         monitor_file_progress(
-            (
-                Path(f"/var/lib/telegram-bot-api/{API_TOKEN}/temp")
-                if LOCAL
-                else PODCAST_PATH
-            ),
+            (Path(f"/var/lib/telegram-bot-api/{API_TOKEN}/temp") if LOCAL else PODCAST_PATH),
             msg.audio.file_size,
             progress_callback,
-            (
-                Path(f"/var/lib/telegram-bot-api/{API_TOKEN}/music")
-                if LOCAL
-                else PODCAST_PATH
-            ),
+            (Path(f"/var/lib/telegram-bot-api/{API_TOKEN}/music") if LOCAL else PODCAST_PATH),
         )
     )
     file = await bot.get_file(msg.audio.file_id, 600)
@@ -144,9 +132,7 @@ async def get_MP3(
     if LOCAL:
         match = re.findall(r"[\\/]{1}music[\\/](.*?)$", str(file_path))
         if match:
-            source_path = (
-                Path(f"/var/lib/telegram-bot-api/{API_TOKEN}/music") / match[0]
-            )
+            source_path = Path(f"/var/lib/telegram-bot-api/{API_TOKEN}/music") / match[0]
             destination_path = Path(PODCAST_PATH)
             shutil.move(str(source_path), str(destination_path))
     else:
@@ -158,10 +144,7 @@ async def get_MP3(
     episode_data = await state.get_data()
     type_episode = episode_data["type_episode"]
 
-    numberLastEpisode = str(
-        int(await get_last_post_ID(type_episode, FTP_SERVER, FTP_LOGIN, FTP_PASSWORD))
-        + 1
-    )
+    numberLastEpisode = str(int(await get_last_post_ID(type_episode, FTP_SERVER, FTP_LOGIN, FTP_PASSWORD)) + 1)
 
     await download_msg.edit_text(context[language].downloaded)
     await msg.answer(
@@ -183,9 +166,7 @@ async def set_template(msg: Message, state: FSMContext, language: str, username:
         logger.debug(f"[{username}]: Ошибка в шаблоне")
         return await msg.reply(context[language].invalid_input)
 
-    tmp1 = await msg.answer(
-        context[language].set_tags, reply_markup=ReplyKeyboardRemove()
-    )
+    tmp1 = await msg.answer(context[language].set_tags, reply_markup=ReplyKeyboardRemove())
 
     logger.debug(f"[{username}]: Начинается аудиотеггинг")
     await asyncio.to_thread(audio_tag, info, type_episode)
@@ -215,9 +196,7 @@ async def set_template(msg: Message, state: FSMContext, language: str, username:
         duration=int(af.info.time_secs),
         performer=af.tag.artist,
         title=info["title"],
-        thumbnail=FSInputFile(
-            COVER_RZ_PATH if type_episode == "main" else COVER_PS_PATH
-        ),
+        thumbnail=FSInputFile(COVER_RZ_PATH if type_episode == "main" else COVER_PS_PATH),
         reply_markup=(
             keyboards["podcast_handler"][language].audio_menu_main
             if type_episode == "main"

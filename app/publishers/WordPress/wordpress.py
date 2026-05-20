@@ -14,7 +14,9 @@ from requests import Response
 class WordPress:
     """WordPress client for uploading posts via wp-admin form submission."""
 
-    def __init__(self, wp_url: str, wp_login: str, wp_password: str, cookie_path: str, timezone: str = "Europe/Moscow"):
+    def __init__(
+        self, wp_url: str, wp_login: str, wp_password: str, cookie_path: str, timezone: str = "Europe/Moscow"
+    ):
         self._wp_url = wp_url.rstrip("/")
         self._wp_login = wp_login
         self._wp_password = wp_password
@@ -64,8 +66,7 @@ class WordPress:
 
         if (
             s.status_code == 200
-            and f'document.location.href="{self._wp_url.replace("https", "http")}/wp-login.php'
-            in s.text
+            and f'document.location.href="{self._wp_url.replace("https", "http")}/wp-login.php' in s.text
         ):
             cookie_matches = re.findall(r'document\.cookie="(.*?)";', s.text)
             for match in cookie_matches:
@@ -78,16 +79,15 @@ class WordPress:
         s = self._session.post(url, data=form)
         if (
             s.status_code == 200
-            and f'document.location.href="{self._wp_url.replace("https", "http")}/wp-admin'
-            in s.text
+            and f'document.location.href="{self._wp_url.replace("https", "http")}/wp-admin' in s.text
         ):
             return self._dump_cookies()
         return False
 
     def _check_session(self) -> bool:
         return (
-            not f'document.location.href="{self._wp_url.replace("https", "http")}/wp-login.php?redirect_to='
-            in self._session.get(f"{self._wp_url}/wp-admin/").text
+            f'document.location.href="{self._wp_url.replace("https", "http")}/wp-login.php?redirect_to='
+            not in self._session.get(f"{self._wp_url}/wp-admin/").text
         )
 
     def _make_session(self) -> requests.Session:
@@ -104,9 +104,7 @@ class WordPress:
     def upload_post(self, info: dict) -> bool:
         """Upload a podcast post to WordPress. Returns True on success."""
         logger.debug("Starting post upload process")
-        post = self._session.get(
-            f"{self._wp_url}/wp-admin/post-new.php?post_type=podcast"
-        ).content
+        post = self._session.get(f"{self._wp_url}/wp-admin/post-new.php?post_type=podcast").content
 
         logger.debug("Retrieved post content from WordPress")
 
@@ -121,8 +119,18 @@ class WordPress:
         time = datetime.now(self._timezone)
 
         months = (
-            'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
-            'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'
+            "января",
+            "февраля",
+            "марта",
+            "апреля",
+            "мая",
+            "июня",
+            "июля",
+            "августа",
+            "сентября",
+            "октября",
+            "ноября",
+            "декабря",
         )
         timeStr = f"{time.day} {months[time.month - 1]} {time.year}"
 
@@ -153,9 +161,7 @@ class WordPress:
             "episode_contributor[0][3][comment]": "",
             "_podlove_meta[recording_date]": time.strftime("%Y-%m-%d"),
             "_podlove_meta[slug]": info["slug"],
-            "_podlove_meta[chapters]": "\n".join(
-                map(lambda x: " ".join(x), info["chapters"])
-            ),
+            "_podlove_meta[chapters]": "\n".join(" ".join(x) for x in info["chapters"]),
             "_podlove_meta[duration]": info["duration"],
             "_podlove_meta[episode_assets][1]": "on",
             "trackback_url": "",
@@ -178,9 +184,7 @@ class WordPress:
             logger.error("Could not find post form in WordPress page — session may be expired")
             # Retry login and try once more
             self._login()
-            post = self._session.get(
-                f"{self._wp_url}/wp-admin/post-new.php?post_type=podcast"
-            ).content
+            post = self._session.get(f"{self._wp_url}/wp-admin/post-new.php?post_type=podcast").content
             html_dom = etree.HTML(post, etree.HTMLParser())
             form_element = html_dom.find('.//form[@name="post"]')
             if form_element is None:
@@ -192,9 +196,7 @@ class WordPress:
                 form[field["name"]] = field["value"]
 
         logger.debug("Submitting post data to WordPress")
-        response: Response = self._session.post(
-            f"{self._wp_url}/wp-admin/post.php", data=form
-        )
+        response: Response = self._session.post(f"{self._wp_url}/wp-admin/post.php", data=form)
         logger.debug(f"Uploaded post with response code: {response.status_code}")
 
         if response.status_code in (200, 301, 302):

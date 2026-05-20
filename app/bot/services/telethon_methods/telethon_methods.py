@@ -31,9 +31,7 @@ async def join_to_private_channel(client: TelegramClient, channel_name: str) -> 
     except PeerIdInvalidError:
         logger.error(f"Invalid channel name '{channel_name}' or channel does not exist")
     except Exception as e:
-        logger.error(
-            f"An unexpected error occurred while joining channel '{channel_name}': {e}"
-        )
+        logger.error(f"An unexpected error occurred while joining channel '{channel_name}': {e}")
 
     return False
 
@@ -60,9 +58,7 @@ async def join_to_public_channel(client: TelegramClient, channel_name: str) -> b
     except PeerIdInvalidError:
         logger.error(f"Invalid channel name '{channel_name}' or channel does not exist")
     except Exception as e:
-        logger.error(
-            f"An unexpected error occurred while joining channel '{channel_name}': {e}"
-        )
+        logger.error(f"An unexpected error occurred while joining channel '{channel_name}': {e}")
 
     return False
 
@@ -115,9 +111,7 @@ async def get_channel_info(client: TelegramClient, channel_name: str) -> dict | 
     except PeerIdInvalidError:
         logger.error(f"Invalid channel name '{channel_name}' or channel does not exist")
     except Exception as e:
-        logger.error(
-            f"An unexpected error occurred while retrieving info for channel '{channel_name}': {e}"
-        )
+        logger.error(f"An unexpected error occurred while retrieving info for channel '{channel_name}': {e}")
 
     return None
 
@@ -147,7 +141,5 @@ async def is_user_in_channel(client: TelegramClient, channel: str) -> bool:
         return False
 
     except Exception as e:
-        logger.error(
-            f"An error occurred while checking if the user is in channel '{channel}': {e}"
-        )
+        logger.error(f"An error occurred while checking if the user is in channel '{channel}': {e}")
         return False

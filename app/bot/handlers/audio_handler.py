@@ -1,7 +1,6 @@
 import os
 
 from aiogram import Bot, F, Router
-from aiogram.exceptions import TelegramBadRequest
 from aiogram.types import CallbackQuery, Message
 from loguru import logger
 
@@ -26,17 +25,11 @@ async def audio_menu(callback: CallbackQuery, language: str, username: str):
     """Обработчик открытия аудио-меню"""
     logger.debug(f"[{username}]: Opened Audio_Menu")
 
-    keyboard_key = (
-        "audio_menu_main"
-        if "rz" in callback.message.audio.file_name
-        else "audio_menu_post"
-    )
+    keyboard_key = "audio_menu_main" if "rz" in callback.message.audio.file_name else "audio_menu_post"
 
     logger.debug(f'[{username}]: keyboard_key = "{keyboard_key}"')
 
-    await callback.message.edit_reply_markup(
-        reply_markup=get_keyboard(language, keyboard_key)
-    )
+    await callback.message.edit_reply_markup(reply_markup=get_keyboard(language, keyboard_key))
     await callback.answer()
 
 
@@ -50,9 +43,7 @@ async def forward_verify(callback: CallbackQuery, language: str, username: str):
         show_alert=True,
         cache_time=60,
     )
-    await callback.message.edit_reply_markup(
-        reply_markup=get_keyboard(language, "verify")
-    )
+    await callback.message.edit_reply_markup(reply_markup=get_keyboard(language, "verify"))
 
 
 @router.callback_query(F.data == "fwd_verify_no")
@@ -61,9 +52,7 @@ async def forward_no(callback: CallbackQuery, language: str, username: str):
     logger.debug(f"[{username}]: Forwarding canceled")
 
     await callback.answer("Отменено")
-    await callback.message.edit_reply_markup(
-        reply_markup=get_keyboard(language, "audio_menu_main")
-    )
+    await callback.message.edit_reply_markup(reply_markup=get_keyboard(language, "audio_menu_main"))
 
 
 @router.callback_query(F.data == "fwd_verify_yes")
@@ -76,16 +65,12 @@ async def forward_yes(callback: CallbackQuery, bot: Bot, language: str, username
         message: Message = callback.message.reply_to_message
         if not message or not message.text:
             logger.warning(f"[{username}]: No reply message found")
-            return await callback.answer(
-                context[language].invalid_input, show_alert=True
-            )
+            return await callback.answer(context[language].invalid_input, show_alert=True)
 
         info = validate_template(message.text)
         if info is None:
             logger.warning(f"[{username}]: Invalid input in forward_yes")
-            return await callback.answer(
-                context[language].invalid_input, show_alert=True
-            )
+            return await callback.answer(context[language].invalid_input, show_alert=True)
 
         # Генерация текста подкаста
         podcast_text = generate_podcast_text(info)
@@ -110,9 +95,7 @@ async def forward_yes(callback: CallbackQuery, bot: Bot, language: str, username
         )
 
         logger.success(f"[{username}]: Successfully forwarded audio")
-        await callback.message.edit_reply_markup(
-            reply_markup=get_keyboard(language, "audio_menu_main")
-        )
+        await callback.message.edit_reply_markup(reply_markup=get_keyboard(language, "audio_menu_main"))
         await callback.answer("Переслали в чат!")
 
     except Exception as e:

@@ -18,8 +18,6 @@ async def wait_for_kafka(kafka_server: str):
             logger.info(f"[Kafka]: Connected on attempt {attempt}")
             return
         except KafkaConnectionError:
-            logger.warning(
-                f"[Kafka]: Attempt {attempt}/{MAX_RETRIES} failed, retrying..."
-            )
+            logger.warning(f"[Kafka]: Attempt {attempt}/{MAX_RETRIES} failed, retrying...")
             await asyncio.sleep(RETRY_INTERVAL)
     raise RuntimeError(f"Failed to connect to Kafka at {kafka_server}")

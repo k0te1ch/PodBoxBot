@@ -44,13 +44,9 @@ def set_chapters(audio_file: AudioFile, chapters: list[tuple[str, str]]) -> None
 
     for i, (startTime, title) in enumerate(chapters):
         timeStart = time_to_milliseconds(startTime)
-        timeEnd = (
-            time_to_milliseconds(chapters[i + 1][0])
-            if i < len(chapters) - 1
-            else int(audio_file.info.time_secs)
-        )
+        timeEnd = time_to_milliseconds(chapters[i + 1][0]) if i < len(chapters) - 1 else int(audio_file.info.time_secs)
         addedChapter = audio_file.tag.chapters.set(
-            bytes(f"CHAP{i+1}", encoding="cp866"),
+            bytes(f"CHAP{i + 1}", encoding="cp866"),
             (timeStart, timeEnd - 1),
         )
         addedChapter.encoding = UTF_16_ENCODING
@@ -88,9 +84,7 @@ def audio_tag(info: dict, type: str) -> None:
         audio_file.tag.lyrics.set(comment)
 
     audio_file.tag.album_type = "single"
-    audio_file.tag.artist_origin = eyed3.core.ArtistOrigin(
-        PODCAST_CITY, PODCAST_DISTRICT, PODCAST_COUNTRY
-    )
+    audio_file.tag.artist_origin = eyed3.core.ArtistOrigin(PODCAST_CITY, PODCAST_DISTRICT, PODCAST_COUNTRY)
     audio_file.tag.artist_url = PODCAST_LINK
     audio_file.tag.commercial_url = SUPPORT_LINK
     audio_file.tag.payment_url = SUPPORT_LINK

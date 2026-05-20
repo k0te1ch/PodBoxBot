@@ -42,28 +42,17 @@ def IsAdmin(m) -> bool:
 
 
 def ContextButton(context_key: str | list, classes: list = LANGUAGES):
-    """
-    This filter checks button's text when have a multi-language context
-    example: ContextButton("cancel", ["ru", "en"])
-    """
+    keys = [context_key] if isinstance(context_key, str) else context_key
 
     def inner(m) -> bool | None:
         if not (isinstance(m, Message) and m.text):
-            return
-
+            return None
         for cls in classes:
-            if type(context_key) == str:
-                contexts = [context_key]
-            else:
-                contexts = context_key
-            for context1 in contexts:
-                attr = getattr(context[cls], context1)
-                if type(attr) == list:
-                    for i in attr:
-                        if m.text == i:
-                            return True
-                else:
-                    if m.text == attr:
-                        return True
+            for key in keys:
+                attr = getattr(context[cls], key)
+                values = attr if isinstance(attr, list) else [attr]
+                if m.text in values:
+                    return True
+        return None
 
     return inner

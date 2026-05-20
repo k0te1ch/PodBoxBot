@@ -61,14 +61,12 @@ class CustomFSInputFile(InputFile):
 
                 if percent >= prev_percent + 10 or percent == 100:
                     prev_percent = percent
-                    logger.debug(
-                        f"Uploading: {percent:.2f}% ({total_read}/{self.size})"
-                    )
+                    logger.debug(f"Uploading: {percent:.2f}% ({total_read}/{self.size})")
 
                     if self.progress_callback:
                         result = self.progress_callback(total_read)
                         if asyncio.iscoroutine(result):
-                            asyncio.create_task(result)
+                            _task = asyncio.create_task(result)  # noqa: RUF006
 
                 await asyncio.sleep(0)
 
@@ -76,14 +74,12 @@ class CustomFSInputFile(InputFile):
             if self.progress_callback and prev_percent != percent:
                 result = self.progress_callback(self.size)
                 if asyncio.iscoroutine(result):
-                    asyncio.create_task(result)
+                    _task = asyncio.create_task(result)  # noqa: RUF006
 
             logger.debug("Upload finished and read() complete")
 
 
-async def telegram_progress_callback(
-    bytes_uploaded: int, message: Message, total_size: int
-):
+async def telegram_progress_callback(bytes_uploaded: int, message: Message, total_size: int):
     progress = (bytes_uploaded / total_size) * 100
     now = int(time.time())
 
@@ -159,9 +155,7 @@ async def monitor_file_progress(
                 prev_downloaded_size = downloaded_size
                 downloaded_size = mp3_file.stat().st_size
                 if downloaded_size != prev_downloaded_size:
-                    logger.debug(
-                        f"Текущий размер файла: {downloaded_size} из {total_size}"
-                    )
+                    logger.debug(f"Текущий размер файла: {downloaded_size} из {total_size}")
                     await progress_callback(downloaded_size)
             elif mp3_file and not mp3_file.exists():
                 if PODCAST_PATH.exists():
@@ -179,11 +173,7 @@ async def monitor_file_progress(
             break
 
     # Завершение мониторинга
-    if (
-        downloaded_size >= total_size
-        or checked
-        or (await check_exists_file_by_size(finally_dir_path, total_size))
-    ):
+    if downloaded_size >= total_size or checked or (await check_exists_file_by_size(finally_dir_path, total_size)):
         logger.info("Файл полностью загружен!")
         return True
     else:

@@ -3,7 +3,6 @@ import asyncio
 import aiofiles
 import aiohttp
 from loguru import logger
-
 from main import bot
 
 
@@ -48,19 +47,18 @@ async def downloadFile(url: str, filename: str, chunk_size: int = 65536) -> None
 
 async def download_file(url, destination):
     try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url) as response:
-                if response.status == 200:
-                    async with aiofiles.open(destination, "wb") as f:
-                        while True:
-                            chunk = await response.content.read(1024)
-                            if not chunk:
-                                break
-                            await f.write(chunk)
-                    return True
-                else:
-                    print(f"Error downloading file, status code: {response.status}")
-                    return False
+        async with aiohttp.ClientSession() as session, session.get(url) as response:
+            if response.status == 200:
+                async with aiofiles.open(destination, "wb") as f:
+                    while True:
+                        chunk = await response.content.read(1024)
+                        if not chunk:
+                            break
+                        await f.write(chunk)
+                return True
+            else:
+                print(f"Error downloading file, status code: {response.status}")
+                return False
     except aiohttp.ClientError as e:
         print(f"Aiohttp client error: {e}")
         return False

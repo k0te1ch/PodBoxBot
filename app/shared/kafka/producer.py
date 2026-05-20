@@ -6,9 +6,7 @@ from loguru import logger
 
 
 class KafkaProducer:
-    def __init__(
-        self, kafka_server: str, schema_registry_url: str, value_schema_path: str
-    ):
+    def __init__(self, kafka_server: str, schema_registry_url: str, value_schema_path: str):
         self.kafka_server = kafka_server
         self.schema_registry_url = schema_registry_url
 
@@ -25,8 +23,6 @@ class KafkaProducer:
 
     async def send(self, topic: str, value: dict):
         loop = asyncio.get_event_loop()
-        await loop.run_in_executor(
-            None, lambda: self.producer.produce(topic=topic, value=value)
-        )
+        await loop.run_in_executor(None, lambda: self.producer.produce(topic=topic, value=value))
         self.producer.flush()
         logger.info(f"[AvroProducer] Sent to {topic}: {value}")

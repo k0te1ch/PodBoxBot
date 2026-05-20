@@ -2,6 +2,7 @@ import asyncio
 import ftplib
 
 from loguru import logger
+
 from shared.kafka.consumer import KafkaConsumer
 from shared.kafka.models.upload_event import UploadEvent
 from shared.kafka.producer import KafkaProducer
@@ -14,9 +15,7 @@ SCHEMA_REGISTRY_URL = "http://schema-registry:8081"
 VALUE_SCHEMA_PATH = "shared/kafka/schemas/upload_event.avsc"
 
 
-async def send_upload_request(
-    producer: KafkaProducer, path: str, file_name: str, user: str = "system"
-):
+async def send_upload_request(producer: KafkaProducer, path: str, file_name: str, user: str = "system"):
     """Отправляет событие UploadEvent в Kafka"""
     event = UploadEvent(
         event_type="request",
@@ -50,8 +49,8 @@ async def listen_for_result(file_name: str, timeout: int = 30):
 
         if event.status == "uploading":
             logger.info(
-                f"[{event.file_name}] progress={event.progress*100:.1f}% "
-                f"speed={event.transfer_speed/1024:.2f} KB/s"
+                f"[{event.file_name}] progress={event.progress * 100:.1f}% "
+                f"speed={event.transfer_speed / 1024:.2f} KB/s"
             )
         elif event.status == "success":
             logger.success(f"[{event.file_name}] upload completed successfully ✅")
@@ -71,9 +70,7 @@ async def listen_for_result(file_name: str, timeout: int = 30):
         logger.info(f"[Kafka] Stopped listening for {file_name}")
 
 
-async def get_last_post_ID(
-    typePodcast: str, server: str, login: str, password: str
-) -> str:
+async def get_last_post_ID(typePodcast: str, server: str, login: str, password: str) -> str:
     """Возвращает последний ID файла на FTP"""
     with ftplib.FTP_TLS(server, login, password, encoding="utf-8") as FTP:
         if "aftershow" in typePodcast:
@@ -88,9 +85,7 @@ async def get_last_post_ID(
             )
         else:
             file_list = filter(
-                lambda x: "_postshow_" in x
-                and ".mp3" in x
-                and x.split("_")[0].isdigit(),
+                lambda x: "_postshow_" in x and ".mp3" in x and x.split("_")[0].isdigit(),
                 file_list,
             )
 

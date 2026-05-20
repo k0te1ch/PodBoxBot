@@ -52,20 +52,12 @@ def generate_podcast_text(info: dict[str, Any]) -> str | None:
         support_link = info.get("support_link", SUPPORT_LINK)
 
         # Проверка типов данных
-        if not isinstance(chapters, list) or not all(
-            isinstance(ch, list) and len(ch) == 2 for ch in chapters
-        ):
-            logger.error(
-                "Некорректный формат глав. Ожидается список списков (время, название)"
-            )
+        if not isinstance(chapters, list) or not all(isinstance(ch, list) and len(ch) == 2 for ch in chapters):
+            logger.error("Некорректный формат глав. Ожидается список списков (время, название)")
             return None
 
         # Форматирование таймлайна
-        formatted_chapters = (
-            "\n".join(f"{time} — {chapter}" for time, chapter in chapters)
-            if chapters
-            else "Нет глав"
-        )
+        formatted_chapters = "\n".join(f"{time} — {chapter}" for time, chapter in chapters) if chapters else "Нет глав"
 
         # Создание текста
         podcast_text = (
@@ -83,9 +75,7 @@ def generate_podcast_text(info: dict[str, Any]) -> str | None:
 
 
 @logger.catch
-def generate_file_name(
-    number: str, type_episode: str, extension: str = FILE_EXTENSION
-) -> str:
+def generate_file_name(number: str, type_episode: str, extension: str = FILE_EXTENSION) -> str:
     """
     Генерирует имя файла для подкаста.
 
@@ -114,10 +104,8 @@ def generate_file_name(
     # Преобразование строкового типа в enum
     try:
         episode_type = EpisodeType(type_episode)
-    except ValueError:
-        raise ValueError(
-            f"type_episode должен быть одним из: {[e.value for e in EpisodeType]}"
-        )
+    except ValueError as err:
+        raise ValueError(f"type_episode должен быть одним из: {[e.value for e in EpisodeType]}") from err
 
     # Нормализация расширения файла
     if not extension.startswith("."):
@@ -127,6 +115,4 @@ def generate_file_name(
     current_date = datetime.now(TIMEZONE).strftime(DATE_FORMAT)
     prefix = EPISODE_PREFIXES[episode_type]
 
-    return Path(
-        f"{number.zfill(EPISODE_NUMBER_LENGTH)}_{prefix}_{current_date}{extension}"
-    ).name
+    return Path(f"{number.zfill(EPISODE_NUMBER_LENGTH)}_{prefix}_{current_date}{extension}").name

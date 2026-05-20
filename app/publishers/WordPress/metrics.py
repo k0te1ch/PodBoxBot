@@ -2,6 +2,7 @@ from aioprometheus import Counter, Summary
 from aioprometheus.collectors import Registry
 from aioprometheus.pusher import Pusher
 from loguru import logger
+
 from shared.config import config
 
 PUSHGATEWAY_URL = config.get("PUSHGATEWAY_URL", str, default="http://localhost:9091")

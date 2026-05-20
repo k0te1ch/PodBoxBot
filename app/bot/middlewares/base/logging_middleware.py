@@ -26,6 +26,8 @@ class LoggingMiddleware(BaseMiddleware):
         username = user.username if user else "unknown"
         handler_name = handler_info.callback.__name__ if handler_info else "unknown"
 
-        logger.debug(f"[{username}]{f"|[{chat_title}]" if chat_title else ""}:Called {handler_name} ({type(event).__name__})")
+        logger.debug(
+            f"[{username}]{f'|[{chat_title}]' if chat_title else ''}:Called {handler_name} ({type(event).__name__})"
+        )
 
         return await handler(event, data)

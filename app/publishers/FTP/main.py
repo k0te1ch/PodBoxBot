@@ -12,6 +12,7 @@ from metrics import (
     upload_failure_counter,
     upload_success_counter,
 )
+
 from shared.config import config
 from shared.kafka.consumer import KafkaConsumer
 from shared.kafka.models.upload_event import UploadEvent
@@ -37,8 +38,8 @@ async def upload_to_ftp(
     file_name: str,
     user: str,
     producer: KafkaProducer,
-    chat_id: str = None,
-    message_id: str = None,
+    chat_id: str | None = None,
+    message_id: str | None = None,
 ):
     """Загружает файл на SFTP с отчётом прогресса"""
     file_size = os.path.getsize(path)
@@ -49,48 +50,50 @@ async def upload_to_ftp(
 
     logger.debug(f"Connecting to SFTP: {FTP_SERVER} as {FTP_LOGIN}")
 
-    async with asyncssh.connect(
-        FTP_SERVER,
-        port=2222,
-        username=FTP_LOGIN,
-        password=FTP_PASSWORD,
-        known_hosts=None,
-    ) as conn:
-        async with conn.start_sftp_client() as sftp:
-            async with aiofiles.open(path, "rb") as f:
-                async with sftp.open(file_name, "wb") as remote_file:
-                    while True:
-                        data = await f.read(chunk_size)
-                        if not data:
-                            break
+    async with (
+        asyncssh.connect(
+            FTP_SERVER,
+            port=2222,
+            username=FTP_LOGIN,
+            password=FTP_PASSWORD,
+            known_hosts=None,
+        ) as conn,
+        conn.start_sftp_client() as sftp,
+        aiofiles.open(path, "rb") as f,
+    ):
+        async with sftp.open(file_name, "wb") as remote_file:
+            while True:
+                data = await f.read(chunk_size)
+                if not data:
+                    break
 
-                        await remote_file.write(data)
-                        bytes_uploaded += len(data)
+                await remote_file.write(data)
+                bytes_uploaded += len(data)
 
-                        elapsed = time.time() - start_time
-                        speed = bytes_uploaded / elapsed if elapsed > 0 else 0.0
-                        progress = bytes_uploaded / file_size
+                elapsed = time.time() - start_time
+                speed = bytes_uploaded / elapsed if elapsed > 0 else 0.0
+                progress = bytes_uploaded / file_size
 
-                        # Каждые 5 сек шлём прогресс
-                        if time.time() - last_sent >= 5:
-                            last_sent = time.time()
-                            event = UploadEvent(
-                                event_type="progress",
-                                file_name=file_name,
-                                path=path,
-                                username=user,
-                                bytes_uploaded=bytes_uploaded,
-                                total_bytes=file_size,
-                                progress=round(progress, 3),
-                                transfer_speed=round(speed, 2),
-                                status="uploading",
-                                chat_id=chat_id,
-                                message_id=message_id,
-                            )
-                            asyncio.create_task(
-                                producer.send(RESULT_TOPIC, event.model_dump())
-                            )
-                            logger.debug(f"Sended {bytes_uploaded}/{file_size}")
+                # Каждые 5 сек шлём прогресс
+                if time.time() - last_sent >= 5:
+                    last_sent = time.time()
+                    event = UploadEvent(
+                        event_type="progress",
+                        file_name=file_name,
+                        path=path,
+                        username=user,
+                        bytes_uploaded=bytes_uploaded,
+                        total_bytes=file_size,
+                        progress=round(progress, 3),
+                        transfer_speed=round(speed, 2),
+                        status="uploading",
+                        chat_id=chat_id,
+                        message_id=message_id,
+                    )
+                    _task = asyncio.create_task(  # noqa: RUF006
+                        producer.send(RESULT_TOPIC, event.model_dump())
+                    )
+                    logger.debug(f"Sended {bytes_uploaded}/{file_size}")
 
     duration = time.time() - start_time
     upload_success_counter.inc({"filename": file_name, "ftp_server": FTP_SERVER})
@@ -135,9 +138,7 @@ async def handle_upload(payload: dict, producer: KafkaProducer):
         )
     except Exception as e:
         logger.error(f"Failed to upload {event.file_name}: {e}")
-        upload_failure_counter.inc(
-            {"filename": event.file_name, "ftp_server": FTP_SERVER}
-        )
+        upload_failure_counter.inc({"filename": event.file_name, "ftp_server": FTP_SERVER})
 
         failure_event = UploadEvent(
             event_type="result",

@@ -1,18 +1,18 @@
 import asyncio
 import os
-from aiogram.client.session.aiohttp import AiohttpSession
-from aiohttp import ClientSession
 
 from aiogram import BaseMiddleware, Bot, Dispatcher
+from aiogram.__meta__ import __version__ as aiogram_version
 from aiogram.client.default import DefaultBotProperties
+from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.dispatcher.event.telegram import TelegramEventObserver
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.fsm.storage.redis import RedisStorage
-from loguru import logger
-
+from aiohttp import ClientSession
 from aiohttp.hdrs import USER_AGENT
 from aiohttp.http import SERVER_SOFTWARE
-from aiogram.__meta__ import __version__ as aiogram_version
+from loguru import logger
+
 from handlers import ROUTERS
 from middlewares.base.error_middleware import ErrorMiddleware
 from middlewares.base.user_context_middleware import UserContextMiddleware
@@ -23,9 +23,8 @@ from utils.bot_methods import send_release_note
 # IMPORT SETTINGS
 MAIN_MODULE_NAME = os.path.basename(__file__)[:-3]
 
+from config import API_TOKEN, DEBUG, PARSE_MODE
 from shared.kafka.consumer import KafkaConsumer
-
-from config import API_HASH, API_ID, API_TOKEN, DEBUG, PARSE_MODE
 
 logger.debug("Loading settings from config")
 
@@ -56,18 +55,16 @@ def _get_bot_obj() -> Bot:
     if TG_SERVER is None and LOCAL:
         from aiogram.client.telegram import TelegramAPIServer
 
-        TG_SERVER = TrustEnvAiohttpSession(
-            api=TelegramAPIServer.from_base("http://localhost:8081")
-        )
+        TG_SERVER = TrustEnvAiohttpSession(api=TelegramAPIServer.from_base("http://localhost:8081"))
         logger.opt(colors=True).info(
-            f"Telegram bot configured for work with custom server <light-blue>({TG_SERVER.api.base[:TG_SERVER.api.base.find('/bot')]})</light-blue>"
+            f"Telegram bot configured for work with custom server <light-blue>({TG_SERVER.api.base[: TG_SERVER.api.base.find('/bot')]})</light-blue>"
         )
     elif TG_SERVER is not None:
         from aiogram.client.telegram import TelegramAPIServer
 
         TG_SERVER = TrustEnvAiohttpSession(api=TelegramAPIServer.from_base(TG_SERVER))
         logger.opt(colors=True).info(
-            f"Telegram bot configured for work with custom server <light-blue>({TG_SERVER.api.base[:TG_SERVER.api.base.find('/bot')]})</light-blue>"
+            f"Telegram bot configured for work with custom server <light-blue>({TG_SERVER.api.base[: TG_SERVER.api.base.find('/bot')]})</light-blue>"
         )
     else:
         TG_SERVER = TrustEnvAiohttpSession()
@@ -98,7 +95,7 @@ async def on_startup():
         topic="publisher.ftp.result",
         group_id="publisher.ftp.result.group",
     )
-    asyncio.create_task(ftp_consumer.start(kafka_router.route))
+    _ftp_task = asyncio.create_task(ftp_consumer.start(kafka_router.route))  # noqa: RUF006
 
     # WordPress result consumer
     wp_consumer = KafkaConsumer(
@@ -107,7 +104,7 @@ async def on_startup():
         topic="publisher.wordpress.result",
         group_id="publisher.wordpress.result.group",
     )
-    asyncio.create_task(wp_consumer.start(kafka_router.route))
+    _wp_task = asyncio.create_task(wp_consumer.start(kafka_router.route))  # noqa: RUF006
 
 
 @logger.catch
@@ -115,9 +112,7 @@ async def on_shutdown():
     pass
 
 
-def _add_middlewares_to_observers(
-    observers: list[TelegramEventObserver], middlewares: list[BaseMiddleware]
-) -> None:
+def _add_middlewares_to_observers(observers: list[TelegramEventObserver], middlewares: list[BaseMiddleware]) -> None:
     for observer in observers:
         for middleware in middlewares:
             observer.middleware(middleware)
@@ -133,9 +128,7 @@ def _get_dp_obj(bot, redis):
         storage = MemoryStorage()
         logger.debug("Used by MemoryStorage")
     dp = Dispatcher(storage=storage)
-    _add_middlewares_to_observers(
-        [dp.message, dp.callback_query], [ErrorMiddleware(), UserContextMiddleware()]
-    )
+    _add_middlewares_to_observers([dp.message, dp.callback_query], [ErrorMiddleware(), UserContextMiddleware()])
     dp.include_routers(*ROUTERS)
 
     dp.startup.register(on_startup)

@@ -35,17 +35,13 @@ class ChatActionMiddleware(BaseMiddleware):
             return await handler(event, data)
 
         # Логируем начало длительной операции
-        logger.info(
-            f"Запущена длительная операция '{action_type}' в чате {event.chat.id}"
-        )
+        logger.info(f"Запущена длительная операция '{action_type}' в чате {event.chat.id}")
 
         # Отображаем индикатор действия
         async with ChatActionSender(action=action_type, chat_id=event.chat.id):
             result = await handler(event, data)
 
         # Логируем завершение длительной операции
-        logger.info(
-            f"Длительная операция '{action_type}' завершена в чате {event.chat.id}"
-        )
+        logger.info(f"Длительная операция '{action_type}' завершена в чате {event.chat.id}")
 
         return result

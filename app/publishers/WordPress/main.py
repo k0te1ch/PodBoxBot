@@ -9,11 +9,12 @@ from metrics import (
     wp_upload_failure_counter,
     wp_upload_success_counter,
 )
+from wordpress import WordPress
+
 from shared.config import config
 from shared.kafka.consumer import KafkaConsumer
 from shared.kafka.models.wordpress_event import WordPressEvent
 from shared.kafka.producer import KafkaProducer
-from wordpress import WordPress
 
 # Kafka config
 KAFKA_SERVER = config.get("KAFKA_SERVER", str)

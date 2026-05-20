@@ -3,8 +3,6 @@ from pathlib import Path
 
 from loguru import logger
 
-from config import SUPPORT_LINK
-
 
 @logger.catch
 def validate_template(text: str) -> dict[str, str] | None:
@@ -35,7 +33,7 @@ def validate_template(text: str) -> dict[str, str] | None:
         return None
 
     res = {header: match.group(i + 1).strip() for i, header in enumerate(headers)}
-    res["title"] = f'{res["number"]}. {res["title"]}'
+    res["title"] = f"{res['number']}. {res['title']}"
 
     if "chapters" in res:
         res["chapters"] = [
@@ -45,9 +43,7 @@ def validate_template(text: str) -> dict[str, str] | None:
         ]
 
     if "tags" in res:
-        res["tags"] = list(
-            {tag.strip() for tag in re.split(r",\s*|,\s*|\s*,\s*", res["tags"])}
-        )
+        res["tags"] = list({tag.strip() for tag in re.split(r",\s*|,\s*|\s*,\s*", res["tags"])})
 
     return res
 

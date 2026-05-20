@@ -6,7 +6,6 @@ from loguru import logger
 
 
 class KafkaConsumer:
-
     def __init__(
         self,
         kafka_server: str,
@@ -38,9 +37,7 @@ class KafkaConsumer:
         while self._running:
             try:
                 # poll запускается в отдельном треде, не блокирует event loop
-                msg = await loop.run_in_executor(
-                    self._executor, self.consumer.poll, 1.0
-                )
+                msg = await loop.run_in_executor(self._executor, self.consumer.poll, 1.0)
 
                 if msg is None:
                     continue
@@ -52,8 +49,7 @@ class KafkaConsumer:
                 if value is None:
                     continue
 
-                # каждая обработка сообщения — отдельная асинхронная задача
-                asyncio.create_task(handler(value))
+                _task = asyncio.create_task(handler(value))  # noqa: RUF006
 
             except SerializerError as e:
                 logger.error(f"[Kafka Avro] Ошибка сериализации: {e}")

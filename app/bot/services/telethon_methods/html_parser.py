@@ -119,7 +119,7 @@ class HTMLToTelegramParser(HTMLParser):
             if url:
                 data = url
 
-        for tag, entity in self._building_entities.items():
+        for _tag, entity in self._building_entities.items():
             entity.length += len(data)
 
         self.text += data
@@ -144,8 +144,8 @@ ENTITY_TO_FORMATTER = {
     MessageEntityBlockquote: ("<blockquote>", "</blockquote>"),
     MessageEntitySpoiler: ("<tg-spoiler>", "</tg-spoiler>"),
     MessageEntityPre: lambda e, _: (
-        "<pre>\n" "    <code class='language-{}'>\n" "        ".format(e.language),
-        "{}\n" "    </code>\n" "</pre>",
+        f"<pre>\n    <code class='language-{e.language}'>\n        ",
+        "{}\n    </code>\n</pre>",
     ),
     MessageEntityEmail: lambda _, t: (f'<a href="mailto:{t}">', "</a>"),
     MessageEntityUrl: lambda _, t: (f'<a href="{t}">', "</a>"),
@@ -204,7 +204,7 @@ class CustomHtmlParser:
         for i, entity in enumerate(entities):
             s = entity.offset
             e = entity.offset + entity.length
-            delimiter = ENTITY_TO_FORMATTER.get(type(entity), None)  # type: ignore
+            delimiter = ENTITY_TO_FORMATTER.get(type(entity))  # type: ignore
             if delimiter:
                 if callable(delimiter):
                     delimiter = delimiter(entity, text[s:e])
@@ -219,12 +219,7 @@ class CustomHtmlParser:
             while within_surrogate(text, at):
                 at += 1
 
-            text = (
-                text[:at]
-                + what
-                + escape(text[at:next_escape_bound])
-                + text[next_escape_bound:]
-            )
+            text = text[:at] + what + escape(text[at:next_escape_bound]) + text[next_escape_bound:]
             next_escape_bound = at
 
         text = escape(text[:next_escape_bound]) + text[next_escape_bound:]

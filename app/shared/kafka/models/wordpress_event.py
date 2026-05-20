@@ -19,6 +19,7 @@ class WordPressEvent(BaseModel):
     duration: int | None = Field(None, description="Длительность в секундах")
 
     @field_validator("status")
+    @classmethod
     def validate_status(cls, v):
         if v is None:
             return v

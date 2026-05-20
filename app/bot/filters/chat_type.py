@@ -3,7 +3,6 @@ from aiogram.types import Message
 
 
 class ChatTypeFilter(BaseFilter):
-
     def __init__(self, chat_type: str | list):
         self.chat_type = chat_type
 

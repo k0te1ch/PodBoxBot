@@ -9,7 +9,6 @@ from services.none_module import _NoneModule
 
 
 class _Context:
-
     def __init__(self, _context_obj: object) -> None:
         self._context_obj = _context_obj
 
@@ -22,11 +21,7 @@ class _Context:
         if isinstance(r, str):
             frame = inspect.currentframe()
             try:
-                if (
-                    frame != None
-                    and frame.f_back != None
-                    and frame.f_back.f_locals != None
-                ):
+                if frame is not None and frame.f_back is not None and frame.f_back.f_locals is not None:
                     caller_locals = frame.f_back.f_locals
                     r = r.format_map(caller_locals)
             finally:
@@ -49,11 +44,7 @@ class _Context:
         if isinstance(r, str):
             frame = inspect.currentframe()
             try:
-                if (
-                    frame != None
-                    and frame.f_back != None
-                    and frame.f_back.f_locals != None
-                ):
+                if frame is not None and frame.f_back is not None and frame.f_back.f_locals is not None:
                     caller_locals = frame.f_back.f_locals
                     r = r.format_map(caller_locals)
             finally:

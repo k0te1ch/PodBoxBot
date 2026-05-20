@@ -1,4 +1,3 @@
-from apscheduler.jobstores.base import JobLookupError
 from apscheduler.jobstores.memory import MemoryJobStore
 from apscheduler.jobstores.redis import RedisJobStore
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -29,9 +28,7 @@ def _get_scheduler_obj(redis_instance: Redis | _NoneModule) -> AsyncIOScheduler:
     else:
         jobstores = {"default": MemoryJobStore()}
 
-    scheduler = AsyncIOScheduler(
-        jobstores=jobstores, job_defaults=job_defaults, timezone=TIMEZONE
-    )
+    scheduler = AsyncIOScheduler(jobstores=jobstores, job_defaults=job_defaults, timezone=TIMEZONE)
 
     logger.debug(f"Scheduler configured with jobstores: {jobstores}")
     return scheduler

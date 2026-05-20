@@ -14,9 +14,7 @@ from config import DEVELOPER
 class ErrorMiddleware(BaseMiddleware):
     """Middleware для перехвата ошибок и уведомления разработчика через Telegram"""
 
-    async def on_error(
-        self, update: Update, exception: Exception, data: dict[str, Any]
-    ):
+    async def on_error(self, update: Update, exception: Exception, data: dict[str, Any]):
         """Обработка ошибок и уведомление разработчика
 
         Args:

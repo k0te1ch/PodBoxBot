@@ -6,15 +6,14 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any, TypeVar
 
-import pytz
 from loguru import logger
-from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 T = TypeVar("T")
 
 
 # === ENV FILE DISCOVERY ===
+
 
 def _find_env_file() -> str:
     """Ищет .env рядом с main-скриптом микросервиса."""
@@ -104,6 +103,7 @@ SRC_PATH = Path(__file__).parent
 
 
 # === LOGGING ===
+
 
 def set_up_logger(level: str = "INFO", logs_path: Path = PROJECT_PATH / "logs"):
     logger.remove()

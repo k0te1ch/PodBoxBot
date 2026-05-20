@@ -8,7 +8,7 @@ from typing import Any
 
 import pytz
 from loguru import logger
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -102,7 +102,11 @@ class Settings(BaseSettings):
         return v.rstrip("/")
 
     @field_validator(
-        "ADMINS", "ADMINS_ID", "HANDLERS", "KEYBOARDS", "LANGUAGES",
+        "ADMINS",
+        "ADMINS_ID",
+        "HANDLERS",
+        "KEYBOARDS",
+        "LANGUAGES",
         mode="before",
     )
     @classmethod
@@ -214,6 +218,7 @@ KEYBOARDS_PATH = SRC_PATH / KEYBOARDS_DIR if KEYBOARDS_DIR else SRC_PATH / "keyb
 # -------------------------------------------------------------------
 # Logger setup
 # -------------------------------------------------------------------
+
 
 def set_up_logger(log_level: str, logs_path: Path):
     logger.remove()

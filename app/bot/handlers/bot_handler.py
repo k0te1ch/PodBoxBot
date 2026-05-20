@@ -1,9 +1,6 @@
 import os
 
 from aiogram import F, Router, types
-from aiogram.filters import CommandObject
-
-from filters.dispatcher_filters import IsAdmin, IsPrivate
 
 router = Router(name=os.path.splitext(os.path.basename(__file__))[0])
 # router.message.filter(IsPrivate, IsAdmin)

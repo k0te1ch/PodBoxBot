@@ -4,11 +4,11 @@ from aiogram import F, Router
 from aiogram.types import CallbackQuery
 from loguru import logger
 from pydantic import ValidationError
-from shared.kafka.models.wordpress_event import WordPressEvent
-from shared.kafka.producer import KafkaProducer
 
 from filters.dispatcher_filters import IsAdmin, IsPrivate
 from services import context, keyboards
+from shared.kafka.models.wordpress_event import WordPressEvent
+from shared.kafka.producer import KafkaProducer
 from utils.validators import validate_template
 
 router = Router(name=os.path.splitext(os.path.basename(__file__))[0])
@@ -25,9 +25,7 @@ VALUE_SCHEMA_PATH = "/app/shared/kafka/schemas/wordpress_event.avsc"
 async def WP_menu(callback: CallbackQuery, language: str, username: str) -> None:
     logger.bind(username=username).debug("Открыто меню WordPress")
 
-    await callback.message.edit_reply_markup(
-        reply_markup=keyboards["podcast_handler"][language].WPMenu
-    )
+    await callback.message.edit_reply_markup(reply_markup=keyboards["podcast_handler"][language].WPMenu)
     await callback.answer()
 
 

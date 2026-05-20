@@ -3,6 +3,7 @@ import os
 from datetime import datetime
 
 import click
+import main
 from alembic import command as alembic
 from alembic.command import revision as alembic_revision
 from alembic.config import Config
@@ -10,7 +11,6 @@ from alembic.util.exc import CommandError
 from loguru import logger
 from telethon import TelegramClient
 
-import main
 from config import (
     API_HASH,
     API_ID,
@@ -71,9 +71,7 @@ async def _run():
     logger.info("Connecting to Telegram...")
 
     me = await main.bot.get_me()
-    logger.opt(colors=True).info(
-        f"Bot running as <light-blue>@{me.username}</light-blue>"
-    )
+    logger.opt(colors=True).info(f"Bot running as <light-blue>@{me.username}</light-blue>")
 
     if ENABLE_APSCHEDULER is True:
         scheduler.start()
@@ -155,9 +153,7 @@ def migrate(revision, upgrade, sync):
 async def _init():
     logger.info("Starting init...")
 
-    async with TelegramClient(
-        "anon", API_ID, API_HASH, system_version="4.16.30-vxCUSTOM"
-    ) as client:
+    async with TelegramClient("anon", API_ID, API_HASH, system_version="4.16.30-vxCUSTOM") as client:
         await client.start(API_TOKEN)
 
 

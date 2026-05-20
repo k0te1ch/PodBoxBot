@@ -4,14 +4,14 @@ from aiogram import F, Router
 from aiogram.types import CallbackQuery
 from loguru import logger
 from pydantic import ValidationError
+
+from config import FILES_PATH
+from filters.dispatcher_filters import IsAdmin, IsPrivate
+from services import keyboards
 from shared.kafka.models.upload_event import (
     UploadEvent,
 )  # 👈 импортируем Pydantic-модель
 from shared.kafka.producer import KafkaProducer
-
-from config import FILES_PATH, FTP_LOGIN, FTP_PASSWORD, FTP_SERVER
-from filters.dispatcher_filters import IsAdmin, IsPrivate
-from services import keyboards
 
 router = Router(name=os.path.splitext(os.path.basename(__file__))[0])
 router.message.filter(IsPrivate, IsAdmin)
@@ -22,9 +22,7 @@ async def FTP_menu(callback: CallbackQuery, language: str, username: str):
     """Обработчик меню FTP"""
     logger.debug(f"[{username}]: Opened FTP_menu")
 
-    await callback.message.edit_reply_markup(
-        reply_markup=keyboards["podcast_handler"][language].FTP_menu
-    )
+    await callback.message.edit_reply_markup(reply_markup=keyboards["podcast_handler"][language].FTP_menu)
     await callback.answer()
 
 
