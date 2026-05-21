@@ -8,3 +8,12 @@ topics:
   - name: publisher.ftp.result
     partitions: 1
     replication_factor: 1
+  - name: publisher.wordpress.upload
+    partitions: 1
+    replication_factor: 1
+    config:
+      cleanup.policy: delete
+      retention.ms: 604800000  # 7 дней
+  - name: publisher.wordpress.result
+    partitions: 1
+    replication_factor: 1
