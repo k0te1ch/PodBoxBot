@@ -1,70 +1,54 @@
-import importlib
 import inspect
-from typing import Union
+import json
+from pathlib import Path
+from typing import Any
 
 from loguru import logger
 
-from config import CONTEXT_FILE
 from services.none_module import _NoneModule
 
+LOCALES_DIR = Path(__file__).parent.parent / "locales"
 
-class _Context:
-    def __init__(self, _context_obj: object) -> None:
-        self._context_obj = _context_obj
 
-    def __getattr__(self, name: str) -> Union["_Context", None, str, list, dict]:
-        r = getattr(self._context_obj, name, None)
+class _LangWrapper:
+    def __init__(self, data: dict) -> None:
+        self._data = data
 
-        if r is None:
+    def __getattr__(self, name: str) -> Any:
+        value = self._data.get(name)
+        if value is None:
             return f'"{name}" is not defined.'
-
-        if isinstance(r, str):
+        if isinstance(value, str):
             frame = inspect.currentframe()
             try:
-                if frame is not None and frame.f_back is not None and frame.f_back.f_locals is not None:
-                    caller_locals = frame.f_back.f_locals
-                    r = r.format_map(caller_locals)
+                if frame and frame.f_back and frame.f_back.f_locals:
+                    value = value.format_map(frame.f_back.f_locals)
             finally:
                 del frame
-
-            return r
-
-        elif isinstance(r, (list, dict)):
-            return r
-
-        elif isinstance(r, type):
-            return _Context(r)
-
-    def __getitem__(self, name: str) -> Union["_Context", None, str, list, dict]:
-        r = getattr(self._context_obj, name, None)
-
-        if r is None:
-            return f'"{name}" is not defined.'
-
-        if isinstance(r, str):
-            frame = inspect.currentframe()
-            try:
-                if frame is not None and frame.f_back is not None and frame.f_back.f_locals is not None:
-                    caller_locals = frame.f_back.f_locals
-                    r = r.format_map(caller_locals)
-            finally:
-                del frame
-
-            return r
-
-        elif isinstance(r, (list, dict)):
-            return r
-
-        elif isinstance(r, type):
-            return _Context(r)
+        return value
 
 
-def _get_context_obj() -> _Context | _NoneModule:
-    if CONTEXT_FILE is not None:
-        _module = importlib.import_module(CONTEXT_FILE)
-        context = _Context(_module)
-    else:
-        context = _NoneModule("text", "CONTEXT_FILE")
+class I18nContext:
+    def __init__(self, locales_dir: Path = LOCALES_DIR) -> None:
+        self._translations: dict[str, dict] = {}
+        self._load(locales_dir)
 
-    logger.debug("Context file loaded")
+    def _load(self, locales_dir: Path) -> None:
+        for locale_file in sorted(locales_dir.glob("*.json")):
+            lang = locale_file.stem
+            with open(locale_file, encoding="utf-8") as f:
+                self._translations[lang] = json.load(f)
+            logger.debug(f"Locale loaded: {lang}")
+
+    def __getitem__(self, lang: str) -> _LangWrapper:
+        data = self._translations.get(lang) or self._translations.get("ru", {})
+        return _LangWrapper(data)
+
+
+def _get_context_obj() -> I18nContext | _NoneModule:
+    if not LOCALES_DIR.exists():
+        logger.warning(f"Locales directory not found: {LOCALES_DIR}")
+        return _NoneModule("text", "LOCALES_DIR")
+    context = I18nContext(LOCALES_DIR)
+    logger.debug("I18n context loaded")
     return context

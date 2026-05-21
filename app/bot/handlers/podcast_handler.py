@@ -148,7 +148,7 @@ async def get_MP3(msg: Message, state: FSMContext, bot: Bot, language: str, user
 
     await download_msg.edit_text(context[language].downloaded)
     await msg.answer(
-        context.ask_template[type_episode].replace("600", numberLastEpisode),
+        context[language].ask_template[type_episode].replace("600", numberLastEpisode),
         reply_markup=keyboards["podcast_handler"][language].cancel,
     )
     await state.set_state(UploadFile.template)
