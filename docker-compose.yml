@@ -1,18 +1,44 @@
 services:
+  # Заворачивает весь трафик telegram-bot-api в хостовый SOCKS (xray на :10808),
+  # т.к. сам telegram-bot-api ходит к DC Telegram по MTProto и HTTP(S)_PROXY игнорирует.
+  tun2socks:
+    container_name: podboxbot_tun2socks
+    image: xjasonlyu/tun2socks:latest
+    restart: always
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun
+    environment:
+      LOGLEVEL: info
+      PROXY: socks5://host.docker.internal:10808
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
+    expose:
+      - 8081
+    networks:
+      podboxbot_network:
+        aliases:
+          - api
+
   api:
     container_name: podboxbot_telegram_api
     image: aiogram/telegram-bot-api:latest
     restart: always
+    # делит сетевой namespace с tun2socks — весь исходящий трафик идёт через SOCKS
+    network_mode: "service:tun2socks"
+    depends_on:
+      tun2socks:
+        condition: service_started
     environment:
       TELEGRAM_API_ID: ${TELEGRAM_SERVER_API_ID}
       TELEGRAM_API_HASH: ${TELEGRAM_SERVER_API_HASH}
       TELEGRAM_LOCAL: ${LOCAL}
-    expose:
-      - 8081
     volumes:
       - telegram-bot-api-data:/var/lib/telegram-bot-api
-    networks:
-      - podboxbot_network
 
   bot:
     image: podboxbot_bot:latest
