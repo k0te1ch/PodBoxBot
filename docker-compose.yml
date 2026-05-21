@@ -55,8 +55,8 @@ services:
         condition: service_started
       redis:
         condition: service_healthy
-      kafka:
-        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
       schema-registry:
         condition: service_healthy
     networks:
@@ -156,6 +156,20 @@ services:
       timeout: 5s
       retries: 5
 
+  kafka-init:
+    container_name: podboxbot_kafka_init
+    build:
+      context: ./app/kafka
+      dockerfile: Dockerfile
+    depends_on:
+      kafka:
+        condition: service_healthy
+    networks:
+      - podboxbot_network
+    environment:
+      KAFKA_SERVER: "kafka:9092"
+    restart: "no"
+
   schema-watcher:
     build:
       context: .
@@ -184,8 +198,8 @@ services:
       dockerfile: ./app/publishers/FTP/Dockerfile
     restart: always
     depends_on:
-      kafka:
-        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
       schema-registry:
         condition: service_healthy
       pushgateway:
@@ -203,8 +217,8 @@ services:
       dockerfile: ./app/publishers/WordPress/Dockerfile
     restart: always
     depends_on:
-      kafka:
-        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
       schema-registry:
         condition: service_healthy
       pushgateway:
