@@ -71,7 +71,6 @@ class Settings(BaseSettings):
     KEYBOARDS_DIR: str | None = None
     HANDLERS_DIR: str | None = None
     MODELS_DIR: str | None = None
-    CONTEXT_FILE: str | None = None
     DEVELOPER: int | None = None
 
     ENABLE_APSCHEDULER: bool = False
@@ -179,7 +178,6 @@ REDIS_URL = settings.REDIS_URL
 KEYBOARDS_DIR = settings.KEYBOARDS_DIR
 HANDLERS_DIR = settings.HANDLERS_DIR
 MODELS_DIR = settings.MODELS_DIR
-CONTEXT_FILE = settings.CONTEXT_FILE
 DEVELOPER = settings.DEVELOPER
 
 ENABLE_APSCHEDULER = settings.ENABLE_APSCHEDULER

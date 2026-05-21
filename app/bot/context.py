@@ -1,2 +1,2 @@
-# Strings moved to app/bot/locales/{lang}.json
-# This file is kept for backward compatibility with CONTEXT_FILE config.
+# Strings live in app/bot/locales/{lang}.json
+# Loaded at startup by services.context.I18nContext
