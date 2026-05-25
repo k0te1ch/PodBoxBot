@@ -32,6 +32,7 @@ from utils.progress_callbacks import (
     monitor_file_progress,
     telegram_progress_callback,
 )
+from utils.template_store import save as save_template_info
 from utils.validators import validate_template
 
 router = Router(name=os.path.splitext(os.path.basename(__file__))[0])
@@ -39,9 +40,9 @@ router.message.filter(IsPrivate, IsAdmin)
 
 
 async def clear_old_mp3_files():
-    """Удаляет старые MP3-файлы."""
+    """Удаляет старые MP3-файлы и их sidecar-метаданные."""
     for item in FILES_PATH.iterdir():
-        if item.suffix == ".mp3" and item.is_file():
+        if item.is_file() and item.suffix in {".mp3", ".json"}:
             item.unlink()
 
     if LOCAL:
@@ -189,6 +190,8 @@ async def set_template(msg: Message, state: FSMContext, language: str, username:
     import eyed3
 
     af = eyed3.load(file)
+
+    await save_template_info(new_file_name, info, type_episode)
 
     await msg.reply_audio(
         CustomFSInputFile(file, new_file_name, progress_callback=progress_callback),

@@ -1,7 +1,7 @@
 import os
 
 from aiogram import Bot, F, Router
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import CallbackQuery
 from loguru import logger
 
 from config import FORWARD_CHAT_ID
@@ -9,7 +9,7 @@ from filters.dispatcher_filters import IsAdmin, IsPrivate
 from services import context, keyboards
 from utils.bot_methods import pin_message
 from utils.podcast_methods import generate_podcast_text
-from utils.validators import validate_template
+from utils.template_store import load as load_template_info
 
 router = Router(name=os.path.splitext(os.path.basename(__file__))[0])
 router.message.filter(IsPrivate, IsAdmin)
@@ -61,16 +61,13 @@ async def forward_yes(callback: CallbackQuery, bot: Bot, language: str, username
     logger.debug(f"[{username}]: Forwarding to chat {FORWARD_CHAT_ID}")
 
     try:
-        # Получаем текст шаблона из reply_to_message
-        message: Message = callback.message.reply_to_message
-        if not message or not message.text:
-            logger.warning(f"[{username}]: No reply message found")
+        file_name = callback.message.audio.file_name
+        stored = await load_template_info(file_name)
+        if stored is None:
+            logger.warning(f"[{username}]: template info not found for {file_name}")
             return await callback.answer(context[language].invalid_input, show_alert=True)
 
-        info = validate_template(message.text)
-        if info is None:
-            logger.warning(f"[{username}]: Invalid input in forward_yes")
-            return await callback.answer(context[language].invalid_input, show_alert=True)
+        info = stored["info"]
 
         # Генерация текста подкаста
         podcast_text = generate_podcast_text(info)

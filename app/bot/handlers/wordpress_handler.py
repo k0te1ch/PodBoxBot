@@ -9,7 +9,7 @@ from filters.dispatcher_filters import IsAdmin, IsPrivate
 from services import context, keyboards
 from shared.kafka.models.wordpress_event import WordPressEvent
 from shared.kafka.producer import KafkaProducer
-from utils.validators import validate_template
+from utils.template_store import load as load_template_info
 
 router = Router(name=os.path.splitext(os.path.basename(__file__))[0])
 router.message.filter(IsPrivate, IsAdmin)
@@ -21,11 +21,11 @@ SCHEMA_REGISTRY_URL = "http://schema-registry:8081"
 VALUE_SCHEMA_PATH = "/app/shared/kafka/schemas/wordpress_event.avsc"
 
 
-@router.callback_query(F.data == "WPMenu")
+@router.callback_query(F.data == "WP_menu")
 async def WP_menu(callback: CallbackQuery, language: str, username: str) -> None:
     logger.bind(username=username).debug("Открыто меню WordPress")
 
-    await callback.message.edit_reply_markup(reply_markup=keyboards["podcast_handler"][language].WPMenu)
+    await callback.message.edit_reply_markup(reply_markup=keyboards["podcast_handler"][language].WP_menu)
     await callback.answer()
 
 
@@ -33,14 +33,13 @@ async def WP_menu(callback: CallbackQuery, language: str, username: str) -> None
 async def upload_WP(callback: CallbackQuery, language: str, username: str) -> None:
     logger.bind(username=username).debug("Начата загрузка в WordPress")
 
-    message = callback.message.reply_to_message
-    if not message or not message.text:
+    file_name = callback.message.audio.file_name
+    stored = await load_template_info(file_name)
+    if stored is None:
+        logger.bind(username=username).warning(f"template info not found for {file_name}")
         return await callback.answer(context[language].invalid_input, show_alert=True)
 
-    info = validate_template(message.text)
-    if not info:
-        logger.bind(username=username).debug("Ошибка валидации шаблона")
-        return await callback.answer(context[language].invalid_input, show_alert=True)
+    info = stored["info"]
 
     audio = callback.message.audio
     info.update(
