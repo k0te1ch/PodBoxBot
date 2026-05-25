@@ -1,4 +1,5 @@
 import asyncio
+import itertools
 import os
 import time
 from collections.abc import AsyncGenerator, Callable
@@ -130,7 +131,7 @@ async def monitor_file_progress(
     """
     logger.debug("Monitor task created")
 
-    dots_cycle = iter([".", "..", "...", ""])
+    dots_cycle = itertools.cycle([".", "..", "...", ""])
     downloaded_size = 0
     mp3_file = None
     checked = False
