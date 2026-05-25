@@ -22,7 +22,12 @@ def _parse_ftl_value(value: str) -> Any:
     return trimmed
 
 
-def _collect_multiline(lines: list[str], index: int, first_line: str | None = None) -> tuple[str, int]:
+def _collect_multiline(
+    lines: list[str],
+    index: int,
+    first_line: str | None = None,
+    in_object: bool = False,
+) -> tuple[str, int]:
     content_lines: list[str] = []
     if first_line is not None:
         content_lines.append(first_line)
@@ -31,7 +36,10 @@ def _collect_multiline(lines: list[str], index: int, first_line: str | None = No
         line = lines[index].rstrip("\n")
         if not line or line[0] not in {" ", "\t"}:
             break
-        content_lines.append(line.lstrip(" \t"))
+        stripped = line.lstrip(" \t")
+        if in_object and stripped.startswith(".") and "=" in stripped:
+            break
+        content_lines.append(stripped)
         index += 1
 
     return "\n".join(content_lines), index
@@ -57,7 +65,7 @@ def _parse_ftl_object(lines: list[str], index: int) -> tuple[dict[str, Any], int
 
         if raw_value == "|" or raw_value.startswith("|"):
             first_line = raw_value[1:] if raw_value.startswith("|") else None
-            value, index = _collect_multiline(lines, index + 1, first_line)
+            value, index = _collect_multiline(lines, index + 1, first_line, in_object=True)
         else:
             value = _parse_ftl_value(raw_value)
             index += 1
@@ -109,16 +117,26 @@ class _LangWrapper:
         if value is None:
             return f'"{name}" is not defined.'
         if isinstance(value, str):
-            frame = inspect.currentframe()
-            try:
-                if frame and frame.f_back and frame.f_back.f_locals:
-                    value = value.format_map(frame.f_back.f_locals)
-            finally:
-                del frame
+            caller_locals = _find_caller_locals()
+            if caller_locals is not None:
+                value = value.format_map(caller_locals)
         return value
 
     def __getattr__(self, name: str) -> Any:
         return self[name]
+
+
+def _find_caller_locals() -> dict | None:
+    frame = inspect.currentframe()
+    try:
+        f = frame.f_back if frame else None
+        while f is not None:
+            if not isinstance(f.f_locals.get("self"), _LangWrapper):
+                return f.f_locals
+            f = f.f_back
+        return None
+    finally:
+        del frame
 
 
 class I18nContext:
