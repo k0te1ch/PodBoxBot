@@ -20,7 +20,7 @@ class TestWordPressInit:
         session_instance.cookies = {}
         session_instance.headers = {}
 
-        wp = WordPress("https://example.com", "user", "pass", "/tmp/cookie.pkl")
+        wp = WordPress("https://example.com", "user", "pass", "app-pass", "/tmp/cookie.pkl")
         assert wp._wp_url == "https://example.com"
         assert wp._session is not None
 
@@ -36,7 +36,7 @@ class TestWordPressInit:
         session_instance.cookies = {}
         session_instance.headers = {}
 
-        wp = WordPress("https://example.com/", "user", "pass", "/tmp/cookie.pkl")
+        wp = WordPress("https://example.com/", "user", "pass", "app-pass", "/tmp/cookie.pkl")
         assert wp._wp_url == "https://example.com"
 
 

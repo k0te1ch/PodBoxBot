@@ -17,19 +17,20 @@ from shared.kafka.models.wordpress_event import WordPressEvent
 from shared.kafka.producer import KafkaProducer
 
 # Kafka config
-KAFKA_SERVER = config.get("KAFKA_SERVER", str)
-UPLOAD_TOPIC = config.get("WP_UPLOAD_TOPIC", str, default="publisher.wordpress.upload")
-RESULT_TOPIC = config.get("WP_RESULT_TOPIC", str, default="publisher.wordpress.result")
+KAFKA_SERVER = config.KAFKA_SERVER
+UPLOAD_TOPIC = config.WP_UPLOAD_TOPIC
+RESULT_TOPIC = config.WP_RESULT_TOPIC
 GROUP_ID = "wordpress_group"
-SCHEMA_REGISTRY_URL = config.get("SCHEMA_REGISTRY_URL", str)
+SCHEMA_REGISTRY_URL = config.SCHEMA_REGISTRY_URL
 SCHEMA_PATH = "/app/shared/kafka/schemas/wordpress_event.avsc"
 
 # WordPress config
-WP_URL = config.get("WP_URL", str)
-WP_LOGIN = config.get("WP_LOGIN", str)
-WP_PASSWORD = config.get("WP_PASSWORD", str)
-WP_COOKIE_PATH = config.get("WP_COOKIE_PATH", str, default="/app/data/cookie.pkl")
-TIMEZONE = config.get("TIMEZONE", str, default="Europe/Moscow")
+WP_URL = config.WP_URL
+WP_LOGIN = config.WP_LOGIN
+WP_PASSWORD = config.WP_PASSWORD
+WP_APP_PASSWORD = config.WP_APP_PASSWORD
+WP_COOKIE_PATH = config.WP_COOKIE_PATH
+TIMEZONE = config.TIMEZONE
 
 
 async def handle_upload(payload: dict, producer: KafkaProducer):
@@ -54,7 +55,9 @@ async def handle_upload(payload: dict, producer: KafkaProducer):
             "duration": event.duration,
         }
 
-        with WordPress(WP_URL, WP_LOGIN, WP_PASSWORD, WP_COOKIE_PATH, TIMEZONE) as wp:
+        with WordPress(
+            WP_URL, WP_LOGIN, WP_PASSWORD, WP_APP_PASSWORD, WP_COOKIE_PATH, TIMEZONE
+        ) as wp:
             success = wp.upload_post(info)
 
         if success:

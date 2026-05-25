@@ -1,7 +1,9 @@
+import json
 import os
 import pickle
 import re
 from datetime import datetime
+from time import sleep
 
 import pytz
 import requests
@@ -9,17 +11,29 @@ from fake_useragent import UserAgent
 from loguru import logger
 from lxml import etree
 from requests import Response
+from requests.auth import HTTPBasicAuth
+
+HTTP_TIMEOUT = 30
+HTTP_RETRIES = 3
+HTTP_BACKOFF_BASE = 2.0
 
 
 class WordPress:
     """WordPress client for uploading posts via wp-admin form submission."""
 
     def __init__(
-        self, wp_url: str, wp_login: str, wp_password: str, cookie_path: str, timezone: str = "Europe/Moscow"
+        self,
+        wp_url: str,
+        wp_login: str,
+        wp_password: str,
+        wp_app_password: str,
+        cookie_path: str,
+        timezone: str = "Europe/Moscow",
     ):
         self._wp_url = wp_url.rstrip("/")
         self._wp_login = wp_login
         self._wp_password = wp_password
+        self._app_auth = HTTPBasicAuth(wp_login, wp_app_password) if wp_app_password else None
         self._cookie_path = cookie_path
         self._timezone = pytz.timezone(timezone)
         self._session: requests.Session | None = None
@@ -62,7 +76,11 @@ class WordPress:
             "redirect_to": f"{self._wp_url}/wp-admin/",
             "testcookie": 1,
         }
-        s = self._session.post(url, data=form)
+        try:
+            s = self._session.post(url, data=form, timeout=HTTP_TIMEOUT)
+        except requests.RequestException as e:
+            logger.error(f"Login POST failed: {e!r}")
+            return False
 
         if (
             s.status_code == 200
@@ -76,18 +94,32 @@ class WordPress:
                         name, value = part.strip().split("=", 1)
                         self._session.cookies[name.strip()] = value.strip()
 
-        s = self._session.post(url, data=form)
+        try:
+            s = self._session.post(url, data=form, timeout=HTTP_TIMEOUT)
+        except requests.RequestException as e:
+            logger.error(f"Login POST (second attempt) failed: {e!r}")
+            return False
+
         if (
             s.status_code == 200
             and f'document.location.href="{self._wp_url.replace("https", "http")}/wp-admin' in s.text
         ):
             return self._dump_cookies()
+        logger.warning(
+            f"Login did not produce expected redirect (status={s.status_code}); "
+            f"body[:300]={s.text[:300]!r}"
+        )
         return False
 
     def _check_session(self) -> bool:
+        try:
+            r = self._session.get(f"{self._wp_url}/wp-admin/", timeout=HTTP_TIMEOUT)
+        except requests.RequestException as e:
+            logger.warning(f"Session check request failed: {e!r}")
+            return False
         return (
             f'document.location.href="{self._wp_url.replace("https", "http")}/wp-login.php?redirect_to='
-            not in self._session.get(f"{self._wp_url}/wp-admin/").text
+            not in r.text
         )
 
     def _make_session(self) -> requests.Session:
@@ -101,14 +133,129 @@ class WordPress:
         if self._session:
             self._session.close()
 
+    def _rest_request(self, method: str, path: str, *, json_body: dict | None = None) -> Response:
+        """Authenticated REST API request via Application Password.
+
+        Uses a bare `requests.request` (not the cookie session) on purpose:
+        WordPress prefers cookie auth over basic auth when both are present,
+        and cookie auth on REST API requires an `X-WP-Nonce` header — without
+        it the server returns 401 `rest_forbidden`. Sending only Basic auth
+        avoids that ambiguity.
+        """
+        if self._app_auth is None:
+            raise RuntimeError("WP_APP_PASSWORD is not configured; REST API call impossible")
+        url = f"{self._wp_url}/wp-json{path}"
+        try:
+            r = requests.request(
+                method,
+                url,
+                json=json_body,
+                auth=self._app_auth,
+                headers={"Accept": "application/json", "User-Agent": self._user_agent},
+                timeout=HTTP_TIMEOUT,
+            )
+        except requests.RequestException as e:
+            logger.error(f"REST {method} {path} transport failed: {e!r}")
+            raise RuntimeError(f"REST {method} {path} transport failed: {e!r}") from e
+        if not r.ok:
+            logger.error(
+                f"REST {method} {path} returned HTTP {r.status_code}; body[:500]={r.text[:500]!r}"
+            )
+            raise RuntimeError(f"REST {method} {path} returned HTTP {r.status_code}")
+        return r
+
+    @staticmethod
+    def _extract_podlove_vue(html: str) -> dict | None:
+        """Parse the `podlove_vue` JS object embedded in the post-new page.
+
+        The page reserves both a WP post_id and a Podlove episode_id and prints
+        them as a JSON literal in an inline <script>. Returns the parsed dict
+        (with int post_id / episode_id) or None if not found / unparseable.
+        """
+        m = re.search(r"var\s+podlove_vue\s*=\s*(\{.*?\})\s*;", html)
+        if not m:
+            return None
+        try:
+            data = json.loads(m.group(1))
+        except json.JSONDecodeError:
+            return None
+        try:
+            data["post_id"] = int(data["post_id"])
+            data["episode_id"] = int(data["episode_id"])
+        except (KeyError, ValueError, TypeError):
+            return None
+        return data
+
+    @staticmethod
+    def _format_duration(seconds) -> str:
+        try:
+            total = int(seconds)
+        except (TypeError, ValueError):
+            return str(seconds)
+        h, rem = divmod(total, 3600)
+        m, s = divmod(rem, 60)
+        return f"{h:02d}:{m:02d}:{s:02d}"
+
+    def _update_podlove_episode(self, episode_id: int, info: dict) -> None:
+        payload = {
+            "title": info["title"],
+            "summary": info["comment"],
+            "number": int(info["number"]) if str(info["number"]).isdigit() else info["number"],
+            "slug": info["slug"],
+            "duration": self._format_duration(info["duration"]),
+            "type": "full",
+        }
+        self._rest_request("POST", f"/podlove/v2/episodes/{episode_id}", json_body=payload)
+        logger.debug(f"Podlove episode {episode_id} metadata updated")
+
+    def _update_podlove_chapters(self, episode_id: int, chapters: list) -> None:
+        payload = {"chapters": [{"start": start, "title": title} for start, title in chapters]}
+        self._rest_request("POST", f"/podlove/v2/chapters/{episode_id}", json_body=payload)
+        logger.debug(f"Podlove episode {episode_id} chapters updated ({len(chapters)} entries)")
+
+    def _get_with_retry(self, url: str) -> Response:
+        """GET with timeout and exponential backoff on transport/5xx errors.
+
+        Retries on connection errors, timeouts, and 5xx responses. Returns
+        the final Response (which may still be a 4xx) once retries are
+        exhausted or a non-5xx is received. Raises RuntimeError if every
+        attempt fails at the transport layer.
+        """
+        last_error: Exception | None = None
+        for attempt in range(1, HTTP_RETRIES + 1):
+            try:
+                r = self._session.get(url, timeout=HTTP_TIMEOUT)
+            except requests.RequestException as e:
+                last_error = e
+                logger.warning(f"GET {url} failed on attempt {attempt}/{HTTP_RETRIES}: {e!r}")
+            else:
+                if r.status_code < 500:
+                    return r
+                last_error = RuntimeError(f"server returned {r.status_code}")
+                logger.warning(
+                    f"GET {url} returned {r.status_code} on attempt {attempt}/{HTTP_RETRIES}; "
+                    f"body[:300]={r.text[:300]!r}"
+                )
+            if attempt < HTTP_RETRIES:
+                sleep(HTTP_BACKOFF_BASE ** (attempt - 1))
+        raise RuntimeError(f"GET {url} failed after {HTTP_RETRIES} attempts: {last_error!r}")
+
     def upload_post(self, info: dict) -> bool:
         """Upload a podcast post to WordPress. Returns True on success."""
         logger.debug("Starting post upload process")
-        post = self._session.get(f"{self._wp_url}/wp-admin/post-new.php?post_type=podcast").content
+        post_new_url = f"{self._wp_url}/wp-admin/post-new.php?post_type=podcast"
+        response = self._get_with_retry(post_new_url)
 
-        logger.debug("Retrieved post content from WordPress")
+        if not response.ok:
+            logger.error(
+                f"wp-admin post-new page returned HTTP {response.status_code}; "
+                f"body[:500]={response.text[:500]!r}"
+            )
+            raise RuntimeError(f"WordPress returned HTTP {response.status_code} for post-new page")
 
-        html_dom = etree.HTML(post, etree.HTMLParser())
+        logger.debug(f"Retrieved post content from WordPress (status={response.status_code})")
+
+        html_dom = etree.HTML(response.content, etree.HTMLParser())
         podcastID = info["number"]
         name = info["title"]
         summary = info["comment"]
@@ -151,19 +298,6 @@ class WordPress:
             "post_category[]": "3",
             "newcategory": "Название новой рубрики",
             "newcategory_parent": "-1",
-            "_podlove_meta[number]": podcastID,
-            "_podlove_meta[title]": name,
-            "_podlove_meta[summary]": summary,
-            "_podlove_meta[type]": "full",
-            "episode_contributor[0][1][id]": "1",
-            "episode_contributor[0][1][comment]": "",
-            "episode_contributor[0][3][id]": "3",
-            "episode_contributor[0][3][comment]": "",
-            "_podlove_meta[recording_date]": time.strftime("%Y-%m-%d"),
-            "_podlove_meta[slug]": info["slug"],
-            "_podlove_meta[chapters]": "\n".join(" ".join(x) for x in info["chapters"]),
-            "_podlove_meta[duration]": info["duration"],
-            "_podlove_meta[episode_assets][1]": "on",
             "trackback_url": "",
             "metakeyselect": "big_post",
             "metakeyinput": "",
@@ -176,18 +310,32 @@ class WordPress:
             "_wp_original_http_referer": f"{self._wp_url}/wp-admin/profile.php",
             "tax_input[post_tag]": ",".join(info["tags"]),
             "newtag[post_tag]": "",
-            "_podlove_meta[subtitle]": "",
             "_thumbnail_id": "6038",
         }
         form_element = html_dom.find('.//form[@name="post"]')
         if form_element is None:
-            logger.error("Could not find post form in WordPress page — session may be expired")
-            # Retry login and try once more
-            self._login()
-            post = self._session.get(f"{self._wp_url}/wp-admin/post-new.php?post_type=podcast").content
-            html_dom = etree.HTML(post, etree.HTMLParser())
+            logger.warning(
+                f"Post form not found on first try — re-logging in; "
+                f"body[:500]={response.text[:500]!r}"
+            )
+            if not self._login():
+                raise RuntimeError("Re-login to WordPress failed")
+            response = self._get_with_retry(post_new_url)
+            if not response.ok:
+                logger.error(
+                    f"wp-admin post-new page returned HTTP {response.status_code} after re-login; "
+                    f"body[:500]={response.text[:500]!r}"
+                )
+                raise RuntimeError(
+                    f"WordPress returned HTTP {response.status_code} for post-new page after re-login"
+                )
+            html_dom = etree.HTML(response.content, etree.HTMLParser())
             form_element = html_dom.find('.//form[@name="post"]')
             if form_element is None:
+                logger.error(
+                    f"Post form still not found after re-login; "
+                    f"body[:500]={response.text[:500]!r}"
+                )
                 raise RuntimeError("Failed to find WordPress post form after re-login")
 
         for field in form_element.xpath('.//input[@type="hidden"]'):
@@ -195,11 +343,42 @@ class WordPress:
             if field["name"] not in form:
                 form[field["name"]] = field["value"]
 
+        podlove_vue = self._extract_podlove_vue(response.text)
+        if podlove_vue is None:
+            logger.error(
+                f"Could not extract podlove_vue from post-new page; "
+                f"body[:500]={response.text[:500]!r}"
+            )
+            raise RuntimeError("podlove_vue (post_id/episode_id) not found in post-new page")
+        logger.debug(
+            f"Podlove reserved post_id={podlove_vue['post_id']}, "
+            f"episode_id={podlove_vue['episode_id']}"
+        )
+
         logger.debug("Submitting post data to WordPress")
-        response: Response = self._session.post(f"{self._wp_url}/wp-admin/post.php", data=form)
+        try:
+            response = self._session.post(
+                f"{self._wp_url}/wp-admin/post.php", data=form, timeout=HTTP_TIMEOUT
+            )
+        except requests.RequestException as e:
+            logger.error(f"Post submit failed: {e!r}")
+            raise RuntimeError(f"WordPress post submit failed: {e!r}") from e
         logger.debug(f"Uploaded post with response code: {response.status_code}")
 
-        if response.status_code in (200, 301, 302):
-            self._dump_cookies()
-            return True
-        return False
+        if response.status_code not in (200, 301, 302):
+            logger.error(
+                f"Post submit returned HTTP {response.status_code}; "
+                f"body[:500]={response.text[:500]!r}"
+            )
+            return False
+
+        self._dump_cookies()
+
+        logger.debug(
+            f"Post saved (post_id={podlove_vue['post_id']}); "
+            f"updating Podlove episode_id={podlove_vue['episode_id']}"
+        )
+        self._update_podlove_episode(podlove_vue["episode_id"], info)
+        if info.get("chapters"):
+            self._update_podlove_chapters(podlove_vue["episode_id"], info["chapters"])
+        return True
