@@ -1,16 +1,10 @@
 # config.py — shared config for microservices (Pydantic-settings)
 
-import os
 import sys
-from collections.abc import Callable
 from pathlib import Path
-from typing import Any, TypeVar
 
 from loguru import logger
 from pydantic_settings import BaseSettings, SettingsConfigDict
-
-T = TypeVar("T")
-
 
 # === ENV FILE DISCOVERY ===
 
@@ -49,6 +43,7 @@ class SharedSettings(BaseSettings):
     KAFKA_SERVER: str = "kafka:9092"
     SCHEMA_REGISTRY_URL: str = "http://schema-registry:8081"
     UPLOAD_TOPIC: str = "publisher.ftp.upload"
+    RESULT_TOPIC: str = "publisher.ftp.result"
 
     # FTP
     FTP_SERVER: str | None = None
@@ -60,42 +55,17 @@ class SharedSettings(BaseSettings):
     WP_URL: str | None = None
     WP_LOGIN: str | None = None
     WP_PASSWORD: str | None = None
+    WP_APP_PASSWORD: str | None = None
     WP_UPLOAD_TOPIC: str = "publisher.wordpress.upload"
+    WP_RESULT_TOPIC: str = "publisher.wordpress.result"
     WP_COOKIE_PATH: str = "/app/data/cookie.pkl"
 
     # Metrics
     PUSHGATEWAY_URL: str = "http://localhost:9091"
 
-    def get(
-        self,
-        key: str,
-        type_: Callable[[str], T] = str,
-        default: Any = None,
-        required: bool = False,
-    ) -> T:
-        """Backward-compatible getter matching the old config.get() API."""
-        val = getattr(self, key, None)
-        if val is None:
-            # Fallback to env vars not in the model
-            raw = os.getenv(key)
-            if raw is None or raw.strip().lower() in ("none", ""):
-                if required:
-                    raise KeyError(f"Required environment variable '{key}' is missing.")
-                return default
-            try:
-                if type_ is bool:
-                    return raw.lower() in {"true", "1", "yes", "on"}
-                return type_(raw)
-            except Exception:
-                return default
-        return val
-
 
 # Singleton
 settings = SharedSettings()
-
-# === Backward-compatible module-level alias ===
-config = settings
 
 # === PATHS ===
 PROJECT_PATH = Path.cwd()

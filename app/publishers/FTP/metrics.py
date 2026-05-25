@@ -6,7 +6,7 @@ from loguru import logger
 from shared.config import config
 
 # Pushgateway config
-PUSHGATEWAY_URL = config.get("PUSHGATEWAY_URL", str, default="http://localhost:9091")
+PUSHGATEWAY_URL = config.PUSHGATEWAY_URL
 
 # Prometheus metrics
 registry = Registry()

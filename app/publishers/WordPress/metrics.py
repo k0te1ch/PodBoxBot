@@ -5,7 +5,7 @@ from loguru import logger
 
 from shared.config import config
 
-PUSHGATEWAY_URL = config.get("PUSHGATEWAY_URL", str, default="http://localhost:9091")
+PUSHGATEWAY_URL = config.PUSHGATEWAY_URL
 
 registry = Registry()
 wp_upload_success_counter = Counter(

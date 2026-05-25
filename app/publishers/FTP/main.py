@@ -19,18 +19,18 @@ from shared.kafka.models.upload_event import UploadEvent
 from shared.kafka.producer import KafkaProducer
 
 # Kafka config
-KAFKA_SERVER = config.get("KAFKA_SERVER", str)
-UPLOAD_TOPIC = config.get("UPLOAD_TOPIC", str)
-RESULT_TOPIC = config.get("RESULT_TOPIC", str, default="publisher.ftp.result")
+KAFKA_SERVER = config.KAFKA_SERVER
+UPLOAD_TOPIC = config.UPLOAD_TOPIC
+RESULT_TOPIC = config.RESULT_TOPIC
 GROUP_ID = "ftp_group"
-SCHEMA_REGISTRY_URL = config.get("SCHEMA_REGISTRY_URL", str)
+SCHEMA_REGISTRY_URL = config.SCHEMA_REGISTRY_URL
 SCHEMA_PATH = "/app/shared/kafka/schemas/upload_event.avsc"
 
 # FTP config
-FTP_SERVER = config.get("FTP_SERVER", str)
-FTP_LOGIN = config.get("FTP_LOGIN", str)
-FTP_PASSWORD = config.get("FTP_PASSWORD", str)
-FTP_POSTSHOW_DIR = config.get("FTP_POSTSHOW_DIR", str, default="postshow")
+FTP_SERVER = config.FTP_SERVER
+FTP_LOGIN = config.FTP_LOGIN
+FTP_PASSWORD = config.FTP_PASSWORD
+FTP_POSTSHOW_DIR = config.FTP_POSTSHOW_DIR
 
 
 async def upload_to_ftp(
