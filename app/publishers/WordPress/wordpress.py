@@ -64,63 +64,110 @@ class WordPress:
             return True
         return False
 
+    @staticmethod
+    def _extract_login_error(html: str) -> str | None:
+        """Pull the inner text of WP's <div id="login_error"> if present.
+
+        Modern WP renders auth failures inline as
+            <div id="login_error" role="alert">
+              <strong>Error:</strong> The password you entered ...
+            </div>
+        That's the single best signal the form was rejected (vs. genuine
+        cookie/CSRF problems).
+        """
+        m = re.search(
+            r'<div[^>]*id=["\']login_error["\'][^>]*>(.*?)</div>',
+            html,
+            re.DOTALL | re.IGNORECASE,
+        )
+        if not m:
+            return None
+        text = re.sub(r"<[^>]+>", " ", m.group(1))
+        return re.sub(r"\s+", " ", text).strip()
+
     def _login(self) -> bool:
+        """Form-based wp-login.php auth. Sets auth cookies in session on success.
+
+        WP requires the wordpress_test_cookie to be present on POST — a JS
+        snippet on the login page sets it client-side, so a bare POST without
+        the cookie is rejected silently (server returns the login page again).
+        We set it explicitly. We disable redirect-following so we can detect
+        success directly by the 302 + Location header WP emits on successful
+        auth; that's far more reliable than scraping a legacy JS redirect from
+        the rendered body.
+        """
         url = f"{self._wp_url}/wp-login.php"
-        self._session.cookies["wordpress_test_cookie"] = "WP Cookie check"
-        self._session.cookies["wp_lang"] = "ru_RU"
+
+        # Prime cookies: a GET lets WP set any cookies it expects to see
+        # back on POST (some setups also set wordpress_test_cookie here).
+        try:
+            self._session.get(url, timeout=HTTP_TIMEOUT)
+        except requests.RequestException as e:
+            logger.warning(f"Login priming GET failed: {e!r} — proceeding anyway")
+
+        # WP's JS sets this client-side; the form is rejected without it.
+        self._session.cookies.set("wordpress_test_cookie", "WP Cookie check")
+        self._session.cookies.set("wp_lang", "ru_RU")
+
         form = {
             "log": self._wp_login,
             "pwd": self._wp_password,
             "rememberme": "forever",
             "wp-submit": "Войти",
             "redirect_to": f"{self._wp_url}/wp-admin/",
-            "testcookie": 1,
+            "testcookie": "1",
         }
         try:
-            s = self._session.post(url, data=form, timeout=HTTP_TIMEOUT)
+            s = self._session.post(url, data=form, timeout=HTTP_TIMEOUT, allow_redirects=False)
         except requests.RequestException as e:
             logger.error(f"Login POST failed: {e!r}")
             return False
 
-        if (
-            s.status_code == 200
-            and f'document.location.href="{self._wp_url.replace("https", "http")}/wp-login.php' in s.text
-        ):
-            cookie_matches = re.findall(r'document\.cookie="(.*?)";', s.text)
-            for match in cookie_matches:
-                cookie_parts = match.split(";")
-                for part in cookie_parts:
-                    if "=" in part:
-                        name, value = part.strip().split("=", 1)
-                        self._session.cookies[name.strip()] = value.strip()
-
-        try:
-            s = self._session.post(url, data=form, timeout=HTTP_TIMEOUT)
-        except requests.RequestException as e:
-            logger.error(f"Login POST (second attempt) failed: {e!r}")
+        # Successful auth: WP emits 302 to redirect_to AND sets wordpress_logged_in_<hash>.
+        if s.status_code in (301, 302):
+            location = s.headers.get("Location", "")
+            has_auth_cookie = any(
+                c.name.startswith("wordpress_logged_in_") for c in self._session.cookies
+            )
+            if has_auth_cookie:
+                logger.debug(f"Login ok (redirect to {location})")
+                return self._dump_cookies()
+            logger.warning(
+                f"Login got 3xx to {location!r} but no wordpress_logged_in_* cookie was set; "
+                f"cookies={[c.name for c in self._session.cookies]}"
+            )
             return False
 
-        if (
-            s.status_code == 200
-            and f'document.location.href="{self._wp_url.replace("https", "http")}/wp-admin' in s.text
-        ):
-            return self._dump_cookies()
-        logger.warning(
-            f"Login did not produce expected redirect (status={s.status_code}); "
-            f"body[:300]={s.text[:300]!r}"
-        )
+        # 200 with form re-served = auth rejected. Try to surface why.
+        err = self._extract_login_error(s.text) if s.status_code == 200 else None
+        if err:
+            logger.error(f"WordPress rejected login: {err}")
+        else:
+            logger.warning(
+                f"Login did not produce expected 302 (status={s.status_code}); "
+                f"no <div id=\"login_error\"> in body; body[:300]={s.text[:300]!r}"
+            )
         return False
 
     def _check_session(self) -> bool:
+        """True iff the cookie session has a valid WP login.
+
+        Done by hitting wp-admin with allow_redirects=False: an authed session
+        gets 200, an anonymous one gets 302 to wp-login.php. Robust across WP
+        versions; the previous text-scrape heuristic broke on WP 6.x.
+        """
         try:
-            r = self._session.get(f"{self._wp_url}/wp-admin/", timeout=HTTP_TIMEOUT)
+            r = self._session.get(
+                f"{self._wp_url}/wp-admin/", timeout=HTTP_TIMEOUT, allow_redirects=False
+            )
         except requests.RequestException as e:
             logger.warning(f"Session check request failed: {e!r}")
             return False
-        return (
-            f'document.location.href="{self._wp_url.replace("https", "http")}/wp-login.php?redirect_to='
-            not in r.text
-        )
+        if r.status_code in (301, 302):
+            loc = r.headers.get("Location", "")
+            if "wp-login.php" in loc:
+                return False
+        return r.status_code == 200
 
     def _make_session(self) -> requests.Session:
         self._session = requests.Session()
