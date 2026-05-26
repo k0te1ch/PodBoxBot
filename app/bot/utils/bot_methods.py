@@ -15,6 +15,7 @@ from loguru import logger
 
 from config import ADMINS_ID, FILES_PATH, LOGS_PATH
 from services import redis
+from services.none_module import _NoneModule
 
 # TODO: Рестарт бота
 
@@ -113,6 +114,15 @@ async def get_release_note():
 
 
 async def check_version() -> bool:
+    """True if pyproject.toml version differs from what's stored in redis.
+
+    Without redis we have no place to persist the last-seen version, so
+    every restart would look like a fresh release — skip silently instead.
+    """
+    if isinstance(redis, _NoneModule):
+        logger.debug("Redis is not configured; skipping version check")
+        return False
+
     bot_version = await redis.get("bot_version")
     current_bot_version = await get_version()
 

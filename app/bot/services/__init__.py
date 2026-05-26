@@ -7,8 +7,7 @@ from config import API_HASH, API_ID
 from .context import I18nContext, _get_context_obj
 from .kafka.router import router as kafka_router
 from .keyboards import _get_keyboards_obj, _Keyboards
-from .none_module import _NoneModule
-from .redis import _get_redis_obj
+from .redis import redis  # eagerly initialized singleton — see note below
 from .telegram_updater import TelegramUpdater
 
 # i18n context is loaded eagerly — locales are always present in source
@@ -41,8 +40,16 @@ class _KeyboardsRegistry:
         return getattr(self._ensure(), name)
 
 
-# remaining services are lazy (depend on runtime config / connections)
-redis = _NoneModule("redis", "REDIS_URL")
+# `redis` is re-exported from .redis where it's eagerly built at module
+# import time — Redis.from_url() doesn't actually open a socket, so it's
+# safe pre-event-loop. We re-export instead of reassigning in
+# init_services() because `from services import redis` in other modules
+# (utils/bot_methods.py, services/scheduler.py, main.py) captures the
+# name at *import* time; later reassignment here would not propagate to
+# those modules, leaving them stuck with whatever was bound first.
+# `keyboards` solves the same problem via an in-place-mutated registry
+# below, because its data needs the bot instance.
+
 telegram_updater: TelegramUpdater | None = None
 keyboards = _KeyboardsRegistry()
 telethon_client: TelegramClient | None = None
@@ -55,9 +62,8 @@ def _get_telethon_client_obj() -> TelegramClient:
 
 def init_services(bot: Bot):
     """Централизованная инициализация сервисов"""
-    global redis, telegram_updater, telethon_client
+    global telegram_updater, telethon_client
 
-    redis = _get_redis_obj()
     telegram_updater = TelegramUpdater(bot)
     keyboards._load(_get_keyboards_obj())
     telethon_client = _get_telethon_client_obj()
