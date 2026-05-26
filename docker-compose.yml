@@ -49,6 +49,10 @@ services:
     build:
       context: .
       dockerfile: ./app/bot/Dockerfile
+      # Без target классический docker-сборщик (без BuildKit) проходит ВСЕ
+      # stage’и подряд, включая `test`, где poetry install --with dev
+      # тянет aiogram-tests из git и падает на poetry/dulwich-баге.
+      target: final
     environment:
       TG_SERVER: "http://api:8081"
     depends_on:
