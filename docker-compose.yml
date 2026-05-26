@@ -67,9 +67,9 @@ services:
       target: final
     environment:
       TG_SERVER: "http://api:8081"
-      # Собираем URL из REDIS_PASSWORD автоматом — единый источник правды
-      # для пароля redis. В .env держать REDIS_URL не надо.
-      REDIS_URL: "redis://:${REDIS_PASSWORD}@redis:6379/0"
+      # REDIS_URL не передаём — бот собирает его сам в config.py из
+      # REDIS_PASSWORD с URL-encoding (защита от спецсимволов в пароле).
+      # REDIS_PASSWORD приходит через .env-mount ниже.
     depends_on:
       api:
         condition: service_started

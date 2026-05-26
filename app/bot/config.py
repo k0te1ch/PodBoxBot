@@ -67,6 +67,11 @@ class Settings(BaseSettings):
     DATABASE_URL: str | None = None
     REDIS_URL: str | None = None
     REDIS_PASSWORD: str | None = None
+    # Хост/порт для авто-сборки REDIS_URL когда явный URL не задан.
+    # Дефолты совпадают с docker-compose; для bare-metal зайти через REDIS_URL.
+    REDIS_HOST: str = "redis"
+    REDIS_PORT: int = 6379
+    REDIS_DB: int = 0
 
     # DIRECTORIES / FILES
     KEYBOARDS_DIR: str | None = None
@@ -174,7 +179,18 @@ PROXY_AUTH = settings.PROXY_AUTH
 # Database
 DATABASE = settings.DATABASE
 DATABASE_URL = settings.DATABASE_URL
-REDIS_URL = settings.REDIS_URL
+
+# REDIS_URL: либо явный (для bare-metal), либо собираем из
+# REDIS_PASSWORD + REDIS_HOST/PORT/DB с URL-encoding пароля (защищает
+# от спецсимволов: @, :, /, #, ?, &, %).
+_REDIS_URL = settings.REDIS_URL
+if _REDIS_URL is None and settings.REDIS_PASSWORD:
+    from urllib.parse import quote
+    _REDIS_URL = (
+        f"redis://:{quote(settings.REDIS_PASSWORD, safe='')}"
+        f"@{settings.REDIS_HOST}:{settings.REDIS_PORT}/{settings.REDIS_DB}"
+    )
+REDIS_URL = _REDIS_URL
 
 # Directories
 KEYBOARDS_DIR = settings.KEYBOARDS_DIR
