@@ -16,7 +16,8 @@
 # Не предназначен для прода с горячим трафиком — на первой выкатке окей,
 # для апгрейдов используй `docker compose up -d --build` отдельно.
 #
-# Зависимости: bash 4+, docker, docker compose v2, curl, jq.
+# Зависимости: bash 4+, docker, docker compose (v2 предпочтительно, v1 тоже
+# поддерживается), curl, jq.
 
 set -euo pipefail
 
@@ -25,7 +26,8 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
 BACKUP_DIR="$REPO_ROOT/backups/$(date -u +%Y-%m-%dT%H-%M-%SZ)"
-COMPOSE="docker compose"
+# COMPOSE задаётся в preflight() по результату детекта v1/v2.
+COMPOSE=""
 SMOKE_TOPIC="bootstrap.smoke.$(date -u +%s)"
 WAIT_HEALTHY_TIMEOUT=180  # секунд на healthcheck одного сервиса
 WAIT_INIT_TIMEOUT=120     # секунд на kafka-init
@@ -53,7 +55,8 @@ die()       { log_err "$*"; exit 1; }
 cleanup() {
   local rc=$?
   # Прибираем за smoke-тестом, даже если упали посередине.
-  if $COMPOSE ps --status running --services 2>/dev/null | grep -qx kafka; then
+  # Проверяем kafka напрямую через docker ps, чтобы не зависеть от опций compose.
+  if [[ -n "$COMPOSE" ]] && docker ps --format '{{.Names}}' 2>/dev/null | grep -qx podboxbot_kafka; then
     if $COMPOSE exec -T kafka kafka-topics \
          --bootstrap-server kafka:9092 --list 2>/dev/null \
        | grep -qx "$SMOKE_TOPIC"; then
@@ -74,7 +77,18 @@ preflight() {
   for cmd in docker curl jq; do
     command -v "$cmd" >/dev/null || die "не найден '$cmd' — установи и повтори"
   done
-  docker compose version >/dev/null 2>&1 || die "docker compose v2 не доступен"
+
+  # Детект compose v2 -> v1. v2 предпочтительнее (v1 EOL с июля 2023).
+  if docker compose version >/dev/null 2>&1; then
+    COMPOSE="docker compose"
+    log_info "  compose: v2 ($(docker compose version --short 2>/dev/null || echo '?'))"
+  elif command -v docker-compose >/dev/null 2>&1; then
+    COMPOSE="docker-compose"
+    log_warn "  compose: v1 ($(docker-compose --version 2>/dev/null | head -1)) — устарел, рекомендую"
+    log_warn "  поставить плагин v2: sudo apt-get install docker-compose-plugin"
+  else
+    die "ни 'docker compose' (v2), ни 'docker-compose' (v1) не доступны"
+  fi
 
   [[ -f "$REPO_ROOT/.env" ]] || die ".env не найден в $REPO_ROOT (скопируй .env.example и заполни)"
   [[ -f "$REPO_ROOT/docker-compose.yml" ]] || die "docker-compose.yml не найден"
@@ -140,7 +154,13 @@ backup_volumes() {
 # === ФАЗА 2: PULL + BUILD ===
 pull_and_build() {
   log_info "Phase 2: pull + build образов"
-  $COMPOSE pull --ignore-buildable
+  # --ignore-buildable есть только в v2; в v1 просто игнорим ошибки на build-only
+  # сервисах (они всё равно соберутся следующим шагом).
+  if [[ "$COMPOSE" == "docker compose" ]]; then
+    $COMPOSE pull --ignore-buildable
+  else
+    $COMPOSE pull 2>&1 | grep -vE "(no such image|pull access denied)" || true
+  fi
   $COMPOSE build
   log_ok "образы готовы"
 }
