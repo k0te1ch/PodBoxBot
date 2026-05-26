@@ -6,6 +6,9 @@ files/*.mp3
 files/*.pkl
 anon.session
 
+# bootstrap.sh volume backups
+backups/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
