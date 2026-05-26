@@ -26,8 +26,11 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
 BACKUP_DIR="$REPO_ROOT/backups/$(date -u +%Y-%m-%dT%H-%M-%SZ)"
-# COMPOSE задаётся в preflight() по результату детекта v1/v2.
+# COMPOSE — команда compose; задаётся в preflight() по результату детекта v1/v2.
+# COMPOSE_FILE — какой compose-файл использовать. По умолчанию docker-compose.yml
+# (с tun2socks); для прямого режима без прокси передай -f docker-compose.direct.yml.
 COMPOSE=""
+COMPOSE_FILE="docker-compose.yml"
 SMOKE_TOPIC="bootstrap.smoke.$(date -u +%s)"
 WAIT_HEALTHY_TIMEOUT=180  # секунд на healthcheck одного сервиса
 WAIT_INIT_TIMEOUT=120     # секунд на kafka-init
@@ -50,6 +53,40 @@ log_ok()    { printf '\033[32m[+]\033[0m %s\n' "$*"; }
 log_warn()  { printf '\033[33m[!]\033[0m %s\n' "$*" >&2; }
 log_err()   { printf '\033[31m[x]\033[0m %s\n' "$*" >&2; }
 die()       { log_err "$*"; exit 1; }
+
+usage() {
+  cat <<EOF
+usage: $(basename "$0") [-f FILE] [-h]
+
+Bootstraps PodBoxBot stack on a fresh prod host.
+
+Options:
+  -f, --file FILE   compose-файл (по умолчанию: docker-compose.yml).
+                    Для прямого режима без tun2socks: docker-compose.direct.yml.
+  -h, --help        эта справка.
+EOF
+}
+
+parse_args() {
+  while (( $# > 0 )); do
+    case "$1" in
+      -f|--file)
+        [[ $# -ge 2 ]] || die "$1 требует аргумент"
+        COMPOSE_FILE="$2"
+        shift 2
+        ;;
+      -h|--help)
+        usage; exit 0
+        ;;
+      *)
+        log_err "неизвестный аргумент: $1"
+        usage >&2
+        exit 2
+        ;;
+    esac
+  done
+  [[ -f "$REPO_ROOT/$COMPOSE_FILE" ]] || die "compose-файл не найден: $REPO_ROOT/$COMPOSE_FILE"
+}
 
 # === CLEANUP ===
 cleanup() {
@@ -80,12 +117,13 @@ preflight() {
 
   # Детект compose v2 -> v1. v2 предпочтительнее (v1 EOL с июля 2023).
   if docker compose version >/dev/null 2>&1; then
-    COMPOSE="docker compose"
-    log_info "  compose: v2 ($(docker compose version --short 2>/dev/null || echo '?'))"
+    COMPOSE="docker compose -f $COMPOSE_FILE"
+    log_info "  compose: v2 ($(docker compose version --short 2>/dev/null || echo '?')), file=$COMPOSE_FILE"
   elif command -v docker-compose >/dev/null 2>&1; then
-    COMPOSE="docker-compose"
+    COMPOSE="docker-compose -f $COMPOSE_FILE"
     log_warn "  compose: v1 ($(docker-compose --version 2>/dev/null | head -1)) — устарел, рекомендую"
     log_warn "  поставить плагин v2: sudo apt-get install docker-compose-plugin"
+    log_info "  file=$COMPOSE_FILE"
   else
     die "ни 'docker compose' (v2), ни 'docker-compose' (v1) не доступны"
   fi
@@ -347,6 +385,7 @@ print_summary() {
 
 # === MAIN ===
 main() {
+  parse_args "$@"
   preflight
   backup_volumes
   pull_and_build

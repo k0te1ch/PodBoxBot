@@ -1,55 +1,33 @@
-# docker-compose.yml — конфиг С tun2socks (дефолт).
+# docker-compose.direct.yml — конфиг БЕЗ tun2socks.
 #
-# Для хостов, где Telegram заблокирован на сетевом уровне: telegram-bot-api
-# заворачивается в SOCKS-прокси на хосте (xray на :10808). Парный файл
-# docker-compose.direct.yml — то же самое без прокси, для хостов с прямым
-# доступом.
+# Используй, когда хост имеет прямой доступ к Telegram DC (нет блокировок
+# на сетевом уровне). telegram-bot-api ходит напрямую, без SOCKS-прокси.
 #
 # Запуск:
-#   docker compose up -d --build              # этот файл (с tun2socks)
-#   ./utils/bootstrap.sh                      # через bootstrap, по умолчанию этот файл
-#   ./utils/bootstrap.sh -f docker-compose.direct.yml   # без tun2socks
+#   docker compose -f docker-compose.direct.yml up -d --build
+#
+# Или через bootstrap.sh:
+#   ./utils/bootstrap.sh --file docker-compose.direct.yml
+#
+# Парный файл docker-compose.yml — версия С tun2socks (для прода за
+# блокировками). Всё, что отличается, — это сервис tun2socks (отсутствует
+# здесь) и сетевая конфигурация api (использует обычную bridge-сеть
+# вместо netns tun2socks).
 
 services:
-  # Заворачивает весь трафик telegram-bot-api в хостовый SOCKS (xray на :10808),
-  # т.к. сам telegram-bot-api ходит к DC Telegram по MTProto и HTTP(S)_PROXY игнорирует.
-  tun2socks:
-    container_name: podboxbot_tun2socks
-    image: xjasonlyu/tun2socks:latest
-    restart: always
-    cap_add:
-      - NET_ADMIN
-    devices:
-      - /dev/net/tun
-    environment:
-      LOGLEVEL: info
-      PROXY: socks5://host.docker.internal:10808
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    dns:
-      - 1.1.1.1
-      - 8.8.8.8
-    expose:
-      - 8081
-    networks:
-      podboxbot_network:
-        aliases:
-          - api
-
   api:
     container_name: podboxbot_telegram_api
     image: aiogram/telegram-bot-api:latest
     restart: always
-    # делит сетевой namespace с tun2socks — весь исходящий трафик идёт через SOCKS
-    network_mode: "service:tun2socks"
-    depends_on:
-      tun2socks:
-        condition: service_started
     environment:
       TELEGRAM_API_ID: ${TELEGRAM_SERVER_API_ID}
       TELEGRAM_API_HASH: ${TELEGRAM_SERVER_API_HASH}
       TELEGRAM_LOCAL: ${LOCAL}
       TELEGRAM_VERBOSITY: 3
+    expose:
+      - 8081
+    networks:
+      - podboxbot_network
     volumes:
       - telegram-bot-api-data:/var/lib/telegram-bot-api
 
@@ -61,9 +39,6 @@ services:
     build:
       context: .
       dockerfile: ./app/bot/Dockerfile
-      # Без target классический docker-сборщик (без BuildKit) проходит ВСЕ
-      # stage’и подряд, включая `test`, где poetry install --with dev
-      # тянет aiogram-tests из git и падает на poetry/dulwich-баге.
       target: final
     environment:
       TG_SERVER: "http://api:8081"
@@ -120,7 +95,6 @@ services:
     container_name: podboxbot_kafka
     restart: always
     environment:
-      # --- Основные настройки KRaft ---
       KAFKA_PROCESS_ROLES: broker,controller
       KAFKA_NODE_ID: 1
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
@@ -128,16 +102,10 @@ services:
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-
-      # --- Поведение брокера ---
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
-
-      # --- Хранилище данных ---
       KAFKA_LOG_DIRS: /var/lib/kafka/data
-
-      # --- Безопасность и производительность ---
       KAFKA_NUM_PARTITIONS: 3
       KAFKA_DELETE_TOPIC_ENABLE: "true"
     expose:
@@ -151,7 +119,6 @@ services:
       retries: 5
     volumes:
       - kafka_data:/var/lib/kafka/data
-
 
   schema-registry:
     image: confluentinc/cp-schema-registry:7.5.0
@@ -204,7 +171,6 @@ services:
       - podboxbot_network
     environment:
       - SCHEMA_REGISTRY_URL=http://schema-registry:8081
-
 
   # PUBLISHERS
 
