@@ -168,10 +168,16 @@ services:
     networks:
       - podboxbot_network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8081/subjects"]
+      # cub sr-ready — официальная тулза в cp-schema-registry образе,
+      # проверяет JVM-ready + Kafka-connection. Надёжнее, чем curl /subjects
+      # (которая на старте может вернуть 500 пока _schemas-топик создаётся).
+      test: ["CMD", "cub", "sr-ready", "localhost", "8081", "30"]
       interval: 10s
-      timeout: 5s
+      timeout: 30s
       retries: 5
+      # На голом железе SR прогревается 30-60с (joining Kafka, создание
+      # _schemas-топика). start_period подавляет «промахи» в это окно.
+      start_period: 60s
 
   kafka-init:
     container_name: podboxbot_kafka_init
