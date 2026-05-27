@@ -2,6 +2,7 @@ cancel = Cancel
 back = Back
 error_occurred = An error occurred! Please try again
 invalid_input = Invalid input!
+download_failed = ❌ MP3 was not uploaded. Check the file and try again.
 
 ask_typeEpisode = Hello <b>{msg.from_user.first_name}</b>, what are we adding?
 ask_mp3 = Loading <u><b>{type_episode}</b></u>. Waiting for MP3 file

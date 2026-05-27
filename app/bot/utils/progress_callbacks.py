@@ -97,13 +97,17 @@ async def check_exists_file_by_size(dir_path: Path, file_size: int) -> Path | No
             file_size (int): Размер файла, которго мы ищем в битах
 
     Returns:
-            Path | None: Файл, если сущесвует или None
-
-    Raises:
-            NotADirectoryError: dir_path - файл, а не директория
+            Path | None: Файл, если существует. None если путь не папка
+            или файл нужного размера не найден.
     """
     if not dir_path.is_dir():
-        raise NotADirectoryError
+        # Раньше тут поднимался NotADirectoryError, что глушилось
+        # logger.catch'ем и роняло monitor_file_progress. Превращаем в
+        # «не нашли» — вызывающий код умеет с этим жить, а полное
+        # падение пайплайна загрузки заставляло бота молча просить
+        # шаблон при отсутствующем mp3.
+        logger.warning(f"check_exists_file_by_size: {dir_path} не является директорией")
+        return None
 
     for file in dir_path.iterdir():
         if file.stat().st_size == file_size:
@@ -173,10 +177,22 @@ async def monitor_file_progress(
             logger.error(f"Ошибка при отслеживании файла: {e}")
             break
 
-    # Завершение мониторинга
-    if downloaded_size >= total_size or checked or (await check_exists_file_by_size(finally_dir_path, total_size)):
+    # Завершение мониторинга. Оборачиваем финальный disk-probe в try —
+    # без этого редкая I/O-ошибка (stale mount, removed dir) уходила
+    # наружу UNCAUGHT и handler get_MP3 продолжал просить шаблон, хотя
+    # mp3 на самом деле не загрузился.
+    try:
+        size_ok = downloaded_size >= total_size
+        found = checked or bool(await check_exists_file_by_size(finally_dir_path, total_size))
+    except Exception as e:
+        logger.error(f"Ошибка финальной проверки наличия файла: {e!r}")
+        return False
+
+    if size_ok or found:
         logger.info("Файл полностью загружен!")
         return True
-    else:
-        logger.warning("Мониторинг завершён, но файл не достиг полного размера")
-        return False
+    logger.warning(
+        f"Мониторинг завершён, но файл не достиг полного размера "
+        f"({downloaded_size}/{total_size}) и не найден в {finally_dir_path}"
+    )
+    return False

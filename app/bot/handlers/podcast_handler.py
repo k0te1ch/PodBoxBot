@@ -142,6 +142,17 @@ async def get_MP3(msg: Message, state: FSMContext, bot: Bot, language: str, user
     while not monitor_task.done():
         await asyncio.sleep(0.1)
 
+    # monitor_file_progress теперь всегда возвращает bool (или None если
+    # @logger.catch его задушил). False/None => загрузка не дошла —
+    # сообщаем юзеру и не пускаем FSM дальше, иначе он будет тыкать
+    # шаблон в пустоту.
+    monitor_result = monitor_task.result()
+    if not monitor_result:
+        logger.warning(f"[{username}]: MP3 не загрузился (monitor вернул {monitor_result!r})")
+        await download_msg.edit_text(context[language].download_failed)
+        await state.clear()
+        return
+
     episode_data = await state.get_data()
     type_episode = episode_data["type_episode"]
 

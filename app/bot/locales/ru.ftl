@@ -2,6 +2,7 @@ cancel = Отмена
 back = Назад
 error_occurred = Произошла ошибка! Пожалуйста, попробуйте снова
 invalid_input = Ошибка при вводе!
+download_failed = ❌ MP3 не загружен. Проверь файл и попробуй ещё раз.
 
 ask_typeEpisode = Привет <b>{msg.from_user.first_name}</b>, что мы добавляем?
 ask_mp3 = Загружаем <u><b>{type_episode_text}</b></u>. Ожидаю MP3 файл
