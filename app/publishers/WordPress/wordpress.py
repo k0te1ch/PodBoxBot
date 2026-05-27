@@ -37,7 +37,16 @@ class WordPress:
         self._cookie_path = cookie_path
         self._timezone = pytz.timezone(timezone)
         self._session: requests.Session | None = None
-        self._user_agent = UserAgent().random
+        # Отдельная сессия под REST (Application Password). Cookie-сессия
+        # для form-логина и REST-сессия живут раздельно, потому что WP
+        # предпочитает cookie-auth над Basic при наличии обоих — здесь
+        # нужно только Basic. Bot-protection cookie (bpc) выставляется
+        # независимо в каждой сессии при первом запросе.
+        self._rest_session: requests.Session = requests.Session()
+        self._rest_session.headers.update(
+            {"Accept": "application/json", "User-Agent": (ua := UserAgent().random)}
+        )
+        self._user_agent = ua
         self._make_session()
 
     def __enter__(self):
@@ -63,6 +72,63 @@ class WordPress:
                 self._session.cookies.update(pickle.load(f))
             return True
         return False
+
+    @staticmethod
+    def _bot_protection_cookie(html: str) -> tuple[str, str, str] | None:
+        """Detect a JS-only bot-protection challenge and extract its cookie.
+
+        Some WP sites front every page with a tiny challenge response:
+            <html><body><script>
+              document.cookie="bpc=<hash>;Domain=<domain>;Path=/";
+              document.location.href="<url>";
+            </script></body></html>
+        A real browser runs the JS — sets the cookie and re-navigates —
+        and the second request goes through. `requests` doesn't run JS,
+        so without help we keep getting the challenge page back forever.
+
+        Returns (name, value, domain) when the response is one of these
+        challenges, None for any normal page.
+        """
+        m = re.search(
+            r'<script[^>]*>\s*document\.cookie\s*=\s*"([^"=]+)=([^";]+);'
+            r'\s*Domain\s*=\s*([^";]+);',
+            html,
+            re.IGNORECASE,
+        )
+        if not m:
+            return None
+        return m.group(1), m.group(2), m.group(3)
+
+    def _request(
+        self, session: requests.Session, method: str, url: str, **kwargs
+    ) -> Response:
+        """`session.request` with one-shot bot-protection cookie handling.
+
+        Defaults `timeout=HTTP_TIMEOUT`. On a bot-protection challenge
+        response (see _bot_protection_cookie) sets the demanded cookie
+        on `session` and replays the same request exactly once. The
+        challenge cookie sticks in the session for subsequent calls.
+        """
+        kwargs.setdefault("timeout", HTTP_TIMEOUT)
+        response = session.request(method, url, **kwargs)
+        bpc = self._bot_protection_cookie(response.text)
+        if bpc is None:
+            return response
+        name, value, domain = bpc
+        session.cookies.set(name, value, domain=domain, path="/")
+        logger.info(
+            f"Bot-protection challenge: set {name}={value[:8]}... domain={domain}; "
+            f"replaying {method} {url}"
+        )
+        response = session.request(method, url, **kwargs)
+        # If still a challenge after retry, give up gracefully — return the
+        # response and let the caller's normal logic see the body.
+        if self._bot_protection_cookie(response.text) is not None:
+            logger.warning(
+                f"Bot-protection challenge re-appeared after cookie set; "
+                f"giving up on {method} {url}"
+            )
+        return response
 
     @staticmethod
     def _extract_login_error(html: str) -> str | None:
@@ -100,8 +166,10 @@ class WordPress:
 
         # Prime cookies: a GET lets WP set any cookies it expects to see
         # back on POST (some setups also set wordpress_test_cookie here).
+        # Also lets _request solve any bot-protection challenge before
+        # we try to POST credentials.
         try:
-            self._session.get(url, timeout=HTTP_TIMEOUT)
+            self._request(self._session, "GET", url)
         except requests.RequestException as e:
             logger.warning(f"Login priming GET failed: {e!r} — proceeding anyway")
 
@@ -118,7 +186,9 @@ class WordPress:
             "testcookie": "1",
         }
         try:
-            s = self._session.post(url, data=form, timeout=HTTP_TIMEOUT, allow_redirects=False)
+            s = self._request(
+                self._session, "POST", url, data=form, allow_redirects=False
+            )
         except requests.RequestException as e:
             logger.error(f"Login POST failed: {e!r}")
             return False
@@ -157,8 +227,8 @@ class WordPress:
         versions; the previous text-scrape heuristic broke on WP 6.x.
         """
         try:
-            r = self._session.get(
-                f"{self._wp_url}/wp-admin/", timeout=HTTP_TIMEOUT, allow_redirects=False
+            r = self._request(
+                self._session, "GET", f"{self._wp_url}/wp-admin/", allow_redirects=False
             )
         except requests.RequestException as e:
             logger.warning(f"Session check request failed: {e!r}")
@@ -179,6 +249,8 @@ class WordPress:
     def close(self):
         if self._session:
             self._session.close()
+        if self._rest_session:
+            self._rest_session.close()
 
     def _rest_request(self, method: str, path: str, *, json_body: dict | None = None) -> Response:
         """Authenticated REST API request via Application Password.
@@ -193,13 +265,8 @@ class WordPress:
             raise RuntimeError("WP_APP_PASSWORD is not configured; REST API call impossible")
         url = f"{self._wp_url}/wp-json{path}"
         try:
-            r = requests.request(
-                method,
-                url,
-                json=json_body,
-                auth=self._app_auth,
-                headers={"Accept": "application/json", "User-Agent": self._user_agent},
-                timeout=HTTP_TIMEOUT,
+            r = self._request(
+                self._rest_session, method, url, json=json_body, auth=self._app_auth
             )
         except requests.RequestException as e:
             logger.error(f"REST {method} {path} transport failed: {e!r}")
@@ -271,7 +338,7 @@ class WordPress:
         last_error: Exception | None = None
         for attempt in range(1, HTTP_RETRIES + 1):
             try:
-                r = self._session.get(url, timeout=HTTP_TIMEOUT)
+                r = self._request(self._session, "GET", url)
             except requests.RequestException as e:
                 last_error = e
                 logger.warning(f"GET {url} failed on attempt {attempt}/{HTTP_RETRIES}: {e!r}")
@@ -404,8 +471,8 @@ class WordPress:
 
         logger.debug("Submitting post data to WordPress")
         try:
-            response = self._session.post(
-                f"{self._wp_url}/wp-admin/post.php", data=form, timeout=HTTP_TIMEOUT
+            response = self._request(
+                self._session, "POST", f"{self._wp_url}/wp-admin/post.php", data=form
             )
         except requests.RequestException as e:
             logger.error(f"Post submit failed: {e!r}")
