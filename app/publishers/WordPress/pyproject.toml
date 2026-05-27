@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "publisher_wordpress"
-version = "0.1.0"
+version = "0.3.0"
 description = "WordPress publisher microservice"
 authors = ["k0te1ch <khvostov40@gmail.com>"]
 

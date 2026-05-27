@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "publisher_ftp"
-version = "0.1.0"
+version = "0.3.0"
 description = ""
 authors = ["k0te1ch <khvostov40@gmail.com>"]
 readme = "README.md"
