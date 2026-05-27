@@ -1,4 +1,5 @@
 import asyncio
+import html
 import os
 import re
 import signal
@@ -75,19 +76,58 @@ def get_zip_logs(log_name: str) -> Path | None:
 async def send_release_note() -> None:
     if not await check_version():
         return
-    release_note = await get_release_note()
-    if release_note is None:
+    parts = await get_release_note()
+    if not parts:
         return
 
-    await broadcast_message_to_users(release_note, ADMINS_ID, True, parse_mode=ParseMode.MARKDOWN_V2)
+    # parts уже HTML-escaped и разбиты по секциям, каждая < 4096 байт.
+    # broadcast_message_to_users -> send_message_to_user умеет принимать
+    # list[str] и отправляет каждую часть отдельным сообщением, минуя
+    # split_into_messages.
+    await broadcast_message_to_users(parts, ADMINS_ID, True, parse_mode=ParseMode.HTML)
 
 
-async def get_release_note() -> str | None:
-    """Read CHANGELOG.md and format the latest section for broadcast.
+def _markdown_inline_to_html(text: str) -> str:
+    """HTML-escape text and convert inline `code` spans to <code>…</code>.
 
-    Returns None — and logs a warning — when the file is missing or the
-    expected '# X.Y.Z (...)' header can't be parsed. The release-note
-    broadcast is a courtesy; missing notes must never crash on_startup.
+    Покрывает CHANGELOG-форматирование (бэктики вокруг идентификаторов).
+    Звёздочки/подчёркивания CHANGELOG не использует, так что не трогаем.
+    """
+    parts = []
+    in_code = False
+    buf: list[str] = []
+    for ch in text:
+        if ch == "`":
+            parts.append(("code" if in_code else "text", "".join(buf)))
+            buf = []
+            in_code = not in_code
+        else:
+            buf.append(ch)
+    parts.append(("code" if in_code else "text", "".join(buf)))
+
+    out: list[str] = []
+    for kind, chunk in parts:
+        escaped = html.escape(chunk, quote=False)
+        if kind == "code" and chunk:
+            out.append(f"<code>{escaped}</code>")
+        else:
+            out.append(escaped)
+    return "".join(out)
+
+
+async def get_release_note() -> list[str] | None:
+    """Read CHANGELOG.md and format the latest section as HTML chunks.
+
+    Returns a list of HTML-formatted message parts (one per section + a
+    header), each safe to send as a single Telegram message in HTML
+    parse-mode. Returns None when CHANGELOG.md is missing or unreadable
+    — the release-note broadcast is a courtesy and must never crash
+    on_startup.
+
+    Why HTML and not MarkdownV2: the v0.3.0 changelog contains plenty of
+    punctuation MarkdownV2 reserves (`!`, `(`, `)`, `.`, `-`, `:`, etc).
+    Escaping all of them by hand is error-prone; HTML only requires
+    escaping `<`, `>`, `&`, which html.escape() handles for us.
     """
     # CHANGELOG ships at /app/CHANGELOG.md (see Dockerfile COPY), but be
     # forgiving about cwd to keep local dev runs working.
@@ -104,9 +144,8 @@ async def get_release_note() -> str | None:
         logger.warning(f"Failed to read {path}: {e!r}")
         return None
 
-    # Извлекаем версию и дату из первой строки или другого места
     version_pattern = re.compile(r"# (\d+\.\d+\.\d+)")
-    date_pattern = re.compile(r"\((\d{1,2}\.\d{1,2}\.\d{4})\)")  # Ожидаем дату в формате ДД.ММ.ГГГГ
+    date_pattern = re.compile(r"\((\d{1,2}\.\d{1,2}\.\d{4})\)")
 
     version_match = version_pattern.search(content)
     date_match = date_pattern.search(content)
@@ -114,22 +153,30 @@ async def get_release_note() -> str | None:
     version = version_match.group(1) if version_match else "Неизвестно"
     date = date_match.group(1) if date_match else "Неизвестно"
 
-    # Оформление текста с использованием Markdown
-    formatted_notes = f"*Бот обновлён!* \n\n*Список изменений (версия {version}, от {date}):*\n\n"
+    parts: list[str] = [
+        f"<b>Бот обновлён!</b>\n\n"
+        f"<b>Список изменений (версия {html.escape(version)}, от {html.escape(date)}):</b>"
+    ]
 
-    # Разбиваем на секции (Добавлено, Улучшено, Исправлено) с поддержкой списков
+    # Cyrillic в UTF-8 — по 2 байта, так что 4096-байтовый лимит TG
+    # достигается раньше, чем кажется по числу символов. Шлём каждую
+    # секцию отдельным сообщением; если когда-нибудь одна секция
+    # перерастёт лимит, придётся резать по пунктам.
     sections = ["Добавлено", "Улучшено", "Исправлено"]
     for section in sections:
         section_pattern = re.compile(rf"## {section}(.+?)(?=## |\n#|\Z)", re.DOTALL)
         section_match = section_pattern.search(content)
-        if section_match:
-            formatted_notes += f"_{section}_:\n"
-            items = section_match.group(1).strip().split("\n")
-            for item in items:
-                formatted_notes += f"• {item.replace('- ', '', 1).strip()}\n"
-            formatted_notes += "\n"
+        if not section_match:
+            continue
 
-    return formatted_notes.strip()
+        lines = [f"<i>{html.escape(section)}</i>:"]
+        for raw in section_match.group(1).strip().split("\n"):
+            item = raw.replace("- ", "", 1).strip()
+            if item:
+                lines.append(f"• {_markdown_inline_to_html(item)}")
+        parts.append("\n".join(lines))
+
+    return parts
 
 
 async def check_version() -> bool:
@@ -246,7 +293,7 @@ async def send_message_to_user(
 
 @logger.catch
 async def broadcast_message_to_users(
-    text: str,
+    text: str | list[str],
     users_list: list[int],
     disable_notification: bool = False,
     parse_mode: str = ParseMode.HTML,
@@ -316,8 +363,12 @@ def split_into_messages(header: str, separator: str, items: list[str], max_lengt
 
         # If the item is small enough, add it to the current message
         if current_length + item_length + separator_length > max_length:
-            # If adding the item would exceed the max length, split the current message
-            messages.append(current_message.strip())
+            # If adding the item would exceed the max length, split the current message.
+            # Skip flushing if current is empty (header=="" and no items added yet) —
+            # иначе в начало рассылки лез пустой message и TG отвечал
+            # 'Bad Request: message text is empty'.
+            if current_message.strip():
+                messages.append(current_message.strip())
             current_message = item
         else:
             if current_message != header:
