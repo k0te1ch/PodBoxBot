@@ -37,6 +37,10 @@ RUN poetry config virtualenvs.create false && \
 COPY app/shared /app/shared/
 COPY app/bot /app/
 COPY files /app/files/
+# CHANGELOG.md нужен on_startup для release-note (send_release_note).
+# Без него код падает на FileNotFoundError — теперь графично обрабатывается,
+# но иметь файл всё равно правильно.
+COPY CHANGELOG.md /app/CHANGELOG.md
 
 ENV SCHEMA_REGISTRY_URL=http://schema-registry:8081
 

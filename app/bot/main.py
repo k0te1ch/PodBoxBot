@@ -81,9 +81,17 @@ def _get_bot_obj() -> Bot:
 
 @logger.catch
 async def on_startup():
-    # Запускаем стартап задачи параллельно с поллингом
+    # Запускаем стартап задачи параллельно с поллингом.
+    # send_release_note и kafka-консьюмеры независимы — изолируем падения
+    # одного, чтобы не утащить за собой другое. До этого фикса любая
+    # ошибка в send_release_note (например, отсутствующий CHANGELOG.md)
+    # ловилась внешним @logger.catch, но дальше по функции kafka-консьюмеры
+    # уже не регистрировались, и бот тихо работал без приёма result-событий.
     if not DEBUG:
-        await send_release_note()
+        try:
+            await send_release_note()
+        except Exception as e:
+            logger.warning(f"send_release_note failed (continuing): {e!r}")
 
     from services import kafka_router
     from services.kafka.handlers import upload_event  # noqa: F401 — регистрирует хендлеры

@@ -76,14 +76,33 @@ async def send_release_note() -> None:
     if not await check_version():
         return
     release_note = await get_release_note()
+    if release_note is None:
+        return
 
     await broadcast_message_to_users(release_note, ADMINS_ID, True, parse_mode=ParseMode.MARKDOWN_V2)
 
 
-async def get_release_note():
-    # Открываем файл с использованием aiofiles
-    async with aiofiles.open("CHANGELOG.md") as f:
-        content = await f.read()
+async def get_release_note() -> str | None:
+    """Read CHANGELOG.md and format the latest section for broadcast.
+
+    Returns None — and logs a warning — when the file is missing or the
+    expected '# X.Y.Z (...)' header can't be parsed. The release-note
+    broadcast is a courtesy; missing notes must never crash on_startup.
+    """
+    # CHANGELOG ships at /app/CHANGELOG.md (see Dockerfile COPY), but be
+    # forgiving about cwd to keep local dev runs working.
+    candidates = [Path("CHANGELOG.md"), Path("/app/CHANGELOG.md")]
+    path = next((p for p in candidates if p.is_file()), None)
+    if path is None:
+        logger.warning("CHANGELOG.md not found; skipping release-note broadcast")
+        return None
+
+    try:
+        async with aiofiles.open(path) as f:
+            content = await f.read()
+    except OSError as e:
+        logger.warning(f"Failed to read {path}: {e!r}")
+        return None
 
     # Извлекаем версию и дату из первой строки или другого места
     version_pattern = re.compile(r"# (\d+\.\d+\.\d+)")
