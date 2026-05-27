@@ -40,6 +40,7 @@ pytest = "^8.3.2"
 pytest-asyncio = "^0.24.0"
 aiogram-tests = {git = "https://github.com/k0te1ch/aiogram_tests"}
 responses = "^0.23.1"
+tgtest = {git = "https://github.com/k0te1ch/tgtest"}
 
 
 [tool.poetry.group.dev.dependencies]
@@ -103,5 +104,8 @@ quote-style = "double"
 indent-style = "space"
 
 [tool.pytest.ini_options]
-addopts = "--cov=./app/"
+addopts = "--cov=./app/ -m 'not e2e'"
 asyncio_default_fixture_loop_scope = "function"
+markers = [
+    "e2e: end-to-end tests against a live bot via tgtest (require TG_* creds, run with -m e2e)",
+]

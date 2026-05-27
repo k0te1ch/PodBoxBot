@@ -1,0 +1,10 @@
+name: Smoke — /start opens episode-type menu
+timeout: 20
+steps:
+  - command: start
+  - expect:
+      contains: "что мы добавляем"
+      buttons: ["Основной эпизод", "Эпизод послешоу"]
+  - click: "Основной эпизод"
+  - expect:
+      icontains: "ожидаю mp3"

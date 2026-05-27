@@ -5,6 +5,9 @@ database.sqlite
 files/*.mp3
 files/*.pkl
 anon.session
+tests/e2e/*.session
+tests/e2e/*.session-journal
+tests/e2e/fixtures/*.mp3
 
 # bootstrap.sh volume backups
 backups/
