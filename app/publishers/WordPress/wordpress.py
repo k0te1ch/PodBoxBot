@@ -420,6 +420,12 @@ class WordPress:
             "ping_status": "open",
             "post_author_override": "361",
             "tax_input[shows]": "0",
+            # Подложные контрибьюторы Podlove (id 1 и 3) — без них эпизод
+            # сохраняется без авторов и не показывает их в плеере.
+            "episode_contributor[0][1][id]": "1",
+            "episode_contributor[0][1][comment]": "",
+            "episode_contributor[0][3][id]": "3",
+            "episode_contributor[0][3][comment]": "",
             "referredby": f"{self._wp_url}/wp-admin/profile.php",
             "_wp_original_http_referer": f"{self._wp_url}/wp-admin/profile.php",
             "tax_input[post_tag]": ",".join(info["tags"]),
