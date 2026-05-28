@@ -18,6 +18,10 @@ class UploadEvent(BaseModel):
     message_id: str | None = Field(None, description="ID сообщения, если применимо")
     chat_id: str | None = Field(None, description="ID чата, если применимо")
 
+    type_episode: str | None = Field(
+        None, description="main | aftershow — определяет paywall для платных publisher'ов"
+    )
+
     @field_validator("status")
     @classmethod
     def validate_status(cls, v):
