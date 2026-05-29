@@ -1,6 +1,8 @@
-import pytest
 from unittest import mock
+
 import eyed3
+import pytest
+
 
 @pytest.fixture
 def mock_audio_file():
@@ -23,7 +25,6 @@ def mock_audio_file():
         mock_file.tag = mock_tag
 
     mock_file.initTag.side_effect = init_tag_mock  # Добавляем мок для initTag
-
 
     # Мокаем информацию о файле (например, продолжительность)
     mock_file.info.time_secs = 3600000  # 1 час в миллисекундах

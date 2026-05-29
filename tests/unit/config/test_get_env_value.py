@@ -1,7 +1,10 @@
 import os
 from unittest.mock import patch
+
 import pytest
+
 from config import get_env_value
+
 
 @pytest.mark.parametrize(
     "env_name, env_value, default, value_type, expected",
@@ -49,7 +52,7 @@ def test_get_env_value_with_missing_var():
         assert get_env_value("MISSING_VAR", "default_value", str) == "default_value"
         assert get_env_value("MISSING_VAR", 42, int) == 42
         assert get_env_value("MISSING_VAR", 0.0, float) == 0.0
-        assert get_env_value("MISSING_VAR", False, bool) == False
+        assert get_env_value("MISSING_VAR", False, bool) is False
 
 
 def test_get_env_value_with_invalid_type():
@@ -58,6 +61,6 @@ def test_get_env_value_with_invalid_type():
     """
     with patch.dict(os.environ, {"MY_VAR": "invalid_value"}):
         assert get_env_value("MY_VAR", 0, int) == 0
-        assert get_env_value("MY_VAR", False, bool) == False
+        assert get_env_value("MY_VAR", False, bool) is False
         assert get_env_value("MY_VAR", 0.0, float) == 0.0
         assert get_env_value("MY_VAR", "default", str) == "invalid_value"

@@ -1,6 +1,6 @@
+from unittest.mock import patch
+
 import pytest
-from unittest.mock import patch, MagicMock
-from app.utils.wordpress import WordPress
 
 
 @patch("app.utils.wordpress.pickle.dump")
@@ -24,7 +24,7 @@ def test_dump_cookies_fail(mock_open, mock_pickle, wordpress, mock_session):
     """Тест на ошибку при попытке сохранить куки"""
 
     wordpress._filename = "test_cookies.pkl"
-    
+
     mock_session.cookies = {"test_cookie": "value"}
 
     mock_open.return_value.__enter__.return_value = mock_open
@@ -42,7 +42,7 @@ def test_dump_cookies_no_cookies(mock_open, mock_pickle, wordpress, mock_session
     """Тест на случай, когда в сессии нет куков для сохранения"""
 
     wordpress._filename = "test_cookies.pkl"
-    
+
     mock_session.cookies = {}
 
     mock_open.return_value.__enter__.return_value = mock_open
@@ -59,7 +59,7 @@ def test_dump_cookies_empty_filename(mock_open, mock_pickle, wordpress, mock_ses
     """Тест на случай отсутствия имени файла для сохранения"""
 
     wordpress._filename = ""  # Пустое имя файла
-    
+
     mock_session.cookies = {"test_cookie": "value"}
 
     mock_open.return_value.__enter__.return_value = mock_open

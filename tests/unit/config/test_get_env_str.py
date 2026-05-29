@@ -1,6 +1,8 @@
 import os
 from unittest.mock import patch
+
 import pytest
+
 from config import get_env_str
 
 

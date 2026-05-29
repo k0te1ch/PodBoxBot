@@ -1,7 +1,8 @@
-import pytest
 import asyncio
-from loguru import logger
 import logging
+
+import pytest
+from loguru import logger
 
 
 @pytest.fixture(scope="function")

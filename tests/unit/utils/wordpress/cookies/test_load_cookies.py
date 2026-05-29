@@ -1,5 +1,5 @@
-import pytest
 from unittest.mock import patch
+
 
 @patch("app.utils.wordpress.os.path.exists", return_value=True)
 @patch("app.utils.wordpress.pickle.load", return_value={"test_cookie": "test_value"})
@@ -11,17 +11,16 @@ def test_load_cookies(mock_open, mock_pickle, mock_exists, wordpress, mock_sessi
     assert "test_cookie" in mock_session.cookies
 
 
-import os
-import pickle
-import pytest
-from unittest.mock import patch, mock_open, MagicMock
+from unittest.mock import mock_open, patch
 
 
 @patch("os.path.exists", return_value=True)
 @patch("os.path.getsize", return_value=10)
 @patch("builtins.open", new_callable=mock_open)
 @patch("pickle.load", return_value={"cookie_name": "cookie_value"})
-def test_load_cookies_file_exists_and_has_content(mock_pickle_load, mock_open, mock_getsize, mock_exists, wordpress, mock_session):
+def test_load_cookies_file_exists_and_has_content(
+    mock_pickle_load, mock_open, mock_getsize, mock_exists, wordpress, mock_session
+):
 
     # Выполняем метод _load_cookies
     result = wordpress._load_cookies()

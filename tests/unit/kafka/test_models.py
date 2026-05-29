@@ -3,6 +3,7 @@
 import pytest
 from app.shared.kafka.models.upload_event import UploadEvent
 from app.shared.kafka.models.wordpress_event import WordPressEvent
+from pydantic import ValidationError
 
 
 class TestUploadEvent:
@@ -34,7 +35,7 @@ class TestUploadEvent:
         assert event.status == "uploading"
 
     def test_empty_file_name_rejected(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             UploadEvent(
                 event_type="request",
                 file_name="",
@@ -43,7 +44,7 @@ class TestUploadEvent:
             )
 
     def test_negative_bytes_rejected(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             UploadEvent(
                 event_type="request",
                 file_name="test.mp3",

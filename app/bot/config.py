@@ -198,6 +198,7 @@ DATABASE_URL = settings.DATABASE_URL
 _REDIS_URL = settings.REDIS_URL
 if _REDIS_URL is None and settings.REDIS_PASSWORD:
     from urllib.parse import quote
+
     _REDIS_URL = (
         f"redis://:{quote(settings.REDIS_PASSWORD, safe='')}"
         f"@{settings.REDIS_HOST}:{settings.REDIS_PORT}/{settings.REDIS_DB}"

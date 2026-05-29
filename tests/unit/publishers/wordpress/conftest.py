@@ -1,6 +1,7 @@
-import pytest
 from collections import UserDict
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
+
+import pytest
 
 
 class TrackingDict(UserDict):

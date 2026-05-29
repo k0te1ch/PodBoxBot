@@ -11,9 +11,7 @@ from app.services.context import context
 @pytest.mark.asyncio
 @pytest.mark.parametrize("username", ["test_user", "test_of_test"])
 @pytest.mark.parametrize("language", LANGUAGES)
-async def test_cancel_command(
-    language, username, handler_factory, bot_factory, state_context_factory
-):
+async def test_cancel_command(language, username, handler_factory, bot_factory, state_context_factory):
     # Настройка обработчика и команды для cancel
     handler_func = cancel
     command = ContextButton("cancel")

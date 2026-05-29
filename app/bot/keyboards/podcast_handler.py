@@ -39,9 +39,7 @@ def _build(lang: str):
             .as_markup()
         )
         audio_menu_post = (
-            InlineKeyboardBuilder()
-            .add(InlineKeyboardButton(text="FTP", callback_data="FTP_menu"))
-            .as_markup()
+            InlineKeyboardBuilder().add(InlineKeyboardButton(text="FTP", callback_data="FTP_menu")).as_markup()
         )
         FTP_menu = _ftp_menu.as_markup()
         WP_menu = _wp_menu.as_markup()

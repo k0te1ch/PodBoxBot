@@ -1,7 +1,8 @@
 """Tests for the TelegramUpdater service."""
 
+from unittest.mock import AsyncMock
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock
 from app.bot.services.telegram_updater import TelegramUpdater
 
 

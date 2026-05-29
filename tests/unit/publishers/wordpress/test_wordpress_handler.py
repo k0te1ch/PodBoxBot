@@ -1,9 +1,10 @@
 """Tests for the WordPress publisher Kafka handler (main.py)."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 from app.shared.kafka.models.wordpress_event import WordPressEvent
+from pydantic import ValidationError
 
 
 class TestHandleUpload:
@@ -80,7 +81,7 @@ class TestWordPressEventModel:
 
     def test_invalid_status(self, sample_wp_event_dict):
         sample_wp_event_dict["status"] = "invalid_status"
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             WordPressEvent(**sample_wp_event_dict)
 
     def test_valid_statuses(self, sample_wp_event_dict):

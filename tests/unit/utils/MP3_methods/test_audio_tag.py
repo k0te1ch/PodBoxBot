@@ -1,11 +1,19 @@
 from pathlib import Path
-import pytest
 from unittest import mock
-from app.config import PODCAST_CITY, PODCAST_COUNTRY, PODCAST_DISTRICT, PODCAST_GENRE, PODCAST_LINK, PODCAST_NAME, SUPPORT_LINK
-from app.utils.MP3_methods import audio_tag
 
 import eyed3
+import pytest
 import pytz
+from app.config import (
+    PODCAST_CITY,
+    PODCAST_COUNTRY,
+    PODCAST_DISTRICT,
+    PODCAST_GENRE,
+    PODCAST_LINK,
+    PODCAST_NAME,
+    SUPPORT_LINK,
+)
+from app.utils.MP3_methods import audio_tag
 
 
 @pytest.fixture
@@ -153,7 +161,7 @@ def test_audio_tag_variable_info(
     expected_title,
     expected_comment,
     audio_type,
-    expected_cover_path
+    expected_cover_path,
 ):
     """Тестирование различных вариантов данных в info"""
     mock_eyed3_load.return_value = mock_audio_file
@@ -183,9 +191,9 @@ def test_audio_tag_load_error(mock_eyed3_load, caplog):
         audio_tag(info, "main")
 
     # Проверка логирования ошибки
-    assert any(
-        "Error loading file" in message for message in caplog.messages
-    ), "Expected error message not found in logs"
+    assert any("Error loading file" in message for message in caplog.messages), (
+        "Expected error message not found in logs"
+    )
 
 
 @mock.patch("eyed3.load")
@@ -195,7 +203,7 @@ def test_audio_tag_cover_error(mock_open, mock_eyed3_load, mock_audio_file, capl
     mock_eyed3_load.return_value = mock_audio_file
 
     # Симуляция ошибки при открытии файла обложки
-    mock_open.side_effect = IOError("Error opening cover file")
+    mock_open.side_effect = OSError("Error opening cover file")
 
     info = {
         "title": "Test Title",

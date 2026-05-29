@@ -1,4 +1,4 @@
-from unittest.mock import patch, Mock
+from unittest.mock import Mock, patch
 
 from config import WP_URL
 
@@ -75,9 +75,9 @@ def test_login_cookie_setting(mock_dump_cookies, wordpress, mock_session):
 
     # Проверяем, что куки 'wordpress_logged_in' добавлен
     assert "wordpress_logged_in" in mock_session.cookies, "Cookie wordpress_logged_in не установлен."
-    assert (
-        mock_session.cookies["wordpress_logged_in"] == "some_value"
-    ), "Неверное значение для куки wordpress_logged_in."
+    assert mock_session.cookies["wordpress_logged_in"] == "some_value", (
+        "Неверное значение для куки wordpress_logged_in."
+    )
 
     # Проверка вызова _dump_cookies
     mock_dump_cookies.assert_called_once()

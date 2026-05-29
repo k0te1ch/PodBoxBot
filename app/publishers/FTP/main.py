@@ -1,5 +1,6 @@
 """FTP publisher: подписан на publisher.ftp.upload, заливает файл по SFTP,
 шлёт прогресс и финальный результат в publisher.ftp.result."""
+
 from __future__ import annotations
 
 import asyncio

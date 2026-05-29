@@ -154,8 +154,7 @@ async def get_release_note() -> list[str] | None:
     date = date_match.group(1) if date_match else "Неизвестно"
 
     parts: list[str] = [
-        f"<b>Бот обновлён!</b>\n\n"
-        f"<b>Список изменений (версия {html.escape(version)}, от {html.escape(date)}):</b>"
+        f"<b>Бот обновлён!</b>\n\n<b>Список изменений (версия {html.escape(version)}, от {html.escape(date)}):</b>"
     ]
 
     # Cyrillic в UTF-8 — по 2 байта, так что 4096-байтовый лимит TG

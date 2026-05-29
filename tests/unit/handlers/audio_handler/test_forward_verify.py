@@ -1,10 +1,11 @@
-import pytest
 from unittest.mock import AsyncMock, patch
-from app.handlers.audio_handler import forward_verify, forward_no, forward_verify
-from app.services.keyboards import keyboards
-from aiogram_tests.types.dataset import USER, MESSAGE, CALLBACK_QUERY
+
+import pytest
 from aiogram_tests.requester import Calls
+from aiogram_tests.types.dataset import CALLBACK_QUERY, MESSAGE, USER
 from app.config import LANGUAGES
+from app.handlers.audio_handler import forward_verify
+from app.services.keyboards import keyboards
 
 
 @pytest.mark.asyncio

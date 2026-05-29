@@ -11,7 +11,6 @@ from pathlib import Path
 
 import pytest
 from telethon import TelegramClient
-from telethon.sessions import StringSession
 
 
 def _make_client() -> TelegramClient:

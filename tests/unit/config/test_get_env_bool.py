@@ -1,7 +1,10 @@
 import os
 from unittest.mock import patch
+
 import pytest
+
 from config import get_env_bool
+
 
 @pytest.mark.parametrize(
     "env_name, env_value, default, expected",
@@ -33,5 +36,5 @@ def test_get_env_bool_missing_env_variable():
     Тестирует поведение get_env_bool при отсутствии переменной окружения.
     """
     with patch.dict(os.environ, {}, clear=True):  # Очищаем окружение
-        assert get_env_bool("MISSING_VAR", default=True) == True
-        assert get_env_bool("MISSING_VAR", default=False) == False
+        assert get_env_bool("MISSING_VAR", default=True) is True
+        assert get_env_bool("MISSING_VAR", default=False) is False

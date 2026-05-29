@@ -17,6 +17,7 @@ Aftershow-эпизоды (`event.type_episode == "aftershow"`) — это мар
 правило, чтобы при изменении логики (например, появится «patron-only»
 тип) правка была в одном месте.
 """
+
 from __future__ import annotations
 
 import time
@@ -101,11 +102,7 @@ class BasePublisher(ABC):
         Дефолт пытается file_name → number → '?'. Подкласс может
         переопределить, если в его схеме другой главный идентификатор.
         """
-        return (
-            getattr(event, "file_name", None)
-            or getattr(event, "number", None)
-            or "?"
-        )
+        return getattr(event, "file_name", None) or getattr(event, "number", None) or "?"
 
     def build_failure_event(self, event, error: str):
         """Собирает failure-result event для отправки в result_topic.
@@ -137,9 +134,7 @@ class BasePublisher(ABC):
             return
 
         key = self.event_key(event)
-        logger.info(
-            f"Received {self.name} upload request from {event.username} for {key}"
-        )
+        logger.info(f"Received {self.name} upload request from {event.username} for {key}")
 
         start = time.time()
         try:
@@ -152,9 +147,7 @@ class BasePublisher(ABC):
                 failure = self.build_failure_event(event, str(e))
                 await self.producer.send(self.result_topic, failure.model_dump())
             except Exception as e2:
-                logger.error(
-                    f"Failed to emit failure result for {self.name}/{key}: {e2!r}"
-                )
+                logger.error(f"Failed to emit failure result for {self.name}/{key}: {e2!r}")
         finally:
             self.metrics.duration(
                 {"target": str(key), "user": event.username},

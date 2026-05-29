@@ -1,6 +1,7 @@
 """WordPress publisher: подписан на publisher.wordpress.upload, публикует
 эпизод через wp-admin форму + Podlove REST, шлёт result в
 publisher.wordpress.result."""
+
 from __future__ import annotations
 
 import asyncio
@@ -44,9 +45,7 @@ class WordPressPublisher(BasePublisher):
         # WordPress.upload_post() — синхронный (requests-based). Запускаем
         # в default executor через to_thread, чтобы не блокировать event loop.
         def _run() -> bool:
-            with WordPress(
-                WP_URL, WP_LOGIN, WP_PASSWORD, WP_APP_PASSWORD, WP_COOKIE_PATH, TIMEZONE
-            ) as wp:
+            with WordPress(WP_URL, WP_LOGIN, WP_PASSWORD, WP_APP_PASSWORD, WP_COOKIE_PATH, TIMEZONE) as wp:
                 return wp.upload_post(info)
 
         success = await asyncio.to_thread(_run)

@@ -6,6 +6,7 @@
 обработки ошибок) живёт здесь, чтобы FTP/WordPress/VK/Boosty/Patreon/
 sponsr делились им вместо копипасты.
 """
+
 from .base import BasePublisher
 from .metrics import PublisherMetrics
 

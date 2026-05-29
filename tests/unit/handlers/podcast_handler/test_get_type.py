@@ -39,19 +39,15 @@ async def test_get_type_handler(
     # Verify FSM state update and sent message
     state_data = await state_context.get_data()
     expected_type = type_episode_key.replace("_episode", "")
-    assert (
-        state_data.get("typeEpisode") == expected_type
-    ), "Expected typeEpisode to be set in state data"
-    assert (
-        await state_context.get_state()
-    ) == UploadFile.mp3, "FSM state did not update to UploadFile.mp3 as expected"
+    assert state_data.get("typeEpisode") == expected_type, "Expected typeEpisode to be set in state data"
+    assert (await state_context.get_state()) == UploadFile.mp3, (
+        "FSM state did not update to UploadFile.mp3 as expected"
+    )
 
     assert len(calls.send_message) == 1, "Expected one message to be sent"
     sent_message = calls.send_message.fetchone()
     expected_text = context[language].ask_mp3
-    assert (
-        sent_message.text == expected_text
-    ), "Sent message text does not match expected text"
-    assert (
-        sent_message.reply_markup == keyboards["podcast_handler"][language].cancel
-    ), "Keyboard does not match expected 'cancel' keyboard"
+    assert sent_message.text == expected_text, "Sent message text does not match expected text"
+    assert sent_message.reply_markup == keyboards["podcast_handler"][language].cancel, (
+        "Keyboard does not match expected 'cancel' keyboard"
+    )

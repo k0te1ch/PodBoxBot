@@ -18,16 +18,12 @@ def test_upload_post(mock_session, caplog, wordpress):
         wordpress.upload_post(info)
 
     # Проверка наличия определенного сообщения в логах
-    assert any(
-        "Starting post upload process" in record.message for record in caplog.records
-    ), "Сообщение 'Starting post upload process' должно быть залогировано"
+    assert any("Starting post upload process" in record.message for record in caplog.records), (
+        "Сообщение 'Starting post upload process' должно быть залогировано"
+    )
 
     # Проверка вызова post запроса
     mock_session.post.assert_called()
-
-
-from unittest.mock import patch, MagicMock
-import pytest
 
 
 def test_upload_post_hidden_fields(mock_session, wordpress):

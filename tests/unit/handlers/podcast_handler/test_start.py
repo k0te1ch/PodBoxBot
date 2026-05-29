@@ -10,9 +10,7 @@ from app.services.context import context
 @pytest.mark.asyncio
 @pytest.mark.parametrize("username", ["test_of_test"])
 @pytest.mark.parametrize("language", LANGUAGES)
-async def test_start_command(
-    language, username, handler_factory, bot_factory, state_context_factory
-):
+async def test_start_command(language, username, handler_factory, bot_factory, state_context_factory):
     # Настройка обработчика и команды start
     handler_func = start
     command = Command(commands=["start"])

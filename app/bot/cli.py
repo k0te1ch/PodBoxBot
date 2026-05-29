@@ -3,7 +3,6 @@ import os
 from datetime import datetime
 
 import click
-import main
 from alembic import command as alembic
 from alembic.command import revision as alembic_revision
 from alembic.config import Config
@@ -11,6 +10,7 @@ from alembic.util.exc import CommandError
 from loguru import logger
 from telethon import TelegramClient
 
+import main
 from config import (
     API_HASH,
     API_ID,

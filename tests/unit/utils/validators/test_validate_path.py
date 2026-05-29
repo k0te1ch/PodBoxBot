@@ -1,5 +1,4 @@
 import pytest
-from pathlib import Path
 from app.utils.validators import validate_path
 
 

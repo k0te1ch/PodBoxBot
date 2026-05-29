@@ -5,6 +5,7 @@
 `<name>_upload_duration_seconds`. PUSHGATEWAY-адрес и job-name
 выводятся из shared.config — не требуют конфигурации subclasses.
 """
+
 from __future__ import annotations
 
 from aioprometheus import Counter, Summary

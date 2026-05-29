@@ -1,7 +1,8 @@
+from collections import UserDict
+from unittest.mock import MagicMock, patch
+
 import pytest
 from app.utils.wordpress import WordPress
-from collections import UserDict
-from unittest.mock import patch, MagicMock
 
 
 class TrackingDict(UserDict):

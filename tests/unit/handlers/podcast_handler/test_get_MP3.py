@@ -1,16 +1,15 @@
-from pathlib import Path
-import shutil
 import tempfile
+from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
 from aiogram.types import Message
+from aiogram_tests.types.dataset import AUDIO, MESSAGE, USER
+from app.config import LANGUAGES
+from app.forms.upload_file import UploadFile
 from app.handlers.podcast_handler import get_MP3
 from app.services.context import context
-from app.forms.upload_file import UploadFile
 from app.services.keyboards import keyboards
-from app.config import LANGUAGES
-from aiogram_tests.types.dataset import AUDIO, USER, MESSAGE
-
 
 
 @pytest.fixture
@@ -80,9 +79,8 @@ async def test_get_MP3_handler(
             "app.handlers.podcast_handler.Message.reply",
             new=AsyncMock(side_effect=lambda *args, **kwargs: download_msg_mock),
         ) as mock_reply,
-        patch("app.handlers.podcast_handler.LOCAL", new=LOCAL)
+        patch("app.handlers.podcast_handler.LOCAL", new=LOCAL),
     ):
-
         with patch("shutil.move") as mock_move, patch("app.handlers.podcast_handler.Bot.download") as mock_download:
             if LOCAL:
                 with patch(
@@ -101,14 +99,12 @@ async def test_get_MP3_handler(
             assert not test_mp3_file.exists(), "Temporary MP3 file was not deleted"
 
             # Проверка удаления файлов MP3 в директории files_path
-            assert all(
-                not item.suffix == ".mp3" for item in files_path.iterdir()
-            ), "Previous MP3 files were not deleted"
+            assert all(item.suffix != ".mp3" for item in files_path.iterdir()), "Previous MP3 files were not deleted"
 
             # Проверка изменения состояния FSM
-            assert (
-                await state_context.get_state() == UploadFile.template
-            ), "FSM state did not update to UploadFile.template as expected"
+            assert await state_context.get_state() == UploadFile.template, (
+                "FSM state did not update to UploadFile.template as expected"
+            )
 
             # Проверка текста сообщения и клавиатуры
             number_last_episode = "43"  # так как `get_last_post_ID` вернул 42
@@ -116,9 +112,9 @@ async def test_get_MP3_handler(
 
             sent_message = calls.send_message.fetchone()
             assert sent_message.text == expected_text, "Sent message text does not match expected ask_template"
-            assert (
-                sent_message.reply_markup == keyboards["podcast_handler"][language].cancel
-            ), "Keyboard does not match expected 'cancel' keyboard"
+            assert sent_message.reply_markup == keyboards["podcast_handler"][language].cancel, (
+                "Keyboard does not match expected 'cancel' keyboard"
+            )
 
             mock_reply.assert_called_once_with(context[language].got_mp3)
 

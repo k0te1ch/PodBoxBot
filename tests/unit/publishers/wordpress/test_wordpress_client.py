@@ -1,9 +1,9 @@
 """Tests for the WordPress publisher client."""
 
 import pickle
-import pytest
-from unittest.mock import MagicMock, patch, mock_open
+from unittest.mock import MagicMock, patch
 
+import pytest
 from app.publishers.WordPress.wordpress import WordPress
 
 
@@ -134,8 +134,8 @@ class TestWordPressUploadPost:
         # First get returns no form, after login retry it returns form
         mock_session.get.side_effect = [
             MagicMock(content=empty_html),  # initial request
-            MagicMock(text=""),             # _check_session in _login
-            MagicMock(content=form_html),   # retry after login
+            MagicMock(text=""),  # _check_session in _login
+            MagicMock(content=form_html),  # retry after login
         ]
         mock_session.post.return_value.status_code = 302
         mock_session.post.return_value.text = ""

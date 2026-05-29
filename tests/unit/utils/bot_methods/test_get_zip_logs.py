@@ -1,7 +1,9 @@
-import pytest
-from unittest import mock
 from pathlib import Path
+from unittest import mock
+
+import pytest
 from app.utils.bot_methods import get_zip_logs
+
 
 def create_mock_file(name, is_file) -> mock.Mock:
     file = mock.Mock(spec=Path)
@@ -31,7 +33,7 @@ def mock_log_files():
 @pytest.fixture
 def mock_non_file():
     """Фикстура для мока объекта, который не является файлом"""
-    
+
     return create_mock_file("not_a_file", False)
 
 
