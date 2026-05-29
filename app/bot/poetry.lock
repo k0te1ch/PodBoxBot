@@ -14,14 +14,14 @@ files = [
 
 [[package]]
 name = "aiogram"
-version = "3.23.0"
+version = "3.28.2"
 description = "Modern and fully asynchronous framework for Telegram Bot API"
 optional = false
 python-versions = "<3.15,>=3.10"
 groups = ["main", "testing"]
 files = [
-    {file = "aiogram-3.23.0-py3-none-any.whl", hash = "sha256:62de64edf7f3e9c8ec86351e0ace6a53a6e073cc81cfd762cb5a0401565d80ad"},
-    {file = "aiogram-3.23.0.tar.gz", hash = "sha256:bb48c0bc1e567b6e9e9d7cfd448f2b3d142d2a405c58ab217596b62f64968f1a"},
+    {file = "aiogram-3.28.2-py3-none-any.whl", hash = "sha256:8a90cdf75a64ba629468f73b6e999662943fff39db213bb406afe114a3e8c0f2"},
+    {file = "aiogram-3.28.2.tar.gz", hash = "sha256:140913a569516811c4ce576a292491024c8d8a739c47150d64a05aa4adc35310"},
 ]
 
 [package.dependencies]
@@ -29,42 +29,33 @@ aiofiles = ">=23.2.1,<26.0"
 aiohttp = ">=3.9.0,<3.14"
 certifi = ">=2023.7.22"
 magic-filter = ">=1.0.12,<1.1"
-pydantic = ">=2.4.1,<2.13"
+pydantic = ">=2.4.1,<2.14"
 typing-extensions = ">=4.7.0,<=5.0"
 
 [package.extras]
 cli = ["aiogram-cli (>=1.1.0,<2.0.0)"]
-dev = ["black (>=25.9,<26.0)", "isort (>=7.0,<8.0)", "motor-types (==1.0.0b4)", "mypy (==1.10.1)", "packaging (>=25.0,<26.0)", "pre-commit (>=4.3,<5.0)", "ruff (>=0.14,<1.0)", "toml (>=0.10.2,<0.11.0)"]
 docs = ["furo (>=2024.8.6,<2024.9.0)", "markdown-include (>=0.8.1,<0.9.0)", "pygments (>=2.18.0,<2.19.0)", "pymdown-extensions (>=10.3,<11.0)", "sphinx (>=8.0.2,<8.1.0)", "sphinx-autobuild (>=2024.9.3,<2024.10.0)", "sphinx-copybutton (>=0.5.2,<0.6.0)", "sphinx-intl (>=2.2.0,<2.3.0)", "sphinx-substitution-extensions (>=2024.8.6,<2024.9.0)", "sphinxcontrib-towncrier (>=0.4.0a0,<0.5.0)", "towncrier (>=24.8.0,<24.9.0)"]
 fast = ["aiodns (>=3.0.0)", "uvloop (>=0.17.0) ; (sys_platform == \"darwin\" or sys_platform == \"linux\") and platform_python_implementation != \"PyPy\" and python_version < \"3.13\"", "uvloop (>=0.21.0) ; (sys_platform == \"darwin\" or sys_platform == \"linux\") and platform_python_implementation != \"PyPy\" and python_version >= \"3.13\""]
 i18n = ["babel (>=2.13.0,<3)"]
-mongo = ["motor (>=3.3.2,<3.8)", "pymongo (>4.5,<4.16)"]
+mongo = ["motor (>=3.3.2,<3.8)", "pymongo (>4.5,<4.17)"]
 proxy = ["aiohttp-socks (>=0.10.1,<0.11.0)"]
 redis = ["redis[hiredis] (>=6.2.0,<8)"]
 signature = ["cryptography (>=46.0.0)"]
-test = ["aresponses (==3.0.0)", "pycryptodomex (==3.23.0)", "pytest (==9.0.1)", "pytest-aiohttp (==1.1.0)", "pytest-cov (==7.0.0)", "pytest-html (==4.1.1)", "pytest-mock (==3.15.1)", "pytest-mypy (==1.0.1)", "pytz (==2025.2)"]
 
 [[package]]
-name = "aiogram-tests"
-version = "1.0.6"
+name = "aiogram-testing"
+version = "1.1.0"
 description = "A library for testing your bots on aiogram"
 optional = false
-python-versions = "^3.12"
+python-versions = "<3.15,>=3.12"
 groups = ["testing"]
-files = []
-develop = false
+files = [
+    {file = "aiogram_testing-1.1.0-py3-none-any.whl", hash = "sha256:46b56d08a7f0890ecb5e846b63f18a607c956d6c3a3a3b5fd173c2c2db5e5780"},
+    {file = "aiogram_testing-1.1.0.tar.gz", hash = "sha256:37f8d83177cb783b9b438f5d88d8004767cab4805dd0fa5b07df2ffe145883fa"},
+]
 
 [package.dependencies]
-aiogram = "^3.12.0"
-pytest = "^8.3.2"
-pytest-asyncio = "^0.24.0"
-tox = "^4.18.0"
-
-[package.source]
-type = "git"
-url = "https://github.com/k0te1ch/aiogram_tests"
-reference = "HEAD"
-resolved_reference = "4ae9f943087abfae9565c9c41281a1d9b7222155"
+aiogram = ">=3.28,<4.0"
 
 [[package]]
 name = "aiohappyeyeballs"
@@ -315,7 +306,7 @@ version = "0.7.0"
 description = "Reusable constraint types to use with typing.Annotated"
 optional = false
 python-versions = ">=3.8"
-groups = ["main", "testing"]
+groups = ["main", "e2e", "testing"]
 files = [
     {file = "annotated_types-0.7.0-py3-none-any.whl", hash = "sha256:1f02e8b43a8fbbc3f3e0d4f0f4bfc8131bcb4eebe8849b8e5c773f3a1c582a53"},
     {file = "annotated_types-0.7.0.tar.gz", hash = "sha256:aff07c09a53a08bc8cfccb9c85b05f1aa9a2a6f23728d790723543408344ce89"},
@@ -473,7 +464,7 @@ version = "7.0.5"
 description = "Extensible memoizing collections and decorators"
 optional = false
 python-versions = ">=3.10"
-groups = ["main", "testing"]
+groups = ["main"]
 files = [
     {file = "cachetools-7.0.5-py3-none-any.whl", hash = "sha256:46bc8ebefbe485407621d0a4264b23c080cedd913921bad7ac3ed2f26c183114"},
     {file = "cachetools-7.0.5.tar.gz", hash = "sha256:0cd042c24377200c1dcd225f8b7b12b0ca53cc2c961b43757e774ebe190fd990"},
@@ -782,7 +773,7 @@ files = [
     {file = "colorama-0.4.6-py2.py3-none-any.whl", hash = "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6"},
     {file = "colorama-0.4.6.tar.gz", hash = "sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44"},
 ]
-markers = {main = "platform_system == \"Windows\" or sys_platform == \"win32\"", dev = "sys_platform == \"win32\" or os_name == \"nt\""}
+markers = {main = "platform_system == \"Windows\" or sys_platform == \"win32\"", dev = "sys_platform == \"win32\" or os_name == \"nt\"", testing = "sys_platform == \"win32\""}
 
 [[package]]
 name = "confluent-kafka"
@@ -1135,7 +1126,7 @@ version = "0.4.0"
 description = "Distribution utilities"
 optional = false
 python-versions = "*"
-groups = ["main", "dev", "testing"]
+groups = ["main", "dev"]
 files = [
     {file = "distlib-0.4.0-py2.py3-none-any.whl", hash = "sha256:9659f7d87e46584a30b5780e43ac7a2143098441670ff0a49d5f9034c54a6c16"},
     {file = "distlib-0.4.0.tar.gz", hash = "sha256:feec40075be03a04501a973d81f633735b4b69f98b05450592310c0f401a4e0d"},
@@ -1361,7 +1352,7 @@ version = "3.25.2"
 description = "A platform independent file lock."
 optional = false
 python-versions = ">=3.10"
-groups = ["main", "dev", "testing"]
+groups = ["main", "dev"]
 files = [
     {file = "filelock-3.25.2-py3-none-any.whl", hash = "sha256:ca8afb0da15f229774c9ad1b455ed96e85a81373065fb10446672f64444ddf70"},
     {file = "filelock-3.25.2.tar.gz", hash = "sha256:b64ece2b38f4ca29dd3e810287aa8c48182bbecd1ae6e9ae126c9b35f1382694"},
@@ -2380,7 +2371,7 @@ version = "4.9.4"
 description = "A small Python package for determining appropriate platform-specific dirs, e.g. a `user data dir`."
 optional = false
 python-versions = ">=3.10"
-groups = ["main", "dev", "testing"]
+groups = ["main", "dev"]
 files = [
     {file = "platformdirs-4.9.4-py3-none-any.whl", hash = "sha256:68a9a4619a666ea6439f2ff250c12a853cd1cbd5158d258bd824a7df6be2f868"},
     {file = "platformdirs-4.9.4.tar.gz", hash = "sha256:1ec356301b7dc906d83f371c8f487070e99d3ccf9e501686456394622a01a934"},
@@ -2650,7 +2641,7 @@ version = "1.6.1"
 description = "Pure-Python Implementation of the AES block-cipher and common modes of operation"
 optional = false
 python-versions = "*"
-groups = ["main", "testing"]
+groups = ["main", "e2e"]
 files = [
     {file = "pyaes-1.6.1.tar.gz", hash = "sha256:02c1b1405c38d3c370b085fb952dd8bea3fadcee6411ad99f312cc129c536d8f"},
 ]
@@ -2661,7 +2652,7 @@ version = "0.6.3"
 description = "Pure-Python implementation of ASN.1 types and DER/BER/CER codecs (X.208)"
 optional = false
 python-versions = ">=3.8"
-groups = ["main", "testing"]
+groups = ["main", "e2e"]
 files = [
     {file = "pyasn1-0.6.3-py3-none-any.whl", hash = "sha256:a80184d120f0864a52a073acc6fc642847d0be408e7c7252f31390c0f4eadcde"},
     {file = "pyasn1-0.6.3.tar.gz", hash = "sha256:697a8ecd6d98891189184ca1fa05d1bb00e2f84b5977c481452050549c8a72cf"},
@@ -2686,7 +2677,7 @@ version = "2.12.5"
 description = "Data validation using Python type hints"
 optional = false
 python-versions = ">=3.9"
-groups = ["main", "testing"]
+groups = ["main", "e2e", "testing"]
 files = [
     {file = "pydantic-2.12.5-py3-none-any.whl", hash = "sha256:e561593fccf61e8a20fc46dfc2dfe075b8be7d0188df33f221ad1f0139180f9d"},
     {file = "pydantic-2.12.5.tar.gz", hash = "sha256:4d351024c75c0f085a9febbb665ce8c0c6ec5d30e903bdb6394b7ede26aebb49"},
@@ -2708,7 +2699,7 @@ version = "2.41.5"
 description = "Core functionality for Pydantic validation and serialization"
 optional = false
 python-versions = ">=3.9"
-groups = ["main", "testing"]
+groups = ["main", "e2e", "testing"]
 files = [
     {file = "pydantic_core-2.41.5-cp310-cp310-macosx_10_12_x86_64.whl", hash = "sha256:77b63866ca88d804225eaa4af3e664c5faf3568cea95360d21f4725ab6e07146"},
     {file = "pydantic_core-2.41.5-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:dfa8a0c812ac681395907e71e1274819dec685fec28273a28905df579ef137e2"},
@@ -2842,7 +2833,7 @@ version = "2.13.1"
 description = "Settings management using Pydantic"
 optional = false
 python-versions = ">=3.10"
-groups = ["main", "testing"]
+groups = ["main", "e2e"]
 files = [
     {file = "pydantic_settings-2.13.1-py3-none-any.whl", hash = "sha256:d56fd801823dbeae7f0975e1f8c8e25c258eb75d278ea7abb5d9cebb01b56237"},
     {file = "pydantic_settings-2.13.1.tar.gz", hash = "sha256:b4c11847b15237fb0171e1462bf540e294affb9b86db4d9aa5c01730bdbe4025"},
@@ -2874,25 +2865,6 @@ files = [
 
 [package.extras]
 windows-terminal = ["colorama (>=0.4.6)"]
-
-[[package]]
-name = "pyproject-api"
-version = "1.10.0"
-description = "API to interact with the python pyproject.toml based projects"
-optional = false
-python-versions = ">=3.10"
-groups = ["testing"]
-files = [
-    {file = "pyproject_api-1.10.0-py3-none-any.whl", hash = "sha256:8757c41a79c0f4ab71b99abed52b97ecf66bd20b04fa59da43b5840bac105a09"},
-    {file = "pyproject_api-1.10.0.tar.gz", hash = "sha256:40c6f2d82eebdc4afee61c773ed208c04c19db4c4a60d97f8d7be3ebc0bbb330"},
-]
-
-[package.dependencies]
-packaging = ">=25"
-
-[package.extras]
-docs = ["furo (>=2025.9.25)", "sphinx-autodoc-typehints (>=3.5.1)"]
-testing = ["covdefaults (>=2.3)", "pytest (>=8.4.2)", "pytest-cov (>=7)", "pytest-mock (>=3.15.1)", "setuptools (>=80.9)"]
 
 [[package]]
 name = "pyproject-hooks"
@@ -2972,7 +2944,7 @@ version = "1.2.2"
 description = "Read key-value pairs from a .env file and set them as environment variables"
 optional = false
 python-versions = ">=3.10"
-groups = ["main", "testing"]
+groups = ["main", "e2e"]
 files = [
     {file = "python_dotenv-1.2.2-py3-none-any.whl", hash = "sha256:1d8214789a24de455a8b8bd8ae6fe3c6b69a5e3d64aa8a8e5d68e694bbcb285a"},
     {file = "python_dotenv-1.2.2.tar.gz", hash = "sha256:2c371a91fbd7ba082c2c1dc1f8bf89ca22564a087c2c287cd9b662adde799cf3"},
@@ -2987,7 +2959,7 @@ version = "2.8.1"
 description = "Proxy (SOCKS4, SOCKS5, HTTP CONNECT) client for Python"
 optional = false
 python-versions = ">=3.8.0"
-groups = ["testing"]
+groups = ["e2e"]
 files = [
     {file = "python_socks-2.8.1-py3-none-any.whl", hash = "sha256:28232739c4988064e725cdbcd15be194743dd23f1c910f784163365b9d7be035"},
     {file = "python_socks-2.8.1.tar.gz", hash = "sha256:698daa9616d46dddaffe65b87db222f2902177a2d2b2c0b9a9361df607ab3687"},
@@ -3030,7 +3002,7 @@ version = "6.0.3"
 description = "YAML parser and emitter for Python"
 optional = false
 python-versions = ">=3.8"
-groups = ["main", "testing"]
+groups = ["main", "e2e", "testing"]
 files = [
     {file = "PyYAML-6.0.3-cp38-cp38-macosx_10_13_x86_64.whl", hash = "sha256:c2514fceb77bc5e7a2f7adfaa1feb2fb311607c9cb518dbc378688ec73d8292f"},
     {file = "PyYAML-6.0.3-cp38-cp38-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:9c57bb8c96f6d1808c030b1687b9b5fb476abaa47f0db9c0101f5e9f394e97f4"},
@@ -3283,7 +3255,7 @@ version = "4.9.1"
 description = "Pure-Python RSA implementation"
 optional = false
 python-versions = "<4,>=3.6"
-groups = ["main", "testing"]
+groups = ["main", "e2e"]
 files = [
     {file = "rsa-4.9.1-py3-none-any.whl", hash = "sha256:68635866661c6836b8d39430f97a996acbd61bfa49406748ea243539fe239762"},
     {file = "rsa-4.9.1.tar.gz", hash = "sha256:e7bdbfdb5497da4c07dfd35530e1a902659db6ff241e39d9953cad06ebd0ae75"},
@@ -3468,7 +3440,7 @@ version = "1.42.0"
 description = "Full-featured Telegram client library for Python 3"
 optional = false
 python-versions = ">=3.5"
-groups = ["main", "testing"]
+groups = ["main", "e2e"]
 files = [
     {file = "telethon-1.42.0-py3-none-any.whl", hash = "sha256:cf361c94586bcacd6d0fc8959a2bce509d1bb37007fe6476a80c4fb4a2decc29"},
     {file = "telethon-1.42.0.tar.gz", hash = "sha256:032e95511261d5ead719f75494c6c85ece2ce71816b54f3c65d6ccc371d6994d"},
@@ -3487,7 +3459,7 @@ version = "0.1.0"
 description = "End-to-end testing platform for Telegram bots (Telethon-driven, YAML + pytest)."
 optional = false
 python-versions = ">=3.12,<4.0"
-groups = ["testing"]
+groups = ["e2e"]
 files = []
 develop = false
 
@@ -3517,18 +3489,6 @@ files = [
 ]
 
 [[package]]
-name = "tomli-w"
-version = "1.2.0"
-description = "A lil' TOML writer"
-optional = false
-python-versions = ">=3.9"
-groups = ["testing"]
-files = [
-    {file = "tomli_w-1.2.0-py3-none-any.whl", hash = "sha256:188306098d013b691fcadc011abd66727d3c414c571bb01b1a174ba8c983cf90"},
-    {file = "tomli_w-1.2.0.tar.gz", hash = "sha256:2dd14fac5a47c27be9cd4c976af5a12d87fb1f0b4512f81d69cce3b35ae25021"},
-]
-
-[[package]]
 name = "tomlkit"
 version = "0.14.0"
 description = "Style preserving TOML library"
@@ -3539,32 +3499,6 @@ files = [
     {file = "tomlkit-0.14.0-py3-none-any.whl", hash = "sha256:592064ed85b40fa213469f81ac584f67a4f2992509a7c3ea2d632208623a3680"},
     {file = "tomlkit-0.14.0.tar.gz", hash = "sha256:cf00efca415dbd57575befb1f6634c4f42d2d87dbba376128adb42c121b87064"},
 ]
-
-[[package]]
-name = "tox"
-version = "4.48.1"
-description = "tox is a generic virtualenv management and test command line tool"
-optional = false
-python-versions = ">=3.10"
-groups = ["testing"]
-files = [
-    {file = "tox-4.48.1-py3-none-any.whl", hash = "sha256:4e0369041be0d52b0dc83051f6449e4afae1764b4203a5866982fa300c8c325f"},
-    {file = "tox-4.48.1.tar.gz", hash = "sha256:971260ac2ea3409de8f3771612d141713d2d33446cc0d981849ebfd9b6bbd3d9"},
-]
-
-[package.dependencies]
-cachetools = ">=7.0.1"
-colorama = ">=0.4.6"
-filelock = ">=3.24.3"
-packaging = ">=26"
-platformdirs = ">=4.9.2"
-pluggy = ">=1.6"
-pyproject-api = ">=1.10"
-tomli-w = ">=1.1"
-virtualenv = ">=20.39"
-
-[package.extras]
-completion = ["argcomplete (>=3.6.3)"]
 
 [[package]]
 name = "trove-classifiers"
@@ -3596,7 +3530,7 @@ version = "4.15.0"
 description = "Backported and Experimental Type Hints for Python 3.9+"
 optional = false
 python-versions = ">=3.9"
-groups = ["main", "testing"]
+groups = ["main", "e2e", "testing"]
 files = [
     {file = "typing_extensions-4.15.0-py3-none-any.whl", hash = "sha256:f0fa19c6845758ab08074a0cfa8b7aecb71c999ca73d62883bc25cc018c4e548"},
     {file = "typing_extensions-4.15.0.tar.gz", hash = "sha256:0cea48d173cc12fa28ecabc3b837ea3cf6f38c6d1136f85cbaaf598984861466"},
@@ -3608,7 +3542,7 @@ version = "0.4.2"
 description = "Runtime typing introspection tools"
 optional = false
 python-versions = ">=3.9"
-groups = ["main", "testing"]
+groups = ["main", "e2e", "testing"]
 files = [
     {file = "typing_inspection-0.4.2-py3-none-any.whl", hash = "sha256:4ed1cacbdc298c220f1bd249ed5287caa16f34d44ef4e9c3d0cbad5b521545e7"},
     {file = "typing_inspection-0.4.2.tar.gz", hash = "sha256:ba561c48a67c5958007083d386c3295464928b01faa735ab8547c5692e87f464"},
@@ -3672,7 +3606,7 @@ version = "20.39.1"
 description = "Virtual Python Environment builder"
 optional = false
 python-versions = ">=3.8"
-groups = ["main", "dev", "testing"]
+groups = ["main", "dev"]
 files = [
     {file = "virtualenv-20.39.1-py3-none-any.whl", hash = "sha256:a00332e0b089ba64edefbf94ef34e6db33f45fe5184df0652cf0b754dcd36190"},
     {file = "virtualenv-20.39.1.tar.gz", hash = "sha256:c551ea1072d7717a273dd9a4a0adad8f45571af134b0f63a12430e85f6ac1c08"},
@@ -3912,4 +3846,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.15"
-content-hash = "65889693c21b46ceb4b4a84030ab0af10acbd1b65bf8a912b48944538b14c6c8"
+content-hash = "705c8f8b44f4283dd69f826443c5178f1b8cea7e3c42ddf0ef4234542804ff96"

@@ -4,11 +4,9 @@ on:
   push:
     branches:
       - main
-      - dev
   pull_request:
     branches:
       - main
-      - dev
 
 jobs:
   lint:
@@ -46,4 +44,4 @@ jobs:
           poetry config virtualenvs.create false
           poetry install --with testing,dev --no-root
       - name: Run tests
-        run: pytest -c app/bot/pyproject.toml
+        run: pytest -c app/bot/pyproject.toml --ignore=tests/e2e
