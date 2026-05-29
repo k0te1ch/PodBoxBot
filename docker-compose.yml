@@ -316,6 +316,8 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=admin
     volumes:
       - ./configs/grafana/datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
+      - ./configs/grafana/dashboards.yaml:/etc/grafana/provisioning/dashboards/dashboards.yaml
+      - ./configs/grafana/dashbords:/etc/grafana/dashboards
       - grafana_data:/var/lib/grafana
     networks:
       - monitoring
