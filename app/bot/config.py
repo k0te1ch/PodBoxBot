@@ -31,7 +31,11 @@ class Settings(BaseSettings):
     # TELEGRAM BOT SETTINGS
     TELEGRAM_API_TOKEN: str
     SKIP_UPDATES: bool = False
-    FORWARD_CHAT_ID: str
+    # Username публичной группы/канала (формат @groupname), куда бот
+    # форвардит анонсы. Раньше тут был числовой chat_id, но бот не мог
+    # достучаться до приватного чата ("Bad Request: chat not found"),
+    # поэтому форвард переведён на отправку по username.
+    FORWARD_CHAT_USERNAME: str
 
     TELEGRAM_SERVER_API_ID: str
     TELEGRAM_SERVER_API_HASH: str
@@ -106,6 +110,14 @@ class Settings(BaseSettings):
     def strip_wp_url(cls, v: str) -> str:
         return v.rstrip("/")
 
+    @field_validator("FORWARD_CHAT_USERNAME")
+    @classmethod
+    def normalize_forward_username(cls, v: str) -> str:
+        # Telegram ждёт username в формате @groupname. Допускаем, что в
+        # .env его укажут без @ — приводим к каноничному виду.
+        v = v.strip()
+        return v if v.startswith("@") else f"@{v}"
+
     @field_validator(
         "ADMINS",
         "ADMINS_ID",
@@ -148,7 +160,7 @@ TIMEZONE = pytz.timezone(settings.TIMEZONE)
 # Telegram
 API_TOKEN = settings.TELEGRAM_API_TOKEN
 SKIP_UPDATES = settings.SKIP_UPDATES
-FORWARD_CHAT_ID = settings.FORWARD_CHAT_ID
+FORWARD_CHAT_USERNAME = settings.FORWARD_CHAT_USERNAME
 API_ID = settings.TELEGRAM_SERVER_API_ID
 API_HASH = settings.TELEGRAM_SERVER_API_HASH
 

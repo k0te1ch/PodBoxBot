@@ -92,7 +92,7 @@ docker compose version   # должно показать v2.x
    |---|---|
    | `TELEGRAM_API_TOKEN` | токен бота от @BotFather |
    | `TELEGRAM_SERVER_API_ID` / `_HASH` | для self-hosted telegram-bot-api ([my.telegram.org](https://my.telegram.org)) |
-   | `FORWARD_CHAT_ID` | id чата, куда бот будет форвардить анонсы |
+   | `FORWARD_CHAT_USERNAME` | username публичной группы/канала (формат `@group`), куда бот будет форвардить анонсы |
    | `ADMINS_ID` | список ID Telegram-юзеров, которым разрешено пользоваться |
    | `FTP_SERVER` / `FTP_LOGIN` / `FTP_PASSWORD` | креды FTP-хостинга |
    | `WP_URL` / `WP_LOGIN` / `WP_PASSWORD` | креды WordPress-юзера для form-логина |

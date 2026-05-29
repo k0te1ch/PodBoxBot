@@ -65,7 +65,7 @@ def generate_podcast_text(info: dict[str, Any]) -> str | None:
             f"<i>Описание:</i>\n{summary}\n\n"
             f"<i>Таймлайн:</i>\n{formatted_chapters}\n\n"
             f"Всё это вы услышите в {episode_number}-м эпизоде подкаста «Разговорный жанр».\n\n"
-            f'<i><b><a href="{support_link}">💰 Поддержать подкаст</a></b></i>'
+            f'<i><b><a href="{support_link}">🍩 Поддержать подкаст</a></b></i>'
         )
         return podcast_text
 

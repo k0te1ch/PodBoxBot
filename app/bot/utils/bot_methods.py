@@ -418,7 +418,7 @@ async def pin_message(
     bot: Bot,
     username: str,
     callback_message: Message,
-    chat_id: int,
+    chat_id: int | str,
     message_id: int,
     disable_notification: bool = False,
 ) -> None:

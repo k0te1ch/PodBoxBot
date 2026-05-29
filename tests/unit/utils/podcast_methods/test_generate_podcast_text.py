@@ -31,7 +31,7 @@ def test_generate_podcast_text(podcast_info):
         "00:10:20 — Основная часть\n"
         "00:40:15 — Заключение\n\n"
         "Всё это вы услышите в 42-м эпизоде подкаста «Разговорный жанр».\n\n"
-        '<i><b><a href="https://support.link">💰 Поддержать подкаст</a></b></i>'
+        '<i><b><a href="https://support.link">🍩 Поддержать подкаст</a></b></i>'
     )
 
     result = generate_podcast_text(podcast_info)

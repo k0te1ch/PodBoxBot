@@ -54,7 +54,7 @@ async def test_forward_yes(
         patch(
             "handlers.audio_handler.Bot.send_audio", new=AsyncMock()
         ) as mock_send_audio,
-        patch("app.handlers.audio_handler.FORWARD_CHAT_ID", new="125135136"),
+        patch("app.handlers.audio_handler.FORWARD_CHAT_USERNAME", new="@test_group"),
         patch(
             "handlers.audio_handler.CallbackQuery.answer", new=AsyncMock()
         ) as mock_callback_answer,
@@ -75,7 +75,7 @@ async def test_forward_yes(
             mock_validate.assert_called_once_with(template_text)
             # Check that `send_audio` was called with the correct parameters
             mock_send_audio.assert_called_once_with(
-                chat_id="125135136",
+                chat_id="@test_group",
                 audio=audio.file_id,
                 caption="Generated podcast text",
             )
