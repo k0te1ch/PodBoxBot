@@ -312,7 +312,7 @@ class WordPress:
 
     def _update_podlove_episode(self, episode_id: int, info: dict) -> None:
         payload = {
-            "title": info["title"],
+            "title": f"Разговорный жанр — {info['number']}",
             "summary": info["comment"],
             "number": int(info["number"]) if str(info["number"]).isdigit() else info["number"],
             "slug": info["slug"],

@@ -167,7 +167,7 @@ class WordPress:
             "newcategory": "Название новой рубрики",
             "newcategory_parent": "-1",
             "_podlove_meta[number]": podcastID,
-            "_podlove_meta[title]": name,
+            "_podlove_meta[title]": f"Разговорный жанр — {podcastID}",
             "_podlove_meta[summary]": summary,
             "_podlove_meta[type]": "full",
             "episode_contributor[0][1][id]": "1",
