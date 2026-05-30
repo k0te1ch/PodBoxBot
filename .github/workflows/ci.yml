@@ -1,0 +1,89 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app/bot
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install tooling
+        run: python -m pip install --upgrade pip ruff
+      - name: Ruff lint
+        run: ruff check "$GITHUB_WORKSPACE/app" "$GITHUB_WORKSPACE/tests"
+      - name: Ruff format check
+        run: ruff format --check "$GITHUB_WORKSPACE/app" "$GITHUB_WORKSPACE/tests"
+
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install Poetry
+        run: python -m pip install --upgrade pip poetry
+      - name: Install bot dependencies (system env, mirrors Dockerfile)
+        working-directory: app/bot
+        run: |
+          poetry config virtualenvs.create false
+          poetry install --with testing,dev --no-root
+      - name: Run tests
+        # Publisher microservice tests need each service's own deps (asyncssh,
+        # aioprometheus, ...) which aren't in the bot env — they run in the
+        # dedicated test-publisher-* jobs below.
+        run: pytest -c app/bot/pyproject.toml --ignore=tests/e2e --ignore=tests/unit/publishers
+
+  test-publisher-ftp:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Poetry
+        run: python -m pip install --upgrade pip poetry
+      - name: Install FTP publisher dependencies (system env, mirrors Dockerfile)
+        working-directory: app/publishers/FTP
+        run: |
+          poetry config virtualenvs.create false
+          poetry install --only main --no-root
+      - name: Install test tooling
+        run: python -m pip install "pytest>=8.3.2,<9" "pytest-asyncio>=0.24,<0.25"
+      - name: Run FTP publisher tests
+        run: pytest -c app/bot/pyproject.toml -o addopts="" tests/unit/publishers/ftp
+
+  test-publisher-wordpress:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Poetry
+        run: python -m pip install --upgrade pip poetry
+      - name: Install WordPress publisher dependencies (system env, mirrors Dockerfile)
+        working-directory: app/publishers/WordPress
+        run: |
+          poetry config virtualenvs.create false
+          poetry lock
+          poetry install --only main --no-root
+      - name: Install test tooling
+        run: python -m pip install "pytest>=8.3.2,<9" "pytest-asyncio>=0.24,<0.25"
+      - name: Run WordPress publisher tests
+        run: pytest -c app/bot/pyproject.toml -o addopts="" tests/unit/publishers/wordpress

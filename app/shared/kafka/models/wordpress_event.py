@@ -18,6 +18,10 @@ class WordPressEvent(BaseModel):
     slug: str = Field(..., description="Slug файла")
     duration: int | None = Field(None, description="Длительность в секундах")
 
+    type_episode: str | None = Field(
+        None, description="main | aftershow — определяет paywall для платных publisher'ов"
+    )
+
     @field_validator("status")
     @classmethod
     def validate_status(cls, v):

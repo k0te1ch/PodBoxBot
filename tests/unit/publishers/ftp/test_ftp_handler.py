@@ -1,9 +1,10 @@
 """Tests for the FTP publisher handler."""
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
+import pytest
 from app.shared.kafka.models.upload_event import UploadEvent
+from pydantic import ValidationError
 
 
 class TestHandleUpload:
@@ -54,7 +55,7 @@ class TestUploadEventModel:
 
     def test_invalid_status(self, sample_upload_event_dict):
         sample_upload_event_dict["status"] = "bad_status"
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             UploadEvent(**sample_upload_event_dict)
 
     def test_valid_statuses(self, sample_upload_event_dict):
@@ -65,11 +66,11 @@ class TestUploadEventModel:
 
     def test_progress_bounds(self, sample_upload_event_dict):
         sample_upload_event_dict["progress"] = 1.1
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             UploadEvent(**sample_upload_event_dict)
 
         sample_upload_event_dict["progress"] = -0.1
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             UploadEvent(**sample_upload_event_dict)
 
     def test_model_dump(self, sample_upload_event_dict):

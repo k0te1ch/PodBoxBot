@@ -1,8 +1,8 @@
-import pytest
 from unittest import mock
-from utils.MP3_methods import set_chapters
-import eyed3
+
 from eyed3.id3 import ID3_V2_4, UTF_16_ENCODING
+
+from utils.MP3_methods import set_chapters
 
 
 def initialize_mock_audio_file(mock_audio_file):
@@ -51,7 +51,8 @@ def test_set_chapters_with_single_chapter(mock_audio_file):
 
         # Проверка добавления главы
         mock_audio_file.tag.chapters.set.assert_called_once_with(
-            bytes("CHAP1", encoding="cp866"), (10000, 3599999)  # от 10 секунд до конца файла (59 минут)
+            bytes("CHAP1", encoding="cp866"),
+            (10000, 3599999),  # от 10 секунд до конца файла (59 минут)
         )
 
         # Проверка установки правильных свойств главы
@@ -63,7 +64,7 @@ def test_set_chapters_with_multiple_chapters(mock_audio_file):
     """Тестирование с несколькими главами — проверка корректного добавления всех глав"""
     chapters = [("00:00:10", "Introduction"), ("00:10:00", "Chapter 1"), ("00:20:00", "Chapter 2")]
 
-    with mock.patch("app.utils.MP3_methods.time_to_milliseconds", side_effect=[10000, 600000, 600000, 1200000, 1200000]):
+    with mock.patch("utils.MP3_methods.time_to_milliseconds", side_effect=[10000, 600000, 600000, 1200000, 1200000]):
         set_chapters(mock_audio_file, chapters)
 
         # Проверка добавления первой главы
@@ -82,9 +83,10 @@ def test_set_chapters_with_mock_time_to_milliseconds(mock_audio_file):
         set_chapters(mock_audio_file, chapters)
 
         # Проверка вызовов time_to_milliseconds
-        mock_time_to_ms.assert_has_calls(
-            [mock.call("00:00:10"), mock.call("00:10:00")], any_order=False
-        ), "Неверные вызовы time_to_milliseconds"
+        (
+            mock_time_to_ms.assert_has_calls([mock.call("00:00:10"), mock.call("00:10:00")], any_order=False),
+            "Неверные вызовы time_to_milliseconds",
+        )
 
         # Проверка добавления первой главы
         mock_audio_file.tag.chapters.set.assert_any_call(bytes("CHAP1", encoding="cp866"), (10000, 599999))

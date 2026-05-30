@@ -15,6 +15,7 @@ scrape_configs:
       - targets: ['podboxbot_kafka_exporter:9308']
 
   - job_name: 'pushgateway'
+    honor_labels: true
     static_configs:
       - targets: ['pushgateway:9091']
 

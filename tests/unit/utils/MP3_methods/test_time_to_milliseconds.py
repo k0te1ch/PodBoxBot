@@ -1,4 +1,3 @@
-import pytest
 from utils.MP3_methods import time_to_milliseconds
 
 

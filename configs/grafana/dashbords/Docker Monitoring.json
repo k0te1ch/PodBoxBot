@@ -38,7 +38,7 @@
 		{
 			"datasource": {
 				"type": "prometheus",
-				"uid": "PBFA97CFB590B2093"
+				"uid": "prometheus"
 			},
 			"fieldConfig": {
 				"defaults": {
@@ -96,7 +96,7 @@
 			"targets": [
 				{
 					"datasource": {
-						"uid": "Prometheus"
+						"uid": "prometheus"
 					},
 					"editorMode": "code",
 					"expr": "time() - process_start_time_seconds{job=\"prometheus\", app!=\"prometheus\"}",
@@ -112,7 +112,7 @@
 		{
 			"datasource": {
 				"type": "prometheus",
-				"uid": "PBFA97CFB590B2093"
+				"uid": "prometheus"
 			},
 			"fieldConfig": {
 				"defaults": {
@@ -173,7 +173,7 @@
 			"targets": [
 				{
 					"datasource": {
-						"uid": "Prometheus"
+						"uid": "prometheus"
 					},
 					"expr": "sum(ALERTS)",
 					"format": "time_series",
@@ -187,7 +187,7 @@
 		{
 			"datasource": {
 				"type": "prometheus",
-				"uid": "PBFA97CFB590B2093"
+				"uid": "prometheus"
 			},
 			"fieldConfig": {
 				"defaults": {
@@ -249,7 +249,7 @@
 			"targets": [
 				{
 					"datasource": {
-						"uid": "Prometheus"
+						"uid": "prometheus"
 					},
 					"editorMode": "code",
 					"expr": "sum(up)",
@@ -265,7 +265,7 @@
 		{
 			"datasource": {
 				"type": "prometheus",
-				"uid": "PBFA97CFB590B2093"
+				"uid": "prometheus"
 			},
 			"fieldConfig": {
 				"defaults": {
@@ -329,7 +329,7 @@
 			"targets": [
 				{
 					"datasource": {
-						"uid": "Prometheus"
+						"uid": "prometheus"
 					},
 					"editorMode": "code",
 					"expr": "(sum(node_memory_MemTotal_bytes) - sum(node_memory_MemFree_bytes +node_memory_Buffers_bytes + node_memory_Cached_bytes) ) / sum(node_memory_MemTotal_bytes) * 100",
@@ -347,7 +347,7 @@
 		{
 			"datasource": {
 				"type": "prometheus",
-				"uid": "PBFA97CFB590B2093"
+				"uid": "prometheus"
 			},
 			"fieldConfig": {
 				"defaults": {
@@ -412,7 +412,7 @@
 			"targets": [
 				{
 					"datasource": {
-						"uid": "Prometheus"
+						"uid": "prometheus"
 					},
 					"editorMode": "code",
 					"expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[1m])) * 100)\r\n",
@@ -431,7 +431,7 @@
 		{
 			"datasource": {
 				"type": "prometheus",
-				"uid": "PBFA97CFB590B2093"
+				"uid": "prometheus"
 			},
 			"fieldConfig": {
 				"defaults": {
@@ -496,7 +496,7 @@
 			"targets": [
 				{
 					"datasource": {
-						"uid": "Prometheus"
+						"uid": "prometheus"
 					},
 					"editorMode": "code",
 					"expr": "100 - (\r\n  sum(node_filesystem_free_bytes{fstype!=\"\",mountpoint!~\"/(run|var/lib/docker.*)\"})\r\n  / \r\n  sum(node_filesystem_size_bytes{fstype!=\"\",mountpoint!~\"/(run|var/lib/docker.*)\"})\r\n  * 100\r\n)\r\n",
@@ -514,7 +514,7 @@
 		{
 			"datasource": {
 				"type": "prometheus",
-				"uid": "PBFA97CFB590B2093"
+				"uid": "prometheus"
 			},
 			"fieldConfig": {
 				"defaults": {
@@ -641,7 +641,7 @@
 			"targets": [
 				{
 					"datasource": {
-						"uid": "Prometheus"
+						"uid": "prometheus"
 					},
 					"editorMode": "code",
 					"expr": "sum(rate(node_network_receive_bytes_total{device!~\"lo\"}[$interval])) by (device)",
@@ -654,7 +654,7 @@
 				},
 				{
 					"datasource": {
-						"uid": "Prometheus"
+						"uid": "prometheus"
 					},
 					"expr": "- sum(rate(container_network_transmit_bytes_total{id=\"/\"}[$interval])) by (id)",
 					"format": "time_series",
@@ -670,7 +670,7 @@
 		{
 			"datasource": {
 				"type": "prometheus",
-				"uid": "PBFA97CFB590B2093"
+				"uid": "prometheus"
 			},
 			"fieldConfig": {
 				"defaults": {
@@ -782,7 +782,7 @@
 			"targets": [
 				{
 					"datasource": {
-						"uid": "Prometheus"
+						"uid": "prometheus"
 					},
 					"expr": "sum(node_memory_MemTotal_bytes) - sum(node_memory_MemAvailable_bytes)",
 					"format": "time_series",
@@ -793,7 +793,7 @@
 				},
 				{
 					"datasource": {
-						"uid": "Prometheus"
+						"uid": "prometheus"
 					},
 					"expr": "sum(node_memory_MemAvailable_bytes)",
 					"format": "time_series",
@@ -809,7 +809,7 @@
 		{
 			"datasource": {
 				"type": "prometheus",
-				"uid": "PBFA97CFB590B2093"
+				"uid": "prometheus"
 			},
 			"fieldConfig": {
 				"defaults": {
@@ -966,7 +966,7 @@
 			"targets": [
 				{
 					"datasource": {
-						"uid": "Prometheus"
+						"uid": "prometheus"
 					},
 					"expr": "sum(node_filesystem_free_bytes {job=\"node-exporter\", instance=~\".*9100\", device=~\"/dev/.*\", mountpoint!=\"/var/lib/docker/aufs\"}) ",
 					"format": "time_series",

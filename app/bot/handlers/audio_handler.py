@@ -4,7 +4,7 @@ from aiogram import Bot, F, Router
 from aiogram.types import CallbackQuery
 from loguru import logger
 
-from config import FORWARD_CHAT_ID
+from config import FORWARD_CHAT_USERNAME
 from filters.dispatcher_filters import IsAdmin, IsPrivate
 from services import context, keyboards
 from utils.bot_methods import pin_message
@@ -58,7 +58,7 @@ async def forward_no(callback: CallbackQuery, language: str, username: str):
 @router.callback_query(F.data == "fwd_verify_yes")
 async def forward_yes(callback: CallbackQuery, bot: Bot, language: str, username: str):
     """Обработчик подтверждения пересылки"""
-    logger.debug(f"[{username}]: Forwarding to chat {FORWARD_CHAT_ID}")
+    logger.debug(f"[{username}]: Forwarding to chat {FORWARD_CHAT_USERNAME}")
 
     try:
         file_name = callback.message.audio.file_name
@@ -74,7 +74,7 @@ async def forward_yes(callback: CallbackQuery, bot: Bot, language: str, username
 
         # Пересылка аудио в указанный чат
         forward_message = await bot.send_audio(
-            chat_id=FORWARD_CHAT_ID,
+            chat_id=FORWARD_CHAT_USERNAME,
             audio=callback.message.audio.file_id,
             caption=podcast_text,
         )
@@ -86,7 +86,7 @@ async def forward_yes(callback: CallbackQuery, bot: Bot, language: str, username
             bot,
             username,
             callback.message,
-            FORWARD_CHAT_ID,
+            FORWARD_CHAT_USERNAME,
             forward_message.message_id,
             disable_notification=disable_notification,
         )

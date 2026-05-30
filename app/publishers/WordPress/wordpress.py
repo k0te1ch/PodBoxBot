@@ -43,9 +43,7 @@ class WordPress:
         # нужно только Basic. Bot-protection cookie (bpc) выставляется
         # независимо в каждой сессии при первом запросе.
         self._rest_session: requests.Session = requests.Session()
-        self._rest_session.headers.update(
-            {"Accept": "application/json", "User-Agent": (ua := UserAgent().random)}
-        )
+        self._rest_session.headers.update({"Accept": "application/json", "User-Agent": (ua := UserAgent().random)})
         self._user_agent = ua
         self._make_session()
 
@@ -99,9 +97,7 @@ class WordPress:
             return None
         return m.group(1), m.group(2), m.group(3)
 
-    def _request(
-        self, session: requests.Session, method: str, url: str, **kwargs
-    ) -> Response:
+    def _request(self, session: requests.Session, method: str, url: str, **kwargs) -> Response:
         """`session.request` with one-shot bot-protection cookie handling.
 
         Defaults `timeout=HTTP_TIMEOUT`. On a bot-protection challenge
@@ -116,18 +112,12 @@ class WordPress:
             return response
         name, value, domain = bpc
         session.cookies.set(name, value, domain=domain, path="/")
-        logger.info(
-            f"Bot-protection challenge: set {name}={value[:8]}... domain={domain}; "
-            f"replaying {method} {url}"
-        )
+        logger.info(f"Bot-protection challenge: set {name}={value[:8]}... domain={domain}; replaying {method} {url}")
         response = session.request(method, url, **kwargs)
         # If still a challenge after retry, give up gracefully — return the
         # response and let the caller's normal logic see the body.
         if self._bot_protection_cookie(response.text) is not None:
-            logger.warning(
-                f"Bot-protection challenge re-appeared after cookie set; "
-                f"giving up on {method} {url}"
-            )
+            logger.warning(f"Bot-protection challenge re-appeared after cookie set; giving up on {method} {url}")
         return response
 
     @staticmethod
@@ -186,9 +176,7 @@ class WordPress:
             "testcookie": "1",
         }
         try:
-            s = self._request(
-                self._session, "POST", url, data=form, allow_redirects=False
-            )
+            s = self._request(self._session, "POST", url, data=form, allow_redirects=False)
         except requests.RequestException as e:
             logger.error(f"Login POST failed: {e!r}")
             return False
@@ -196,9 +184,7 @@ class WordPress:
         # Successful auth: WP emits 302 to redirect_to AND sets wordpress_logged_in_<hash>.
         if s.status_code in (301, 302):
             location = s.headers.get("Location", "")
-            has_auth_cookie = any(
-                c.name.startswith("wordpress_logged_in_") for c in self._session.cookies
-            )
+            has_auth_cookie = any(c.name.startswith("wordpress_logged_in_") for c in self._session.cookies)
             if has_auth_cookie:
                 logger.debug(f"Login ok (redirect to {location})")
                 return self._dump_cookies()
@@ -215,7 +201,7 @@ class WordPress:
         else:
             logger.warning(
                 f"Login did not produce expected 302 (status={s.status_code}); "
-                f"no <div id=\"login_error\"> in body; body[:300]={s.text[:300]!r}"
+                f'no <div id="login_error"> in body; body[:300]={s.text[:300]!r}'
             )
         return False
 
@@ -227,9 +213,7 @@ class WordPress:
         versions; the previous text-scrape heuristic broke on WP 6.x.
         """
         try:
-            r = self._request(
-                self._session, "GET", f"{self._wp_url}/wp-admin/", allow_redirects=False
-            )
+            r = self._request(self._session, "GET", f"{self._wp_url}/wp-admin/", allow_redirects=False)
         except requests.RequestException as e:
             logger.warning(f"Session check request failed: {e!r}")
             return False
@@ -265,16 +249,12 @@ class WordPress:
             raise RuntimeError("WP_APP_PASSWORD is not configured; REST API call impossible")
         url = f"{self._wp_url}/wp-json{path}"
         try:
-            r = self._request(
-                self._rest_session, method, url, json=json_body, auth=self._app_auth
-            )
+            r = self._request(self._rest_session, method, url, json=json_body, auth=self._app_auth)
         except requests.RequestException as e:
             logger.error(f"REST {method} {path} transport failed: {e!r}")
             raise RuntimeError(f"REST {method} {path} transport failed: {e!r}") from e
         if not r.ok:
-            logger.error(
-                f"REST {method} {path} returned HTTP {r.status_code}; body[:500]={r.text[:500]!r}"
-            )
+            logger.error(f"REST {method} {path} returned HTTP {r.status_code}; body[:500]={r.text[:500]!r}")
             raise RuntimeError(f"REST {method} {path} returned HTTP {r.status_code}")
         return r
 
@@ -312,7 +292,7 @@ class WordPress:
 
     def _update_podlove_episode(self, episode_id: int, info: dict) -> None:
         payload = {
-            "title": info["title"],
+            "title": f"Разговорный жанр — {info['number']}",
             "summary": info["comment"],
             "number": int(info["number"]) if str(info["number"]).isdigit() else info["number"],
             "slug": info["slug"],
@@ -362,8 +342,7 @@ class WordPress:
 
         if not response.ok:
             logger.error(
-                f"wp-admin post-new page returned HTTP {response.status_code}; "
-                f"body[:500]={response.text[:500]!r}"
+                f"wp-admin post-new page returned HTTP {response.status_code}; body[:500]={response.text[:500]!r}"
             )
             raise RuntimeError(f"WordPress returned HTTP {response.status_code} for post-new page")
 
@@ -434,10 +413,7 @@ class WordPress:
         }
         form_element = html_dom.find('.//form[@name="post"]')
         if form_element is None:
-            logger.warning(
-                f"Post form not found on first try — re-logging in; "
-                f"body[:500]={response.text[:500]!r}"
-            )
+            logger.warning(f"Post form not found on first try — re-logging in; body[:500]={response.text[:500]!r}")
             if not self._login():
                 raise RuntimeError("Re-login to WordPress failed")
             response = self._get_with_retry(post_new_url)
@@ -446,16 +422,11 @@ class WordPress:
                     f"wp-admin post-new page returned HTTP {response.status_code} after re-login; "
                     f"body[:500]={response.text[:500]!r}"
                 )
-                raise RuntimeError(
-                    f"WordPress returned HTTP {response.status_code} for post-new page after re-login"
-                )
+                raise RuntimeError(f"WordPress returned HTTP {response.status_code} for post-new page after re-login")
             html_dom = etree.HTML(response.content, etree.HTMLParser())
             form_element = html_dom.find('.//form[@name="post"]')
             if form_element is None:
-                logger.error(
-                    f"Post form still not found after re-login; "
-                    f"body[:500]={response.text[:500]!r}"
-                )
+                logger.error(f"Post form still not found after re-login; body[:500]={response.text[:500]!r}")
                 raise RuntimeError("Failed to find WordPress post form after re-login")
 
         for field in form_element.xpath('.//input[@type="hidden"]'):
@@ -465,38 +436,26 @@ class WordPress:
 
         podlove_vue = self._extract_podlove_vue(response.text)
         if podlove_vue is None:
-            logger.error(
-                f"Could not extract podlove_vue from post-new page; "
-                f"body[:500]={response.text[:500]!r}"
-            )
+            logger.error(f"Could not extract podlove_vue from post-new page; body[:500]={response.text[:500]!r}")
             raise RuntimeError("podlove_vue (post_id/episode_id) not found in post-new page")
-        logger.debug(
-            f"Podlove reserved post_id={podlove_vue['post_id']}, "
-            f"episode_id={podlove_vue['episode_id']}"
-        )
+        logger.debug(f"Podlove reserved post_id={podlove_vue['post_id']}, episode_id={podlove_vue['episode_id']}")
 
         logger.debug("Submitting post data to WordPress")
         try:
-            response = self._request(
-                self._session, "POST", f"{self._wp_url}/wp-admin/post.php", data=form
-            )
+            response = self._request(self._session, "POST", f"{self._wp_url}/wp-admin/post.php", data=form)
         except requests.RequestException as e:
             logger.error(f"Post submit failed: {e!r}")
             raise RuntimeError(f"WordPress post submit failed: {e!r}") from e
         logger.debug(f"Uploaded post with response code: {response.status_code}")
 
         if response.status_code not in (200, 301, 302):
-            logger.error(
-                f"Post submit returned HTTP {response.status_code}; "
-                f"body[:500]={response.text[:500]!r}"
-            )
+            logger.error(f"Post submit returned HTTP {response.status_code}; body[:500]={response.text[:500]!r}")
             return False
 
         self._dump_cookies()
 
         logger.debug(
-            f"Post saved (post_id={podlove_vue['post_id']}); "
-            f"updating Podlove episode_id={podlove_vue['episode_id']}"
+            f"Post saved (post_id={podlove_vue['post_id']}); updating Podlove episode_id={podlove_vue['episode_id']}"
         )
         self._update_podlove_episode(podlove_vue["episode_id"], info)
         if info.get("chapters"):

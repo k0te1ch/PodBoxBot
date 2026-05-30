@@ -1,22 +1,33 @@
+from datetime import datetime
 from pathlib import Path
-import pytest
 from unittest import mock
-from app.config import PODCAST_CITY, PODCAST_COUNTRY, PODCAST_DISTRICT, PODCAST_GENRE, PODCAST_LINK, PODCAST_NAME, SUPPORT_LINK
-from app.utils.MP3_methods import audio_tag
 
 import eyed3
+import pytest
 import pytz
+
+from config import (
+    PODCAST_CITY,
+    PODCAST_COUNTRY,
+    PODCAST_DISTRICT,
+    PODCAST_GENRE,
+    PODCAST_LINK,
+    PODCAST_NAME,
+    SUPPORT_LINK,
+    TIMEZONE,
+)
+from utils.MP3_methods import audio_tag
 
 
 @pytest.fixture
 def mock_paths():
     """Мокаем только те объекты, которые реально используются"""
     with (
-        mock.patch("app.utils.MP3_methods.PODCAST_PATH", Path("/mocked/podcast.mp3")),
-        mock.patch("app.utils.MP3_methods.COVER_RZ_PATH", Path("/mocked/cover_rz.jpg")),
-        mock.patch("app.utils.MP3_methods.COVER_PS_PATH", Path("/mocked/cover_ps.jpg")),
-        mock.patch("app.utils.MP3_methods.PODCAST_GENRE", 186),
-        mock.patch("app.utils.MP3_methods.TIMEZONE", pytz.timezone("Europe/Moscow")),
+        mock.patch("utils.MP3_methods.PODCAST_PATH", Path("/mocked/podcast.mp3")),
+        mock.patch("utils.MP3_methods.COVER_RZ_PATH", Path("/mocked/cover_rz.jpg")),
+        mock.patch("utils.MP3_methods.COVER_PS_PATH", Path("/mocked/cover_ps.jpg")),
+        mock.patch("utils.MP3_methods.PODCAST_GENRE", 186),
+        mock.patch("utils.MP3_methods.TIMEZONE", pytz.timezone("Europe/Moscow")),
     ):
         yield
 
@@ -81,7 +92,7 @@ def test_audio_tag(mock_open, mock_eyed3_load, mock_audio_file, mock_paths, audi
     mock_audio_file.tag.clear.assert_called_once()
 
     # Проверка установки тегов
-    check_common_tag_settings(mock_audio_file, "Test Title", "Test Comment", 2024)
+    check_common_tag_settings(mock_audio_file, "Test Title", "Test Comment", datetime.now(TIMEZONE).year)
 
     # Проверка открытия правильного файла обложки в зависимости от типа
     mock_open.assert_called_once_with(expected_cover_path, "rb")
@@ -153,7 +164,7 @@ def test_audio_tag_variable_info(
     expected_title,
     expected_comment,
     audio_type,
-    expected_cover_path
+    expected_cover_path,
 ):
     """Тестирование различных вариантов данных в info"""
     mock_eyed3_load.return_value = mock_audio_file
@@ -163,7 +174,7 @@ def test_audio_tag_variable_info(
     audio_tag(info, audio_type)
 
     # Проверка установки тегов
-    check_common_tag_settings(mock_audio_file, expected_title, expected_comment, 2024)
+    check_common_tag_settings(mock_audio_file, expected_title, expected_comment, datetime.now(TIMEZONE).year)
 
     # Проверка открытия файла обложки
     mock_open.assert_called_once_with(expected_cover_path, "rb")
@@ -183,9 +194,9 @@ def test_audio_tag_load_error(mock_eyed3_load, caplog):
         audio_tag(info, "main")
 
     # Проверка логирования ошибки
-    assert any(
-        "Error loading file" in message for message in caplog.messages
-    ), "Expected error message not found in logs"
+    assert any("Error loading file" in message for message in caplog.messages), (
+        "Expected error message not found in logs"
+    )
 
 
 @mock.patch("eyed3.load")
@@ -195,7 +206,7 @@ def test_audio_tag_cover_error(mock_open, mock_eyed3_load, mock_audio_file, capl
     mock_eyed3_load.return_value = mock_audio_file
 
     # Симуляция ошибки при открытии файла обложки
-    mock_open.side_effect = IOError("Error opening cover file")
+    mock_open.side_effect = OSError("Error opening cover file")
 
     info = {
         "title": "Test Title",

@@ -1,7 +1,8 @@
-import pytest
 from unittest.mock import patch
 
-from app.utils.wordpress import WordPress
+import pytest
+
+from utils.wordpress import WordPress
 
 
 @patch.object(WordPress, "close")

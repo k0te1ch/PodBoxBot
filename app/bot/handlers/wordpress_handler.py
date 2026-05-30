@@ -40,6 +40,7 @@ async def upload_WP(callback: CallbackQuery, language: str, username: str) -> No
         return await callback.answer(context[language].invalid_input, show_alert=True)
 
     info = stored["info"]
+    type_episode = stored.get("type_episode")
 
     audio = callback.message.audio
     info.update(
@@ -66,6 +67,7 @@ async def upload_WP(callback: CallbackQuery, language: str, username: str) -> No
             tags=info["tags"],
             slug=info["slug"],
             duration=info["duration"],
+            type_episode=type_episode,
         )
 
         producer = KafkaProducer(KAFKA_SERVER, SCHEMA_REGISTRY_URL, VALUE_SCHEMA_PATH)

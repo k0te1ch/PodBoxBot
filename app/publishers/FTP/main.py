@@ -1,3 +1,8 @@
+"""FTP publisher: подписан на publisher.ftp.upload, заливает файл по SFTP,
+шлёт прогресс и финальный результат в publisher.ftp.result."""
+
+from __future__ import annotations
+
 import asyncio
 import os
 import time
@@ -5,28 +10,13 @@ import time
 import aiofiles
 import asyncssh
 from loguru import logger
-from metrics import (
-    push_metrics,
-    registry,
-    upload_duration,
-    upload_failure_counter,
-    upload_success_counter,
-)
 
 from shared.config import config
-from shared.kafka.consumer import KafkaConsumer
 from shared.kafka.models.upload_event import UploadEvent
 from shared.kafka.producer import KafkaProducer
+from shared.publishers.base import BasePublisher
 
-# Kafka config
-KAFKA_SERVER = config.KAFKA_SERVER
-UPLOAD_TOPIC = config.UPLOAD_TOPIC
-RESULT_TOPIC = config.RESULT_TOPIC
-GROUP_ID = "ftp_group"
-SCHEMA_REGISTRY_URL = config.SCHEMA_REGISTRY_URL
-SCHEMA_PATH = "/app/shared/kafka/schemas/upload_event.avsc"
-
-# FTP config
+# FTP-config (платформо-специфичный — base его не знает).
 FTP_SERVER = config.FTP_SERVER
 FTP_LOGIN = config.FTP_LOGIN
 FTP_PASSWORD = config.FTP_PASSWORD
@@ -38,15 +28,17 @@ async def upload_to_ftp(
     file_name: str,
     user: str,
     producer: KafkaProducer,
+    result_topic: str,
     chat_id: str | None = None,
     message_id: str | None = None,
-):
-    """Загружает файл на SFTP с отчётом прогресса"""
+    type_episode: str | None = None,
+) -> None:
+    """SFTP-загрузка с эмиссией progress-событий каждые ~5 секунд."""
     file_size = os.path.getsize(path)
     bytes_uploaded = 0
     chunk_size = 64 * 1024  # 64KB
     start_time = time.time()
-    last_sent = 0
+    last_sent = 0.0
 
     logger.debug(f"Connecting to SFTP: {FTP_SERVER} as {FTP_LOGIN}")
 
@@ -74,10 +66,9 @@ async def upload_to_ftp(
                 speed = bytes_uploaded / elapsed if elapsed > 0 else 0.0
                 progress = bytes_uploaded / file_size
 
-                # Каждые 5 сек шлём прогресс
                 if time.time() - last_sent >= 5:
                     last_sent = time.time()
-                    event = UploadEvent(
+                    progress_event = UploadEvent(
                         event_type="progress",
                         file_name=file_name,
                         path=path,
@@ -89,16 +80,15 @@ async def upload_to_ftp(
                         status="uploading",
                         chat_id=chat_id,
                         message_id=message_id,
+                        type_episode=type_episode,
                     )
                     _task = asyncio.create_task(  # noqa: RUF006
-                        producer.send(RESULT_TOPIC, event.model_dump())
+                        producer.send(result_topic, progress_event.model_dump())
                     )
-                    logger.debug(f"Sended {bytes_uploaded}/{file_size}")
+                    logger.debug(f"Sent {bytes_uploaded}/{file_size}")
 
     duration = time.time() - start_time
-    upload_success_counter.inc({"filename": file_name, "ftp_server": FTP_SERVER})
-
-    result_event = UploadEvent(
+    success_event = UploadEvent(
         event_type="result",
         file_name=file_name,
         path=path,
@@ -110,74 +100,75 @@ async def upload_to_ftp(
         status="success",
         chat_id=chat_id,
         message_id=message_id,
+        type_episode=type_episode,
     )
-    await producer.send(RESULT_TOPIC, result_event.model_dump())
-
+    await producer.send(result_topic, success_event.model_dump())
     logger.success(f"Uploaded {file_name} successfully in {duration:.2f}s")
 
 
-async def handle_upload(payload: dict, producer: KafkaProducer):
-    """Обрабатывает событие UploadEvent"""
-    try:
-        event = UploadEvent(**payload)  # ✅ валидация через модель
-    except Exception as e:
-        logger.error(f"Invalid UploadEvent payload: {e}")
-        return
+class FtpPublisher(BasePublisher):
+    name = "ftp"
+    event_cls = UploadEvent
+    schema_path = "/app/shared/kafka/schemas/upload_event.avsc"
+    upload_topic = config.UPLOAD_TOPIC
+    result_topic = config.RESULT_TOPIC
+    group_id = "ftp_group"
 
-    logger.info(f"Received upload request from {event.username} for {event.file_name}")
-
-    start_time = time.time()
-    try:
+    async def publish(self, event: UploadEvent) -> None:  # type: ignore[override]
         await upload_to_ftp(
             path=event.path,
             file_name=event.file_name,
             user=event.username,
-            producer=producer,
+            producer=self.producer,
+            result_topic=self.result_topic,
             chat_id=event.chat_id,
             message_id=event.message_id,
+            type_episode=event.type_episode,
         )
-    except Exception as e:
-        logger.error(f"Failed to upload {event.file_name}: {e}")
-        upload_failure_counter.inc({"filename": event.file_name, "ftp_server": FTP_SERVER})
 
-        failure_event = UploadEvent(
+    def event_key(self, event: UploadEvent) -> str:  # type: ignore[override]
+        return event.file_name
+
+    def build_failure_event(self, event: UploadEvent, error: str):  # type: ignore[override]
+        # Полное обнуление progress-полей: failure после частичной загрузки
+        # не должно отображать «99% — ошибка», это путает пользователя.
+        return UploadEvent(
             event_type="result",
             file_name=event.file_name,
             path=event.path,
             username=event.username,
             status="failure",
-            error=str(e),
+            error=error,
             chat_id=event.chat_id,
             message_id=event.message_id,
+            type_episode=event.type_episode,
         )
-        await producer.send(RESULT_TOPIC, failure_event.model_dump())
-    finally:
-        upload_duration.observe(
-            {"filename": event.file_name, "user": event.username},
-            time.time() - start_time,
-        )
-        await push_metrics("ftp_uploader", registry)
 
 
-async def consume_loop():
-    """Основной Kafka consumer loop"""
-    consumer = KafkaConsumer(
-        kafka_server=KAFKA_SERVER,
-        schema_registry_url=SCHEMA_REGISTRY_URL,
-        topic=UPLOAD_TOPIC,
-        group_id=GROUP_ID,
-    )
-    producer = KafkaProducer(
-        kafka_server=KAFKA_SERVER,
-        schema_registry_url=SCHEMA_REGISTRY_URL,
-        value_schema_path=SCHEMA_PATH,
-    )
+# Singleton-инстанс используется как тестами (через handle_upload-шим), так
+# и main-точкой входа. KafkaProducer/KafkaConsumer внутри не подключаются
+# до .run() — конструкторы только сохраняют конфиг.
+_publisher = FtpPublisher()
 
-    async def handler(payload):
-        await handle_upload(payload, producer)
 
-    await consumer.start(handler)
+async def handle_upload(payload: dict, producer: KafkaProducer | None = None) -> None:
+    """Тестовая обёртка над BasePublisher._handle.
+
+    Сохранена для совместимости с tests/unit/publishers/ftp/test_ftp_handler.py,
+    который патчит upload_to_ftp и проверяет вызовы producer.send. Подменяем
+    producer публишера, чтобы мок из теста увидел вызовы; восстанавливаем
+    после.
+    """
+    if producer is not None:
+        original = _publisher.producer
+        _publisher.producer = producer
+        try:
+            await _publisher._handle(payload)
+        finally:
+            _publisher.producer = original
+    else:
+        await _publisher._handle(payload)
 
 
 if __name__ == "__main__":
-    asyncio.run(consume_loop())
+    asyncio.run(_publisher.run())

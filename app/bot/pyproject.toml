@@ -9,20 +9,20 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = ">=3.12,<3.15"
-aiogram = "~=3.23.0"
+aiogram = "^3.28"
 aiofiles = "~23.2.1"
-aiohttp = "~3.10.5"
+aiohttp = "^3.13.3"
 click = "^8.1.6"
 alembic = "^1.11.1"
 loguru = "^0.7.0"
 redis = "^4.6.0"
 apscheduler = "^3.10.1"
 eyed3 = "^0.9.7"
-python-dotenv = "^1.0.0"
-lxml = "^5.1.0"
+python-dotenv = "^1.2.2"
+lxml = "^6.1.0"
 feedparser = "^6.0.11"
 fake-useragent = "^1.4.0"
-requests = "^2.31.0"
+requests = "^2.32.5"
 toml = "^0.10.2"
 cryptg = "^0.5.0.post0"
 telethon = "^1.39.0"
@@ -38,8 +38,14 @@ pytz = "^2026.1.post1"
 [tool.poetry.group.testing.dependencies]
 pytest = "^8.3.2"
 pytest-asyncio = "^0.24.0"
-aiogram-tests = {git = "https://github.com/k0te1ch/aiogram_tests"}
+aiogram-testing = "^1.1.0"
 responses = "^0.23.1"
+
+
+[tool.poetry.group.e2e]
+optional = true
+
+[tool.poetry.group.e2e.dependencies]
 tgtest = {git = "https://github.com/k0te1ch/tgtest"}
 
 

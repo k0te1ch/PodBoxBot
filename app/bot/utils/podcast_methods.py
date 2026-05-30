@@ -15,6 +15,10 @@ class EpisodeType(Enum):
 
 # Константы
 EPISODE_PREFIXES = {EpisodeType.MAIN: "rz", EpisodeType.POSTSHOW: "postshow"}
+# Тип эпизода в state/UI хранится как "aftershow" (см. handlers.podcast_handler),
+# но в именах файлов и enum используется "postshow". Приводим алиас к каноничному
+# значению, иначе загрузка послешоу-эпизодов падает в generate_file_name.
+EPISODE_TYPE_ALIASES = {"aftershow": EpisodeType.POSTSHOW.value}
 DATE_FORMAT = "%d%m%Y"
 FILE_EXTENSION = ".mp3"
 EPISODE_NUMBER_LENGTH = 4
@@ -65,7 +69,7 @@ def generate_podcast_text(info: dict[str, Any]) -> str | None:
             f"<i>Описание:</i>\n{summary}\n\n"
             f"<i>Таймлайн:</i>\n{formatted_chapters}\n\n"
             f"Всё это вы услышите в {episode_number}-м эпизоде подкаста «Разговорный жанр».\n\n"
-            f'<i><b><a href="{support_link}">💰 Поддержать подкаст</a></b></i>'
+            f'<i><b><a href="{support_link}">🍩 Поддержать подкаст</a></b></i>'
         )
         return podcast_text
 
@@ -81,7 +85,7 @@ def generate_file_name(number: str, type_episode: str, extension: str = FILE_EXT
 
     Args:
         number (str): Номер эпизода
-        type_episode (str): Тип эпизода ('main' или 'postshow')
+        type_episode (str): Тип эпизода ('main', 'postshow' или алиас 'aftershow')
         extension (str, optional): Расширение файла. По умолчанию '.mp3'
 
     Returns:
@@ -101,7 +105,8 @@ def generate_file_name(number: str, type_episode: str, extension: str = FILE_EXT
     if not number.isdigit():
         raise ValueError("Номер эпизода должен содержать только цифры")
 
-    # Преобразование строкового типа в enum
+    # Преобразование строкового типа в enum (с учётом алиаса "aftershow")
+    type_episode = EPISODE_TYPE_ALIASES.get(type_episode, type_episode)
     try:
         episode_type = EpisodeType(type_episode)
     except ValueError as err:

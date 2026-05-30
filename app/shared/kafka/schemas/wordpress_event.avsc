@@ -15,6 +15,7 @@
     {"name": "chapters", "type": {"type": "array", "items": {"type": "array", "items": "string"}}, "doc": "Таймлайн [[time, name], ...]"},
     {"name": "tags", "type": {"type": "array", "items": "string"}},
     {"name": "slug", "type": "string", "doc": "Slug файла (имя без .mp3)"},
-    {"name": "duration", "type": ["null", "long"], "default": null, "doc": "Длительность в секундах"}
+    {"name": "duration", "type": ["null", "long"], "default": null, "doc": "Длительность в секундах"},
+    {"name": "type_episode", "type": ["null", "string"], "default": null, "doc": "main | aftershow — определяет paywall для платных publisher'ов"}
   ]
 }

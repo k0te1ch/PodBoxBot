@@ -1,7 +1,10 @@
-import pytest
-from unittest import mock
 from pathlib import Path
-from app.utils.bot_methods import get_zip_logs
+from unittest import mock
+
+import pytest
+
+from utils.bot_methods import get_zip_logs
+
 
 def create_mock_file(name, is_file) -> mock.Mock:
     file = mock.Mock(spec=Path)
@@ -15,8 +18,8 @@ def create_mock_file(name, is_file) -> mock.Mock:
 def mock_paths():
     """Фикстура для мока глобальных переменных путей"""
     with (
-        mock.patch("app.utils.bot_methods.FILES_PATH", Path("/mocked/files_path")),
-        mock.patch("app.utils.bot_methods.LOGS_PATH", Path("/mocked/logs_path")),
+        mock.patch("utils.bot_methods.FILES_PATH", Path("/mocked/files_path")),
+        mock.patch("utils.bot_methods.LOGS_PATH", Path("/mocked/logs_path")),
     ):
         yield
 
@@ -31,7 +34,7 @@ def mock_log_files():
 @pytest.fixture
 def mock_non_file():
     """Фикстура для мока объекта, который не является файлом"""
-    
+
     return create_mock_file("not_a_file", False)
 
 

@@ -5,8 +5,8 @@ from confluent_kafka import KafkaError
 from confluent_kafka.avro import AvroConsumer, SerializerError
 from loguru import logger
 
-_RETRY_INITIAL_DELAY = 2.0   # seconds
-_RETRY_MAX_DELAY = 60.0      # seconds
+_RETRY_INITIAL_DELAY = 2.0  # seconds
+_RETRY_MAX_DELAY = 60.0  # seconds
 _RETRY_MULTIPLIER = 2.0
 
 

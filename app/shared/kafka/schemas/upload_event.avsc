@@ -15,6 +15,7 @@
     {"name": "status", "type": ["null", "string"], "default": null},
     {"name": "error", "type": ["null", "string"], "default": null},
     {"name": "message_id", "type": ["null", "string"], "default": null},
-    {"name": "chat_id", "type": ["null", "string"], "default": null}
+    {"name": "chat_id", "type": ["null", "string"], "default": null},
+    {"name": "type_episode", "type": ["null", "string"], "default": null, "doc": "main | aftershow — определяет paywall для платных publisher'ов"}
   ]
 }

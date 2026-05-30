@@ -1,8 +1,9 @@
-import pytest
 from datetime import datetime
 from unittest.mock import patch
 
-from app.utils.podcast_methods import generate_file_name
+import pytest
+
+from utils.podcast_methods import generate_file_name
 
 
 # Тест для функции
@@ -15,7 +16,7 @@ from app.utils.podcast_methods import generate_file_name
         ("9999", "postshow", "08082022", "9999_postshow_08082022.mp3"),
     ],
 )
-@patch("app.utils.podcast_methods.datetime")  # Мокаем datetime.datetime
+@patch("utils.podcast_methods.datetime")  # Мокаем datetime.datetime
 def test_generate_file_name(mock_datetime, number, type_episode, current_date, expected):
     # Создаем фиксированную дату
     mocked_date = datetime.strptime(current_date, "%d%m%Y")

@@ -12,6 +12,7 @@ from shared.kafka.models.upload_event import (
     UploadEvent,
 )  # 👈 импортируем Pydantic-модель
 from shared.kafka.producer import KafkaProducer
+from utils.template_store import load as load_template_info
 
 router = Router(name=os.path.splitext(os.path.basename(__file__))[0])
 router.message.filter(IsPrivate, IsAdmin)
@@ -40,6 +41,7 @@ async def send_upload_request(
     username: str,
     message_id: str,
     chat_id: str,
+    type_episode: str | None = None,
 ):
     """Создаёт событие UploadEvent и отправляет его в Kafka"""
     try:
@@ -56,6 +58,7 @@ async def send_upload_request(
             status="pending",
             message_id=str(message_id),
             chat_id=str(chat_id),
+            type_episode=type_episode,
         )
         await producer.send(UPLOAD_TOPIC, event.model_dump())
         logger.info(f"[Kafka] Запрос на загрузку отправлен: {file_name} для {username}")
@@ -77,6 +80,12 @@ async def upload_FTP(callback: CallbackQuery, username: str):
     file_name = callback.message.audio.file_name
     file_path = f"{FILES_PATH}/{file_name}"
 
+    # Подтягиваем type_episode из sidecar — для будущих платных publisher'ов
+    # это сигнал, надо ли вешать paywall. FTP сам paywall не использует,
+    # но прокидывает поле дальше через Kafka для совместимости со схемой.
+    stored = await load_template_info(file_name)
+    type_episode = stored.get("type_episode") if stored else None
+
     # Создаём продюсер и отправляем сообщение
     producer = KafkaProducer(KAFKA_SERVER, SCHEMA_REGISTRY_URL, VALUE_SCHEMA_PATH)
 
@@ -89,6 +98,7 @@ async def upload_FTP(callback: CallbackQuery, username: str):
         username,
         message_id=msg.message_id,
         chat_id=msg.chat.id,
+        type_episode=type_episode,
     )
 
     await callback.answer(

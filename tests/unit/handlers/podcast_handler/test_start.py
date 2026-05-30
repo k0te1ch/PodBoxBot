@@ -1,18 +1,17 @@
 import pytest
 from aiogram.filters import Command
 from aiogram_tests.types.dataset import MESSAGE, USER
-from app.config import LANGUAGES
-from app.forms.upload_file import UploadFile
-from app.handlers.podcast_handler import start
-from app.services.context import context
+
+from config import LANGUAGES
+from forms.upload_file import UploadFile
+from handlers.podcast_handler import start
+from services import context
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("username", ["test_of_test"])
 @pytest.mark.parametrize("language", LANGUAGES)
-async def test_start_command(
-    language, username, handler_factory, bot_factory, state_context_factory
-):
+async def test_start_command(language, username, handler_factory, bot_factory, state_context_factory):
     # Настройка обработчика и команды start
     handler_func = start
     command = Command(commands=["start"])

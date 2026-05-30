@@ -154,14 +154,14 @@ async def get_release_note() -> list[str] | None:
     date = date_match.group(1) if date_match else "Неизвестно"
 
     parts: list[str] = [
-        f"<b>Бот обновлён!</b>\n\n"
-        f"<b>Список изменений (версия {html.escape(version)}, от {html.escape(date)}):</b>"
+        f"<b>Бот обновлён!</b>\n\n<b>Список изменений (версия {html.escape(version)}, от {html.escape(date)}):</b>"
     ]
 
     # Cyrillic в UTF-8 — по 2 байта, так что 4096-байтовый лимит TG
     # достигается раньше, чем кажется по числу символов. Шлём каждую
-    # секцию отдельным сообщением; если когда-нибудь одна секция
-    # перерастёт лимит, придётся резать по пунктам.
+    # секцию отдельным сообщением. Если секция всё равно перерастает
+    # лимит — режем её по пунктам (пакуем столько bullets, сколько
+    # помещается, дальше начинаем новое сообщение с тем же заголовком).
     sections = ["Добавлено", "Улучшено", "Исправлено"]
     for section in sections:
         section_pattern = re.compile(rf"## {section}(.+?)(?=## |\n#|\Z)", re.DOTALL)
@@ -169,14 +169,44 @@ async def get_release_note() -> list[str] | None:
         if not section_match:
             continue
 
-        lines = [f"<i>{html.escape(section)}</i>:"]
-        for raw in section_match.group(1).strip().split("\n"):
-            item = raw.replace("- ", "", 1).strip()
-            if item:
-                lines.append(f"• {_markdown_inline_to_html(item)}")
-        parts.append("\n".join(lines))
+        heading = f"<i>{html.escape(section)}</i>:"
+        bullets = [
+            f"• {_markdown_inline_to_html(item)}"
+            for raw in section_match.group(1).strip().split("\n")
+            if (item := raw.replace("- ", "", 1).strip())
+        ]
+        parts.extend(_pack_html_chunks(heading, bullets))
 
     return parts
+
+
+# Запас под HTML-теги и небольшой буфер; реальный TG-лимит — 4096 байт.
+_TG_MESSAGE_MAX_BYTES = 3800
+
+
+def _pack_html_chunks(heading: str, bullets: list[str]) -> list[str]:
+    """Pack heading + bullets into TG-sized HTML messages.
+
+    Each emitted chunk starts with `heading` so context isn't lost when
+    a section spans multiple messages. Bullets are added one by one
+    until the next one would push the chunk over _TG_MESSAGE_MAX_BYTES;
+    then the chunk is flushed and a new one is started, again with the
+    heading. A single bullet wider than the limit goes out on its own —
+    TG will trim its tail rather than us rejecting the whole release.
+    """
+    chunks: list[str] = []
+    current = heading
+    for bullet in bullets:
+        candidate = f"{current}\n{bullet}"
+        if len(candidate.encode("utf-8")) <= _TG_MESSAGE_MAX_BYTES:
+            current = candidate
+            continue
+        if current != heading:
+            chunks.append(current)
+        current = f"{heading}\n{bullet}"
+    if current != heading or not chunks:
+        chunks.append(current)
+    return chunks
 
 
 async def check_version() -> bool:
@@ -387,7 +417,7 @@ async def pin_message(
     bot: Bot,
     username: str,
     callback_message: Message,
-    chat_id: int,
+    chat_id: int | str,
     message_id: int,
     disable_notification: bool = False,
 ) -> None:
