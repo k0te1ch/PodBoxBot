@@ -7,11 +7,6 @@ from app.shared.kafka.models.upload_event import UploadEvent
 from pydantic import ValidationError
 
 
-@pytest.mark.skip(
-    reason="Publisher service test: FTP main.py builds a KafkaProducer at import "
-    "(avro.load on the in-container path /app/shared/...), unavailable outside the "
-    "service container. Re-enable after deferring Kafka/schema init. Follow-up tracked."
-)
 class TestHandleUpload:
     @pytest.fixture
     def mock_producer(self):

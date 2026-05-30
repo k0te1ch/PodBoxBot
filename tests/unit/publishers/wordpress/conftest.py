@@ -1,7 +1,17 @@
+import sys
 from collections import UserDict
+from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
+
+# WordPress/main.py uses a bare ``from wordpress import WordPress`` — that
+# resolves in-container because main.py runs from /app with wordpress.py
+# alongside it. Outside the container the service source dir isn't on the
+# path, so add it here (mirrors how the suite injects ``shared`` via app/).
+_WP_SRC = Path(__file__).resolve().parents[4] / "app" / "publishers" / "WordPress"
+if str(_WP_SRC) not in sys.path:
+    sys.path.insert(0, str(_WP_SRC))
 
 
 class TrackingDict(UserDict):
