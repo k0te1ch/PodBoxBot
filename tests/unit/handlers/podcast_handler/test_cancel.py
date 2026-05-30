@@ -1,11 +1,12 @@
 import pytest
 from aiogram.types import ReplyKeyboardRemove
 from aiogram_tests.types.dataset import MESSAGE, USER
-from app.config import LANGUAGES
-from app.filters.dispatcher_filters import ContextButton
-from app.forms.upload_file import UploadFile
-from app.handlers.podcast_handler import cancel
-from app.services.context import context
+
+from config import LANGUAGES
+from filters.dispatcher_filters import ContextButton
+from forms.upload_file import UploadFile
+from handlers.podcast_handler import cancel
+from services import context
 
 
 @pytest.mark.asyncio

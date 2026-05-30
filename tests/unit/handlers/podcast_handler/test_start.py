@@ -1,10 +1,11 @@
 import pytest
 from aiogram.filters import Command
 from aiogram_tests.types.dataset import MESSAGE, USER
-from app.config import LANGUAGES
-from app.forms.upload_file import UploadFile
-from app.handlers.podcast_handler import start
-from app.services.context import context
+
+from config import LANGUAGES
+from forms.upload_file import UploadFile
+from handlers.podcast_handler import start
+from services import context
 
 
 @pytest.mark.asyncio

@@ -2,7 +2,7 @@ import sys
 from pathlib import Path
 from unittest.mock import patch
 
-from app.config import set_up_logger  # Замените на имя вашего модуля
+from config import set_up_logger  # Замените на имя вашего модуля
 
 
 def test_set_up_logger():
@@ -11,7 +11,7 @@ def test_set_up_logger():
     logs_path = Path("/tmp/test_logs")
 
     # Mock methods of loguru logger
-    with patch("app.config.logger.add") as mock_add, patch("app.config.logger.remove") as mock_remove:
+    with patch("config.logger.add") as mock_add, patch("config.logger.remove") as mock_remove:
         set_up_logger(log_level, logs_path)
 
         # Assert logger.remove was called

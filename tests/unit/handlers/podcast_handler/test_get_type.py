@@ -1,10 +1,10 @@
 import pytest
 from aiogram_tests.types.dataset import MESSAGE, USER
-from app.config import LANGUAGES
-from app.forms.upload_file import UploadFile
-from app.handlers.podcast_handler import get_type
-from app.services.context import context
-from app.services.keyboards import keyboards
+
+from config import LANGUAGES
+from forms.upload_file import UploadFile
+from handlers.podcast_handler import get_type
+from services import context, keyboards
 
 
 @pytest.mark.asyncio
@@ -39,13 +39,18 @@ async def test_get_type_handler(
     # Verify FSM state update and sent message
     state_data = await state_context.get_data()
     expected_type = type_episode_key.replace("_episode", "")
-    assert state_data.get("typeEpisode") == expected_type, "Expected typeEpisode to be set in state data"
+    assert state_data.get("type_episode") == expected_type, "Expected typeEpisode to be set in state data"
     assert (await state_context.get_state()) == UploadFile.mp3, (
         "FSM state did not update to UploadFile.mp3 as expected"
     )
 
     assert len(calls.send_message) == 1, "Expected one message to be sent"
     sent_message = calls.send_message.fetchone()
+    # ``ask_mp3`` interpolates ``type_episode`` / ``type_episode_text`` from the
+    # caller's locals (see services.context). Mirror what the handler computes
+    # so the expected text matches across locales.
+    type_episode = expected_type  # noqa: F841
+    type_episode_text = "основной эпизод" if expected_type == "main" else "эпизод послешоу"  # noqa: F841
     expected_text = context[language].ask_mp3
     assert sent_message.text == expected_text, "Sent message text does not match expected text"
     assert sent_message.reply_markup == keyboards["podcast_handler"][language].cancel, (

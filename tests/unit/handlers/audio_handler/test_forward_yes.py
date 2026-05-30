@@ -3,10 +3,10 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from aiogram_tests.requester import Calls
 from aiogram_tests.types.dataset import AUDIO, CALLBACK_QUERY, MESSAGE, USER
-from app.config import LANGUAGES
-from app.handlers.audio_handler import forward_yes
-from app.services import context
-from app.services.keyboards import keyboards
+
+from config import LANGUAGES
+from handlers.audio_handler import forward_yes
+from services import context, keyboards
 
 
 @pytest.mark.asyncio
@@ -47,14 +47,14 @@ async def test_forward_yes(
 
     with (
         patch("handlers.audio_handler.Bot.send_audio", new=AsyncMock()) as mock_send_audio,
-        patch("app.handlers.audio_handler.FORWARD_CHAT_USERNAME", new="@test_group"),
+        patch("handlers.audio_handler.FORWARD_CHAT_USERNAME", new="@test_group"),
         patch("handlers.audio_handler.CallbackQuery.answer", new=AsyncMock()) as mock_callback_answer,
         patch(
-            "app.handlers.audio_handler.validate_template",
+            "handlers.audio_handler.validate_template",
             return_value={} if expected_call else None,
         ) as mock_validate,
         patch(
-            "app.handlers.audio_handler.generate_podcast_text",
+            "handlers.audio_handler.generate_podcast_text",
             return_value="Generated podcast text",
         ),
     ):

@@ -64,9 +64,7 @@ def test_set_chapters_with_multiple_chapters(mock_audio_file):
     """Тестирование с несколькими главами — проверка корректного добавления всех глав"""
     chapters = [("00:00:10", "Introduction"), ("00:10:00", "Chapter 1"), ("00:20:00", "Chapter 2")]
 
-    with mock.patch(
-        "app.utils.MP3_methods.time_to_milliseconds", side_effect=[10000, 600000, 600000, 1200000, 1200000]
-    ):
+    with mock.patch("utils.MP3_methods.time_to_milliseconds", side_effect=[10000, 600000, 600000, 1200000, 1200000]):
         set_chapters(mock_audio_file, chapters)
 
         # Проверка добавления первой главы

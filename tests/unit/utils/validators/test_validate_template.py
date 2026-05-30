@@ -1,5 +1,6 @@
 import pytest
-from app.utils.validators import validate_template
+
+from utils.validators import validate_template
 
 
 @pytest.mark.parametrize(

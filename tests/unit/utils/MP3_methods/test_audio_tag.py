@@ -4,7 +4,8 @@ from unittest import mock
 import eyed3
 import pytest
 import pytz
-from app.config import (
+
+from config import (
     PODCAST_CITY,
     PODCAST_COUNTRY,
     PODCAST_DISTRICT,
@@ -13,18 +14,18 @@ from app.config import (
     PODCAST_NAME,
     SUPPORT_LINK,
 )
-from app.utils.MP3_methods import audio_tag
+from utils.MP3_methods import audio_tag
 
 
 @pytest.fixture
 def mock_paths():
     """Мокаем только те объекты, которые реально используются"""
     with (
-        mock.patch("app.utils.MP3_methods.PODCAST_PATH", Path("/mocked/podcast.mp3")),
-        mock.patch("app.utils.MP3_methods.COVER_RZ_PATH", Path("/mocked/cover_rz.jpg")),
-        mock.patch("app.utils.MP3_methods.COVER_PS_PATH", Path("/mocked/cover_ps.jpg")),
-        mock.patch("app.utils.MP3_methods.PODCAST_GENRE", 186),
-        mock.patch("app.utils.MP3_methods.TIMEZONE", pytz.timezone("Europe/Moscow")),
+        mock.patch("utils.MP3_methods.PODCAST_PATH", Path("/mocked/podcast.mp3")),
+        mock.patch("utils.MP3_methods.COVER_RZ_PATH", Path("/mocked/cover_rz.jpg")),
+        mock.patch("utils.MP3_methods.COVER_PS_PATH", Path("/mocked/cover_ps.jpg")),
+        mock.patch("utils.MP3_methods.PODCAST_GENRE", 186),
+        mock.patch("utils.MP3_methods.TIMEZONE", pytz.timezone("Europe/Moscow")),
     ):
         yield
 

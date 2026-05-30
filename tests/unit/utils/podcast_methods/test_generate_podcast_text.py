@@ -1,7 +1,8 @@
 from unittest.mock import patch
 
 import pytest
-from app.utils.podcast_methods import generate_podcast_text
+
+from utils.podcast_methods import generate_podcast_text
 
 
 @pytest.fixture
@@ -20,7 +21,7 @@ def podcast_info():
     }
 
 
-@patch("app.utils.podcast_methods.SUPPORT_LINK", "https://support.link")
+@patch("utils.podcast_methods.SUPPORT_LINK", "https://support.link")
 def test_generate_podcast_text(podcast_info):
     """Тестирует генерацию текста для подкаста."""
     expected_output = (

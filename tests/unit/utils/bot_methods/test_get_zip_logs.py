@@ -2,7 +2,8 @@ from pathlib import Path
 from unittest import mock
 
 import pytest
-from app.utils.bot_methods import get_zip_logs
+
+from utils.bot_methods import get_zip_logs
 
 
 def create_mock_file(name, is_file) -> mock.Mock:
@@ -17,8 +18,8 @@ def create_mock_file(name, is_file) -> mock.Mock:
 def mock_paths():
     """Фикстура для мока глобальных переменных путей"""
     with (
-        mock.patch("app.utils.bot_methods.FILES_PATH", Path("/mocked/files_path")),
-        mock.patch("app.utils.bot_methods.LOGS_PATH", Path("/mocked/logs_path")),
+        mock.patch("utils.bot_methods.FILES_PATH", Path("/mocked/files_path")),
+        mock.patch("utils.bot_methods.LOGS_PATH", Path("/mocked/logs_path")),
     ):
         yield
 

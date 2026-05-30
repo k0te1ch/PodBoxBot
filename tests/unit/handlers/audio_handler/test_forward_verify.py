@@ -3,9 +3,10 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from aiogram_tests.requester import Calls
 from aiogram_tests.types.dataset import CALLBACK_QUERY, MESSAGE, USER
-from app.config import LANGUAGES
-from app.handlers.audio_handler import forward_verify
-from app.services.keyboards import keyboards
+
+from config import LANGUAGES
+from handlers.audio_handler import forward_verify
+from services import keyboards
 
 
 @pytest.mark.asyncio
@@ -24,7 +25,7 @@ async def test_forward_verify(callback_handler_factory, bot_factory, username, l
     )
 
     # Мокаем ответ callback_query.answer и проверяем работу обработчика
-    with patch("app.handlers.audio_handler.CallbackQuery.answer", new=AsyncMock()) as mock_answer:
+    with patch("handlers.audio_handler.CallbackQuery.answer", new=AsyncMock()) as mock_answer:
         calls: Calls = await bot.query(callback_query)
 
         # Проверяем, что answer вызван с правильными параметрами

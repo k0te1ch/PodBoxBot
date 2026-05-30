@@ -3,7 +3,7 @@ from unittest.mock import Mock, patch
 from config import WP_URL
 
 
-@patch("app.utils.wordpress.WordPress._dump_cookies", return_value=True)
+@patch("utils.wordpress.WordPress._dump_cookies", return_value=True)
 def test_login_success(mock_dump_cookies, wordpress, mock_session):
     """Тест на успешный логин, когда метод возвращает True"""
 
@@ -27,7 +27,7 @@ def test_login_success(mock_dump_cookies, wordpress, mock_session):
     mock_dump_cookies.assert_called_once()
 
 
-@patch("app.utils.wordpress.WordPress._dump_cookies", return_value=True)
+@patch("utils.wordpress.WordPress._dump_cookies", return_value=True)
 def test_login_failed_status_code(mock_dump_cookies, wordpress, mock_session):
     """Тест на неудачный логин из-за неверного статус-кода"""
     mock_response = Mock()
@@ -39,7 +39,7 @@ def test_login_failed_status_code(mock_dump_cookies, wordpress, mock_session):
     mock_dump_cookies.assert_not_called()
 
 
-@patch("app.utils.wordpress.WordPress._dump_cookies", return_value=False)
+@patch("utils.wordpress.WordPress._dump_cookies", return_value=False)
 def test_login_failed_redirect(mock_dump_cookies, wordpress, mock_session):
     """Тест на неудачный логин из-за отсутствия перенаправления на страницу входа"""
     mock_response = Mock()
@@ -51,7 +51,7 @@ def test_login_failed_redirect(mock_dump_cookies, wordpress, mock_session):
     mock_dump_cookies.assert_not_called()
 
 
-@patch("app.utils.wordpress.WordPress._dump_cookies", return_value=True)
+@patch("utils.wordpress.WordPress._dump_cookies", return_value=True)
 def test_login_cookie_setting(mock_dump_cookies, wordpress, mock_session):
     """Тест на установку куки при успешном логине"""
 
@@ -83,7 +83,7 @@ def test_login_cookie_setting(mock_dump_cookies, wordpress, mock_session):
     mock_dump_cookies.assert_called_once()
 
 
-@patch("app.utils.wordpress.WordPress._dump_cookies", return_value=True)
+@patch("utils.wordpress.WordPress._dump_cookies", return_value=True)
 def test_login_multiple_cookie_handling(mock_dump_cookies, wordpress, mock_session):
     """Тест на корректное управление несколькими куками при успешном логине"""
 

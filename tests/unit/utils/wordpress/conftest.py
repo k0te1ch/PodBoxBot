@@ -2,7 +2,8 @@ from collections import UserDict
 from unittest.mock import MagicMock, patch
 
 import pytest
-from app.utils.wordpress import WordPress
+
+from utils.wordpress import WordPress
 
 
 class TrackingDict(UserDict):
@@ -12,7 +13,7 @@ class TrackingDict(UserDict):
 
 @pytest.fixture(autouse=True)
 def mock_session():
-    with patch("app.utils.wordpress.requests.Session", new_callable=MagicMock) as MockSession:
+    with patch("utils.wordpress.requests.Session", new_callable=MagicMock) as MockSession:
         session_instance = MockSession.return_value
         session_instance.post = MagicMock()
         session_instance.get = MagicMock()
