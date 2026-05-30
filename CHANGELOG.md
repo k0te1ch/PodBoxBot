@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.2](https://github.com/k0te1ch/PodBoxBot/compare/v0.3.1...v0.3.2) (2026-05-30)
+
+
+### Bug Fixes
+
+* **bot:** report all handler errors to DEVELOPER reliably ([#12](https://github.com/k0te1ch/PodBoxBot/issues/12)) ([65d3305](https://github.com/k0te1ch/PodBoxBot/commit/65d3305914453867682f3e29b0de881b70f31792))
+
 ## [0.3.1](https://github.com/k0te1ch/PodBoxBot/compare/v0.3.0...v0.3.1) (2026-05-30)
 
 
