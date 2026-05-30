@@ -78,7 +78,6 @@ def generate_podcast_text(info: dict[str, Any]) -> str | None:
         return None
 
 
-@logger.catch
 def generate_file_name(number: str, type_episode: str, extension: str = FILE_EXTENSION) -> str:
     """
     Генерирует имя файла для подкаста.
