@@ -70,13 +70,15 @@ docker compose version   # должно показать v2.x
 
 ### Шаги
 
-1. **Клонировать репо и перейти на `dev`:**
+1. **Клонировать репо:**
 
    ```bash
    git clone https://github.com/k0te1ch/PodBoxBot.git
    cd PodBoxBot
-   git checkout dev
    ```
+
+   `main` всегда releasable; для воспроизводимого деплоя можно выехать на
+   тег последнего релиза (`git checkout v0.3.1`).
 
 2. **Подготовить `.env`:**
 
@@ -157,11 +159,40 @@ docker compose up -d
   - `cd app/publishers/FTP && poetry install`
   - `cd app/publishers/WordPress && poetry install`
 - Lint: `poetry -C app/bot run ruff check app`
-- Unit-тесты: `poetry -C app/bot run pytest tests/unit -q`
-- Ветки: `WIP` (активная работа) → `dev` (тестируется на проде) → `main`
-  (стабильная). Никогда не пушим напрямую в `main`.
+- Unit-тесты бота:
+  `poetry -C app/bot run pytest -c app/bot/pyproject.toml --ignore=tests/unit/publishers -q`
+  Тесты publisher-сервисов зависят от их собственных пакетов (`asyncssh`,
+  `aioprometheus` и т.д.), которых нет в venv бота — запускай их из venv
+  соответствующего сервиса, например:
+  `poetry -C app/publishers/FTP run pytest -c app/bot/pyproject.toml -o addopts="" tests/unit/publishers/ftp -q`
+- CI (GitHub Actions, `.github/workflows/ci.yml`): ruff lint + format,
+  тесты бота и отдельная джоба на каждый publisher-сервис
+  (`test-publisher-ftp` / `test-publisher-wordpress`). `main` всегда зелёный.
+- Ветки: GitHub flow — ветка на задачу (`feat/...`, `fix/...`,
+  `chore/...`) → PR в `main` → squash-merge. Напрямую в `main` не пушим;
+  `main` всегда releasable.
 - Коммиты: [Conventional Commits](https://www.conventionalcommits.org/)
-  (`feat(...)`, `fix(...)`, `refactor(...)`, `chore(...)`).
+  (`feat(...)`, `fix(...)`, `refactor(...)`, `chore(...)`) — они же управляют
+  версией релиза (см. ниже).
+
+## Релизы
+
+Релизы автоматизированы через
+[release-please](https://github.com/googleapis/release-please) (workflow
+`.github/workflows/release-please.yml`). Тегами, версией (`version.txt`) и
+`CHANGELOG.md` управляет CI — вручную их трогать не нужно.
+
+На каждый push в `main` release-please пересчитывает следующую версию по
+типам коммитов и держит открытым **release-PR** с обновлённым changelog:
+
+- `fix:` → patch (`0.3.0` → `0.3.1`)
+- `feat:` → minor (`0.3.0` → `0.4.0`)
+- `!` / `BREAKING CHANGE:` → major (пока версия `0.x` и включён
+  `bump-minor-pre-major`, ломающее идёт в minor)
+
+Накопились изменения — смержи release-PR: release-please создаст тег
+`vX.Y.Z`, GitHub Release и обновит `CHANGELOG.md`. Единственный рычаг
+версии — типы Conventional Commits, попадающих в `main`.
 
 ## Лицензия
 
