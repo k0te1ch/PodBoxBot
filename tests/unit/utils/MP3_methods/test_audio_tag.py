@@ -1,3 +1,4 @@
+from datetime import datetime
 from pathlib import Path
 from unittest import mock
 
@@ -13,6 +14,7 @@ from config import (
     PODCAST_LINK,
     PODCAST_NAME,
     SUPPORT_LINK,
+    TIMEZONE,
 )
 from utils.MP3_methods import audio_tag
 
@@ -90,7 +92,7 @@ def test_audio_tag(mock_open, mock_eyed3_load, mock_audio_file, mock_paths, audi
     mock_audio_file.tag.clear.assert_called_once()
 
     # Проверка установки тегов
-    check_common_tag_settings(mock_audio_file, "Test Title", "Test Comment", 2024)
+    check_common_tag_settings(mock_audio_file, "Test Title", "Test Comment", datetime.now(TIMEZONE).year)
 
     # Проверка открытия правильного файла обложки в зависимости от типа
     mock_open.assert_called_once_with(expected_cover_path, "rb")
@@ -172,7 +174,7 @@ def test_audio_tag_variable_info(
     audio_tag(info, audio_type)
 
     # Проверка установки тегов
-    check_common_tag_settings(mock_audio_file, expected_title, expected_comment, 2024)
+    check_common_tag_settings(mock_audio_file, expected_title, expected_comment, datetime.now(TIMEZONE).year)
 
     # Проверка открытия файла обложки
     mock_open.assert_called_once_with(expected_cover_path, "rb")

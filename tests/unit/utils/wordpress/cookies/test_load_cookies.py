@@ -1,16 +1,3 @@
-from unittest.mock import patch
-
-
-@patch("utils.wordpress.os.path.exists", return_value=True)
-@patch("utils.wordpress.pickle.load", return_value={"test_cookie": "test_value"})
-@patch("utils.wordpress.open", create=True)
-def test_load_cookies(mock_open, mock_pickle, mock_exists, wordpress, mock_session):
-    mock_open.return_value.__enter__.return_value = mock_open
-    result = wordpress._load_cookies()
-    assert result
-    assert "test_cookie" in mock_session.cookies
-
-
 from unittest.mock import mock_open, patch
 
 
