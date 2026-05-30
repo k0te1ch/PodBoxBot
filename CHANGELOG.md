@@ -1,4 +1,14 @@
-# 0.3.0 (28.05.2026)
+# Changelog
+
+## [0.3.1](https://github.com/k0te1ch/PodBoxBot/compare/v0.3.0...v0.3.1) (2026-05-30)
+
+
+### Bug Fixes
+
+* **bot:** regenerate poetry.lock after adding tgtest dep ([8d70e86](https://github.com/k0te1ch/PodBoxBot/commit/8d70e869ef0b23e6c1498310bb9edf8a6b773a87))
+* **bot:** render release-note in HTML, split by section, skip empty header ([c4a4043](https://github.com/k0te1ch/PodBoxBot/commit/c4a4043939bd9f7108283c7e0d19d67525e023ef))
+
+## 0.3.0 (28.05.2026)
 
 ## Добавлено
 
