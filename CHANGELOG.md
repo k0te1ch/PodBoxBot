@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.4.0](https://github.com/k0te1ch/PodBoxBot/compare/v0.3.2...v0.4.0) (2026-05-31)
+
+
+### Features
+
+* **boosty:** add Boosty publisher with tier-based paywall ([#14](https://github.com/k0te1ch/PodBoxBot/issues/14)) ([ff345d1](https://github.com/k0te1ch/PodBoxBot/commit/ff345d1c054fab31a691c0d8a8f037496a677b4f))
+
+
+### Reverts
+
+* drop Boosty publisher merged in [#14](https://github.com/k0te1ch/PodBoxBot/issues/14) ([8f0b5de](https://github.com/k0te1ch/PodBoxBot/commit/8f0b5decc657b284e7b6e8564501ec0344011181))
+
 ## [0.3.2](https://github.com/k0te1ch/PodBoxBot/compare/v0.3.1...v0.3.2) (2026-05-30)
 
 
