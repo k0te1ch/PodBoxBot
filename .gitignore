@@ -7,6 +7,12 @@ files/*.pkl
 files/*.json
 boosty_auth.json
 **/boosty_auth.json
+
+# Bind-mounted runtime secrets (auth.json, cookie.pkl, ...) — keep dir
+# structure via .gitkeep, never commit the secret files themselves.
+secrets/**
+!secrets/**/
+!secrets/**/.gitkeep
 anon.session
 tests/e2e/*.session
 tests/e2e/*.session-journal

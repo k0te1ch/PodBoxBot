@@ -227,7 +227,7 @@ services:
       - podboxbot_network
     volumes:
       - .env:/app/.env
-      - wordpress_data:/app/data
+      - ./secrets/wordpress:/app/data
 
   publisher_boosty:
     container_name: podboxbot_publisher_boosty
@@ -246,7 +246,7 @@ services:
       - podboxbot_network
     volumes:
       - .env:/app/.env
-      - boosty_data:/app/data
+      - ./secrets/boosty:/app/data
       - files:/app/files
 
   # METRICS AND MONITORING
@@ -397,10 +397,6 @@ volumes:
   loki_data:
     driver: local
   kafka_data:
-    driver: local
-  wordpress_data:
-    driver: local
-  boosty_data:
     driver: local
   files:
     driver: local
