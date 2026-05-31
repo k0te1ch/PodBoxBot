@@ -60,8 +60,9 @@ async def upload_Boosty(callback: CallbackQuery, language: str, username: str) -
             number=info["number"],
             title=info["title"],
             comment=info["comment"],
-            chapters=info["chapters"],
-            tags=info["tags"],
+            # postshow-эпизоды могут не иметь таймлайна/тегов в sidecar
+            chapters=info.get("chapters", []),
+            tags=info.get("tags", []),
             type_episode="aftershow",
         )
 
