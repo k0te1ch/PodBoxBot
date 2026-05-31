@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.3.3](https://github.com/k0te1ch/PodBoxBot/compare/v0.3.2...v0.3.3) (2026-05-31)
+
+
+### Features
+
+* **boosty:** add Boosty publisher with tier-based paywall ([#14](https://github.com/k0te1ch/PodBoxBot/issues/14)) ([ff345d1](https://github.com/k0te1ch/PodBoxBot/commit/ff345d1c054fab31a691c0d8a8f037496a677b4f))
+
+
+### Bug Fixes
+
+* **compose:** default to direct connection over tun2socks ([#16](https://github.com/k0te1ch/PodBoxBot/issues/16)) ([6bee90c](https://github.com/k0te1ch/PodBoxBot/commit/6bee90cac2751c0dcc1d2f16ca9fc04a0ed31448))
+
+
+### Reverts
+
+* drop Boosty publisher merged in [#14](https://github.com/k0te1ch/PodBoxBot/issues/14) ([8f0b5de](https://github.com/k0te1ch/PodBoxBot/commit/8f0b5decc657b284e7b6e8564501ec0344011181))
+
+
+### Miscellaneous Chores
+
+* release as 0.3.3 ([#18](https://github.com/k0te1ch/PodBoxBot/issues/18)) ([05e5e21](https://github.com/k0te1ch/PodBoxBot/commit/05e5e21867e58c83e170d278ec001129fd7a49ac))
+
 ## [0.3.2](https://github.com/k0te1ch/PodBoxBot/compare/v0.3.1...v0.3.2) (2026-05-30)
 
 
