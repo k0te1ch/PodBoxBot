@@ -80,7 +80,7 @@ class BoostyClient:
             raise RuntimeError(f"boosty library is not available: {_IMPORT_ERROR!r}")
 
         def _build() -> API:  # type: ignore[valid-type]
-            return API(auth=Auth(FileAuthDataResolver(self.auth_file)))
+            return API(auth=Auth(FileAuthDataResolver(auth_file=self.auth_file)))
 
         api = await asyncio.to_thread(_build)
         if not getattr(api.auth.auth_data, "access_token", None):
