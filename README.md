@@ -26,8 +26,8 @@ app/
     ├── config/           # pydantic-settings, один источник правды для микросервисов
     └── kafka/            # общий KafkaProducer/Consumer + Avro-схемы
 configs/                  # prometheus.yml, loki, grafana datasources, alloy
-docker-compose.yml        # стек С tun2socks (для хостов за блокировкой)
-docker-compose.direct.yml # стек БЕЗ tun2socks (для хостов с прямым доступом)
+docker-compose.yml          # стек БЕЗ tun2socks (дефолт, прямой коннект)
+docker-compose.tun2socks.yml # стек С tun2socks (для хостов за блокировкой)
 utils/bootstrap.sh        # первичный деплой на чистый prod
 .env.example              # шаблон переменных окружения
 ```
@@ -104,22 +104,22 @@ docker compose version   # должно показать v2.x
 
 3. **Выбрать compose-файл:**
 
+   - Хост за рубежом / есть прямой доступ к Telegram DC → используй
+     дефолтный `docker-compose.yml` (без прокси-слоя).
    - Хост в РФ / за блокировкой и есть SOCKS-прокси (например xray на
-     `localhost:10808`) → используй дефолтный `docker-compose.yml`
+     `localhost:10808`) → `docker-compose.tun2socks.yml`
      (заворачивает трафик telegram-bot-api через `tun2socks`).
-   - Хост за рубежом / есть прямой доступ к Telegram DC →
-     `docker-compose.direct.yml` (без прокси-слоя).
 
 4. **Запустить bootstrap:**
 
    ```bash
    chmod +x utils/bootstrap.sh
 
-   # С tun2socks (дефолт)
+   # Прямой коннект (дефолт)
    ./utils/bootstrap.sh
 
-   # Без tun2socks
-   ./utils/bootstrap.sh -f docker-compose.direct.yml
+   # С tun2socks (за блокировкой)
+   ./utils/bootstrap.sh -f docker-compose.tun2socks.yml
    ```
 
    Скрипт проходит 7 фаз:

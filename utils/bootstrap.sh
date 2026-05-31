@@ -28,7 +28,7 @@ cd "$REPO_ROOT"
 BACKUP_DIR="$REPO_ROOT/backups/$(date -u +%Y-%m-%dT%H-%M-%SZ)"
 # COMPOSE — команда compose; задаётся в preflight() по результату детекта v1/v2.
 # COMPOSE_FILE — какой compose-файл использовать. По умолчанию docker-compose.yml
-# (с tun2socks); для прямого режима без прокси передай -f docker-compose.direct.yml.
+# (прямой коннект); для режима за блокировкой передай -f docker-compose.tun2socks.yml.
 COMPOSE=""
 COMPOSE_FILE="docker-compose.yml"
 SMOKE_TOPIC="bootstrap.smoke.$(date -u +%s)"
@@ -62,7 +62,7 @@ Bootstraps PodBoxBot stack on a fresh prod host.
 
 Options:
   -f, --file FILE   compose-файл (по умолчанию: docker-compose.yml).
-                    Для прямого режима без tun2socks: docker-compose.direct.yml.
+                    Для режима за блокировкой с tun2socks: docker-compose.tun2socks.yml.
   -h, --help        эта справка.
 EOF
 }
