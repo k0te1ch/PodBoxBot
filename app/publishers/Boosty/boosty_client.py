@@ -1,47 +1,63 @@
-"""Тонкая обёртка над `barsikus007/boosty` для постинга с tier-привязкой.
+"""Клиент Boosty: многошаговый upload+publish-флоу, реверснутый из трафика
+редактора (см. `.planning/spikes/boosty-sponsr-feasibility.md`,
+«Verified upload+publish flow»).
 
-Почему не «голый» `API.create_post`: его модель `NewPost` НЕ сериализует
-`subscription_level_id`, а именно это поле привязывает пост к уровню
-подписки (см. спайк `.planning/spikes/boosty-sponsr-feasibility.md`,
-секция Paywall/tiers). Поэтому create-post шлём **сырым form-payload**
-через переиспользуемый `API.request(...)` — он сам подставляет
-`Authorization`-заголовок и обновляет токен по 401 (refresh_token +
-device_id из auth.json).
+Последовательность публикации:
 
-Auth-bootstrap: один раз вручную логинимся в браузере, экспортируем
-`auth.json` (access_token / refresh_token / device_id / expires_at /
-user_agent) в `BOOSTY_AUTH_FILE`. `FileAuthDataResolver` читает/перезаписывает
-этот файл; refresh — внутри либы.
+    GET  api.boosty.to/v1/blog/{blog}/post_draft        → ownerId (= container_id)
+    POST upload.boosty.to/audio {container_id,...}       → fileId
+    POST upload.boosty.to/upload/{fileId}  (octet, чанки 5 МБ)
+    POST upload.boosty.to/upload/{fileId}/complete
+    POST upload.boosty.to/image {}                       → fileId  (обложка)
+    POST upload.boosty.to/upload/{fileId} (+/complete)
+    POST api.boosty.to/v1/blog/{blog}/post/              → опубликованный пост
 
-Известный риск: `API.request` шлёт только базовые заголовки (UA +
-Authorization), без `X-App/X-Currency/X-Locale`. Собственный create_post
-либы работает так же, поэтому считаем достаточным; если internal-API
-начнёт требовать X-*, добавляем свой aiohttp-вызов (см. спайк, п. 4б).
+Два хоста:
+* `api.boosty.to` — через `API.request` либы (Bearer + авто-refresh по 401);
+* `upload.boosty.to` — другой хост, `API.request` туда не умеет (он прибит к
+  `API_URL`), поэтому бьём его же `http_client` напрямую с теми же заголовками
+  (Bearer из `auth.headers`) + X-App/X-Locale/X-Currency.
+
+Auth-bootstrap: один раз вручную логинимся в браузере, экспортируем `auth.json`
+(access/refresh/device_id) в `BOOSTY_AUTH_FILE`. `FileAuthDataResolver` его
+читает/перезаписывает; refresh — `auth.refresh_auth_data` (по 401 автоматически
+внутри либы + наш ежечасный прогрев, см. main.py).
+
+Известный риск: auth для `upload.boosty.to` не подтверждён (в HAR заголовки
+вырезаны; браузер ходит по cookie-сессии). Шлём Bearer как на `api.boosty.to`;
+если upload-хост его не примет — проверяется только реальным прогоном.
 """
 
 from __future__ import annotations
 
 import asyncio
+from pathlib import Path
 
-from content import build_post_data
+from content import build_audio_block, build_post_data, build_teaser_data
 from loguru import logger
 
-# Импорт либы изолирован: при отсутствии пакета (например, в unit-окружении
-# без установленного boosty) модуль всё равно импортируется, а понятная
-# ошибка всплывёт только при реальном построении клиента.
+# Импорт либы изолирован: при отсутствии пакета (unit-окружение без boosty)
+# модуль всё равно импортируется, ошибка всплывёт при построении клиента.
 try:
     from boosty.api import API
+    from boosty.api.api import API_URL
     from boosty.api.auth import Auth
     from boosty.api.auth.resolvers.file import FileAuthDataResolver
 
     _IMPORT_ERROR: Exception | None = None
 except Exception as e:  # pragma: no cover - зависит от окружения
     API = Auth = FileAuthDataResolver = None  # type: ignore[assignment]
+    API_URL = "https://api.boosty.to"
     _IMPORT_ERROR = e
+
+UPLOAD_URL = "https://upload.boosty.to"
+_CHUNK = 5 * 1024 * 1024  # 5 МБ — размер чанка, как у веб-редактора
+# Заголовки, которые редактор шлёт к Boosty-эндпоинтам помимо Bearer.
+_BOOSTY_HEADERS = {"X-App": "web", "X-Locale": "ru_RU", "X-Currency": "RUB"}
 
 
 class BoostyClient:
-    """Stateful-обёртка: один блог, ленивое построение API + кэш уровней."""
+    """Stateful-обёртка: один блог, ленивое построение API."""
 
     def __init__(self, blog_name: str, auth_file: str) -> None:
         # Пустой blog_name допустим при конструировании (импорт модуля при
@@ -49,16 +65,12 @@ class BoostyClient:
         self.blog_name = blog_name
         self.auth_file = auth_file
         self._api: API | None = None  # type: ignore[valid-type]
-        self._levels: dict[str, str] | None = None  # name(lower) -> id
-
-    # --- auth ---
 
     async def ensure_auth(self) -> None:
         """Строит API из auth.json (blocking IO → to_thread) и валидирует токен.
 
-        Идемпотентно: повторные вызовы — no-op. Сам refresh по 401 делает
-        `API.request`; здесь только начальная загрузка + понятная ошибка,
-        если файл с токеном не подготовлен.
+        Идемпотентно. Refresh по 401 делает сама либа в `API.request`; здесь —
+        начальная загрузка + понятная ошибка, если файл с токеном не готов.
         """
         if self._api is not None:
             return
@@ -68,8 +80,7 @@ class BoostyClient:
             raise RuntimeError(f"boosty library is not available: {_IMPORT_ERROR!r}")
 
         def _build() -> API:  # type: ignore[valid-type]
-            auth = Auth(FileAuthDataResolver(self.auth_file))
-            return API(auth=auth)
+            return API(auth=Auth(FileAuthDataResolver(self.auth_file)))
 
         api = await asyncio.to_thread(_build)
         if not getattr(api.auth.auth_data, "access_token", None):
@@ -80,80 +91,122 @@ class BoostyClient:
         self._api = api
         logger.debug(f"Boosty auth loaded for blog '{self.blog_name}'")
 
-    # --- subscription levels ---
-
-    async def resolve_level_id(self, tier: str) -> str:
-        """Преобразует tier (имя уровня или сырой id) в `subscription_level_id`.
-
-        Числовая строка трактуется как готовый id. Иначе ищем уровень по
-        имени (case-insensitive) среди уровней блога.
-        """
-        tier = (tier or "").strip()
-        if not tier:
-            raise ValueError("Empty tier — cannot resolve subscription_level_id")
-        if tier.isdigit():
-            return tier
-
-        levels = await self._get_levels()
-        level_id = levels.get(tier.lower())
-        if level_id is None:
-            raise ValueError(
-                f"Subscription level '{tier}' not found for blog '{self.blog_name}'. Available: {sorted(levels)}"
-            )
-        return level_id
-
-    async def _get_levels(self) -> dict[str, str]:
-        if self._levels is not None:
-            return self._levels
+    async def refresh(self) -> None:
+        """Принудительный refresh токена (для ежечасного прогрева сессии)."""
         await self.ensure_auth()
         assert self._api is not None
-        resp = await self._api.request(
-            "GET",
-            f"/v1/blog/{self.blog_name}/subscription_level/",
-            params={"show_deleted": "false", "show_free_level": "true"},
+        await self._api.auth.refresh_auth_data(self._api.http_client, API_URL)
+        logger.debug("Boosty access token refreshed")
+
+    def _headers(self, extra: dict | None = None) -> dict:
+        """Bearer + UA (из либы) + X-App/X-Locale/X-Currency (+ extra)."""
+        assert self._api is not None
+        headers = dict(self._api.auth.headers)
+        headers.update(_BOOSTY_HEADERS)
+        if extra:
+            headers.update(extra)
+        return headers
+
+    async def get_container_id(self) -> int:
+        """ownerId черновика блога — он же `container_id` для upload аудио.
+
+        Черновик у блога синглтон: GET post_draft отдаёт текущий + ownerId.
+        """
+        await self.ensure_auth()
+        assert self._api is not None
+        resp = await self._api.request("GET", f"/v1/blog/{self.blog_name}/post_draft")
+        data = resp.get("data") if isinstance(resp, dict) else None
+        draft = data.get("postDraft") if isinstance(data, dict) else None
+        owner_id = draft.get("ownerId") if isinstance(draft, dict) else None
+        if owner_id is None:
+            raise RuntimeError(f"Cannot resolve ownerId from post_draft response: {resp!r}")
+        return int(owner_id)
+
+    async def _upload(self, init_url: str, init_body: dict, path: str) -> str:
+        """Общий chunked-upload: init → чанки → complete. Возвращает fileId."""
+        await self.ensure_auth()
+        assert self._api is not None
+        client = self._api.http_client
+
+        init = await client.request_json(init_url, method="POST", json=init_body, headers=self._headers())
+        file_id = init.get("fileId")
+        if not file_id:
+            raise RuntimeError(f"No fileId in upload-init response: {init!r}")
+
+        content = await asyncio.to_thread(Path(path).read_bytes)
+        octet = self._headers({"Content-Type": "application/octet-stream"})
+        for offset in range(0, len(content), _CHUNK):
+            chunk = content[offset : offset + _CHUNK]
+            resp = await client.request_raw(f"{UPLOAD_URL}/upload/{file_id}", method="POST", data=chunk, headers=octet)
+            if resp.status >= 400:
+                raise RuntimeError(f"Boosty chunk upload failed ({resp.status}) for {file_id}")
+
+        done = await client.request_raw(
+            f"{UPLOAD_URL}/upload/{file_id}/complete", method="POST", headers=self._headers()
         )
-        items = resp.get("data", resp) if isinstance(resp, dict) else resp
-        levels: dict[str, str] = {}
-        for item in items or []:
-            name = item.get("name")
-            level_id = item.get("id")
-            if name is not None and level_id is not None:
-                levels[str(name).strip().lower()] = str(level_id)
-        self._levels = levels
-        logger.debug(f"Resolved Boosty levels: {levels}")
-        return levels
+        if done.status >= 400:
+            raise RuntimeError(f"Boosty upload complete failed ({done.status}) for {file_id}")
 
-    # --- posting ---
+        logger.debug(f"Boosty upload complete: {file_id} ({len(content)} bytes)")
+        return file_id
 
-    async def create_post(
+    async def upload_audio(self, path: str, container_id: int) -> tuple[str, int]:
+        """Загружает mp3. Возвращает (fileId, size_bytes)."""
+        file_id = await self._upload(
+            f"{UPLOAD_URL}/audio",
+            {"container_id": container_id, "container_type": "post_draft"},
+            path,
+        )
+        return file_id, Path(path).stat().st_size
+
+    async def upload_image(self, path: str) -> str:
+        """Загружает обложку. Возвращает fileId."""
+        return await self._upload(f"{UPLOAD_URL}/image", {}, path)
+
+    async def publish(
         self,
         *,
         title: str,
         body: str,
+        chapters: list[list[str]] | None,
+        audio_id: str,
+        audio_size: int,
+        audio_title: str,
+        cover_id: str,
         subscription_level_id: str,
-        chapters: list[list[str]] | None = None,
-        tags: str = "",
-        price: str = "0",
+        price: int,
+        advertiser_info: str = "",
     ) -> str:
-        """Создаёт пост сырым form-payload. Возвращает id созданного поста."""
+        """Публикует пост с прикреплённым аудио и обложкой-тизером.
+
+        TODO(verify): сам клик «Опубликовать» в HAR не пойман — публикуем через
+        `POST /v1/blog/{blog}/post/` (тот же payload, что у `PUT post_draft`;
+        endpoint известен из спайка/HOCKI1 для текстовых постов). Доверифицировать
+        первым реальным прогоном: если draft требует отдельного publish-экшена —
+        поправить endpoint здесь.
+        """
         await self.ensure_auth()
         assert self._api is not None
 
+        data = build_post_data(body, chapters, audio=build_audio_block(audio_id, audio_size, audio_title))
+        teaser = build_teaser_data(cover_id, body)
+
         payload = {
             "title": title,
-            "data": build_post_data(body, chapters),
+            "data": data,
+            "teaser_data": teaser,
             "subscription_level_id": str(subscription_level_id),
-            "price": price,
-            "teaser_data": "[]",
-            "tags": tags,
+            "price": str(price),
+            "tags": "",
             "deny_comments": "false",
+            "deny_reactions": "false",
             "wait_video": "false",
-            "has_chat": "false",
-            "advertiser_info": "",  # обязательное поле; пустое допустимо
+            "advertiser_info": advertiser_info,
         }
         resp = await self._api.request("POST", f"/v1/blog/{self.blog_name}/post/", data=payload)
         post_id = ""
         if isinstance(resp, dict):
-            post_id = str(resp.get("id") or resp.get("data", {}).get("id", ""))
-        logger.success(f"Boosty post created (id={post_id or '?'})")
+            inner = resp.get("data") if isinstance(resp.get("data"), dict) else {}
+            post_id = str(resp.get("id") or inner.get("id") or "")
+        logger.success(f"Boosty post published (id={post_id or '?'})")
         return post_id

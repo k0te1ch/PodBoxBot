@@ -1,16 +1,19 @@
-"""Boosty publisher: подписан на publisher.boosty.upload, создаёт пост на
-Boosty через internal-API с привязкой к уровню подписки (paywall/tier),
-шлёт result в publisher.boosty.result.
+"""Boosty publisher: подписан на publisher.boosty.upload, публикует aftershow-
+эпизод на Boosty (текст + прикреплённый mp3 + обложка-тизер) на платном уровне
+подписки, шлёт result в publisher.boosty.result.
 
-Tier-логика (см. BasePublisher.is_paywalled + спайк):
-* `paywall_tier` на событии (имя уровня или id) — высший приоритет;
-* иначе aftershow → платный уровень `BOOSTY_AFTERSHOW_LEVEL`,
-  main/прочее → бесплатный уровень `BOOSTY_FREE_LEVEL`.
+Флоу публикации (реверс из трафика редактора, см. boosty_client + спайк):
+получить container_id → загрузить mp3 → загрузить обложку → опубликовать пост
+с `subscription_level_id` (платный уровень) + `price` (pay-per-post).
+
+Boosty — только для aftershow: бот шлёт сюда событие лишь из postshow-меню,
+уровень/цена фиксированы конфигом (BOOSTY_SUBSCRIPTION_LEVEL_ID/BOOSTY_PRICE).
 """
 
 from __future__ import annotations
 
 import asyncio
+import os
 
 from boosty_client import BoostyClient
 from loguru import logger
@@ -23,8 +26,12 @@ from shared.publishers.base import BasePublisher
 # Boosty-config — берётся только тут, base про эти переменные не знает.
 BOOSTY_BLOG = config.BOOSTY_BLOG
 BOOSTY_AUTH_FILE = config.BOOSTY_AUTH_FILE
-BOOSTY_AFTERSHOW_LEVEL = config.BOOSTY_AFTERSHOW_LEVEL
-BOOSTY_FREE_LEVEL = config.BOOSTY_FREE_LEVEL
+BOOSTY_SUBSCRIPTION_LEVEL_ID = config.BOOSTY_SUBSCRIPTION_LEVEL_ID
+BOOSTY_PRICE = config.BOOSTY_PRICE
+BOOSTY_COVER_PATH = config.BOOSTY_COVER_PATH
+BOOSTY_ADVERTISER_INFO = config.BOOSTY_ADVERTISER_INFO
+
+_REFRESH_INTERVAL = 3600  # сек — ежечасный прогрев сессии (access/refresh)
 
 
 class BoostyPublisher(BasePublisher):
@@ -45,30 +52,27 @@ class BoostyPublisher(BasePublisher):
     async def _ensure_auth(self) -> None:  # type: ignore[override]
         await self.client.ensure_auth()
 
-    def _target_level(self, event: BoostyEvent) -> str:
-        """Имя/id уровня подписки для события.
-
-        paywall_tier приоритетен; иначе — дефолт по платности (is_paywalled).
-        """
-        if event.paywall_tier:
-            return event.paywall_tier
-        if self.is_paywalled(event):
-            if not BOOSTY_AFTERSHOW_LEVEL:
-                raise RuntimeError("Paid episode but BOOSTY_AFTERSHOW_LEVEL is not configured")
-            return BOOSTY_AFTERSHOW_LEVEL
-        if not BOOSTY_FREE_LEVEL:
-            raise RuntimeError("Public episode but BOOSTY_FREE_LEVEL is not configured")
-        return BOOSTY_FREE_LEVEL
-
     async def publish(self, event: BoostyEvent) -> None:  # type: ignore[override]
-        level_id = await self.client.resolve_level_id(self._target_level(event))
+        if not event.path:
+            raise RuntimeError("BoostyEvent.path (mp3 file) is required for Boosty publish")
+        if not BOOSTY_SUBSCRIPTION_LEVEL_ID:
+            raise RuntimeError("BOOSTY_SUBSCRIPTION_LEVEL_ID is not configured")
 
-        post_id = await self.client.create_post(
+        container_id = await self.client.get_container_id()
+        audio_id, audio_size = await self.client.upload_audio(event.path, container_id)
+        cover_id = await self.client.upload_image(BOOSTY_COVER_PATH)
+
+        post_id = await self.client.publish(
             title=event.title,
             body=event.comment,
-            subscription_level_id=level_id,
             chapters=event.chapters,
-            tags=",".join(event.tags),
+            audio_id=audio_id,
+            audio_size=audio_size,
+            audio_title=os.path.basename(event.path),
+            cover_id=cover_id,
+            subscription_level_id=BOOSTY_SUBSCRIPTION_LEVEL_ID,
+            price=BOOSTY_PRICE,
+            advertiser_info=BOOSTY_ADVERTISER_INFO,
         )
 
         result = event.model_copy(
@@ -79,9 +83,7 @@ class BoostyPublisher(BasePublisher):
             }
         )
         await self.producer.send(self.result_topic, result.model_dump())
-        logger.success(
-            f"Boosty upload completed for episode {event.number} (level={level_id}, post_id={post_id or '?'})"
-        )
+        logger.success(f"Boosty publish completed for episode {event.number} (post_id={post_id or '?'})")
 
     def event_key(self, event: BoostyEvent) -> str:  # type: ignore[override]
         return event.number
@@ -94,6 +96,20 @@ class BoostyPublisher(BasePublisher):
                 "error": error,
             }
         )
+
+    async def _refresh_loop(self) -> None:
+        """Ежечасно прогревает сессию: либа рефрешит токен только по 401,
+        а долгие простои между публикациями могут пережить истечение."""
+        while True:
+            await asyncio.sleep(_REFRESH_INTERVAL)
+            try:
+                await self.client.refresh()
+            except Exception as e:
+                logger.warning(f"Boosty hourly token refresh failed: {e!r}")
+
+    async def run(self) -> None:  # type: ignore[override]
+        self._refresh_task = asyncio.create_task(self._refresh_loop())
+        await super().run()
 
 
 _publisher = BoostyPublisher()

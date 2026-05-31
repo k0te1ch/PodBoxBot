@@ -31,6 +31,7 @@ def sample_boosty_event_dict(sample_boosty_post_info):
         "status": "pending",
         "chat_id": "12345",
         "message_id": "67890",
-        "type_episode": "main",
+        "path": "/app/files/0123_postshow.mp3",
+        "type_episode": "aftershow",
         **sample_boosty_post_info,
     }

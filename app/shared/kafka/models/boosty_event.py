@@ -23,6 +23,7 @@ class BoostyEvent(BaseModel):
     message_id: str | None = Field(None)
 
     # Данные поста
+    path: str | None = Field(None, description="Путь к mp3 на общем томе files (для прикрепления к посту)")
     number: str = Field(..., description="Номер эпизода")
     title: str = Field(...)
     comment: str = Field(..., description="Тело поста / описание эпизода")

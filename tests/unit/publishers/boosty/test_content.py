@@ -2,7 +2,11 @@
 
 import json
 
-from app.publishers.Boosty.content import build_post_data
+from app.publishers.Boosty.content import (
+    build_audio_block,
+    build_post_data,
+    build_teaser_data,
+)
 
 
 def _parse(data: str) -> list[dict]:
@@ -55,3 +59,36 @@ class TestBuildPostData:
         blocks = _parse(build_post_data("", chapters=[["solo"]]))
         texts = [json.loads(b["content"])[0] for b in blocks if b["modificator"] == ""]
         assert "solo" in texts
+
+    def test_audio_block_appended_last(self):
+        audio = build_audio_block("aud-1", 555, "ep.mp3")
+        blocks = _parse(build_post_data("body", audio=audio))
+        assert blocks[-1] == audio
+        # текст body всё ещё присутствует перед аудио
+        texts = [json.loads(b["content"])[0] for b in blocks if b.get("type") == "text" and b["modificator"] == ""]
+        assert "body" in texts
+
+
+class TestBuildAudioBlock:
+    def test_shape(self):
+        block = build_audio_block("aud-1", 12345, "episode.mp3")
+        assert block == {
+            "complete": True,
+            "id": "aud-1",
+            "size": 12345,
+            "title": "episode.mp3",
+            "type": "audio_file",
+            "url": "/upload/aud-1",
+        }
+
+
+class TestBuildTeaserData:
+    def test_image_first_then_text(self):
+        blocks = _parse(build_teaser_data("img-1", "тизер"))
+        assert blocks[0]["type"] == "image"
+        assert blocks[0]["id"] == "img-1"
+        assert blocks[0]["uploadId"] == "img-1"
+        assert blocks[0]["url"].startswith("https://images.boosty.to/image/img-1")
+        # дальше — текст тизера
+        texts = [json.loads(b["content"])[0] for b in blocks if b.get("type") == "text" and b["modificator"] == ""]
+        assert "тизер" in texts

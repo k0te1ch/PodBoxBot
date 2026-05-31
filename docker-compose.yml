@@ -247,6 +247,7 @@ services:
     volumes:
       - .env:/app/.env
       - boosty_data:/app/data
+      - files:/app/files
 
   # METRICS AND MONITORING
 

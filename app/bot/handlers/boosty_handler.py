@@ -5,6 +5,7 @@ from aiogram.types import CallbackQuery
 from loguru import logger
 from pydantic import ValidationError
 
+from config import FILES_PATH
 from filters.dispatcher_filters import IsAdmin, IsPrivate
 from services import context, keyboards
 from shared.kafka.models.boosty_event import BoostyEvent
@@ -40,13 +41,14 @@ async def upload_Boosty(callback: CallbackQuery, language: str, username: str) -
         return await callback.answer(context[language].invalid_input, show_alert=True)
 
     info = stored["info"]
+    file_path = f"{FILES_PATH}/{file_name}"
 
     # Отправляем сообщение-статус
     msg = await callback.message.answer("⏳ Публикация aftershow на Boosty...")
 
     try:
-        # Boosty — только для aftershow: пост уходит на платный уровень
-        # (publisher по type_episode="aftershow" выбирает BOOSTY_AFTERSHOW_LEVEL).
+        # Boosty — только для aftershow: пост уходит на платный уровень + цену
+        # (publisher берёт BOOSTY_SUBSCRIPTION_LEVEL_ID/BOOSTY_PRICE из конфига).
         # Кнопка живёт лишь в postshow-меню, type_episode выставляем явно.
         event = BoostyEvent(
             event_type="request",
@@ -54,6 +56,7 @@ async def upload_Boosty(callback: CallbackQuery, language: str, username: str) -
             status="pending",
             chat_id=str(msg.chat.id),
             message_id=str(msg.message_id),
+            path=file_path,
             number=info["number"],
             title=info["title"],
             comment=info["comment"],

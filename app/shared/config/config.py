@@ -63,8 +63,10 @@ class SharedSettings(BaseSettings):
     # Boosty
     BOOSTY_BLOG: str | None = None  # slug блога (boosty.to/<slug>)
     BOOSTY_AUTH_FILE: str = "/app/data/boosty_auth.json"  # экспорт токенов из браузера
-    BOOSTY_AFTERSHOW_LEVEL: str | None = None  # имя или id платного уровня (paywall)
-    BOOSTY_FREE_LEVEL: str | None = None  # имя или id бесплатного уровня (public)
+    BOOSTY_SUBSCRIPTION_LEVEL_ID: str | None = None  # id платного уровня подписки
+    BOOSTY_PRICE: int = 10  # цена поста (pay-per-post), ₽
+    BOOSTY_COVER_PATH: str = "/app/files/boosty_pscover.png"  # обложка-тизер (том files)
+    BOOSTY_ADVERTISER_INFO: str = ""  # маркировка рекламы (обязательное поле, пустое ок)
     BOOSTY_UPLOAD_TOPIC: str = "publisher.boosty.upload"
     BOOSTY_RESULT_TOPIC: str = "publisher.boosty.result"
 

@@ -9,6 +9,7 @@
     {"name": "error", "type": ["null", "string"], "default": null},
     {"name": "chat_id", "type": ["null", "string"], "default": null},
     {"name": "message_id", "type": ["null", "string"], "default": null},
+    {"name": "path", "type": ["null", "string"], "default": null, "doc": "Путь к mp3 на общем томе files"},
     {"name": "number", "type": "string", "doc": "Номер эпизода"},
     {"name": "title", "type": "string"},
     {"name": "comment", "type": "string", "doc": "Тело поста / описание эпизода"},
