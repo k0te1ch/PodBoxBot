@@ -17,3 +17,12 @@ topics:
   - name: publisher.wordpress.result
     partitions: 1
     replication_factor: 1
+  - name: publisher.boosty.upload
+    partitions: 1
+    replication_factor: 1
+    config:
+      cleanup.policy: delete
+      retention.ms: 604800000  # 7 дней
+  - name: publisher.boosty.result
+    partitions: 1
+    replication_factor: 1

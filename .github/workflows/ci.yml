@@ -87,3 +87,23 @@ jobs:
         run: python -m pip install "pytest>=8.3.2,<9" "pytest-asyncio>=0.24,<0.25"
       - name: Run WordPress publisher tests
         run: pytest -c app/bot/pyproject.toml -o addopts="" tests/unit/publishers/wordpress
+
+  test-publisher-boosty:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Poetry
+        run: python -m pip install --upgrade pip poetry
+      - name: Install Boosty publisher dependencies (system env, mirrors Dockerfile)
+        working-directory: app/publishers/Boosty
+        run: |
+          poetry config virtualenvs.create false
+          poetry lock
+          poetry install --only main --no-root
+      - name: Install test tooling
+        run: python -m pip install "pytest>=8.3.2,<9" "pytest-asyncio>=0.24,<0.25"
+      - name: Run Boosty publisher tests
+        run: pytest -c app/bot/pyproject.toml -o addopts="" tests/unit/publishers/boosty

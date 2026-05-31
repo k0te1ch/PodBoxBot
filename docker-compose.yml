@@ -229,6 +229,25 @@ services:
       - .env:/app/.env
       - wordpress_data:/app/data
 
+  publisher_boosty:
+    container_name: podboxbot_publisher_boosty
+    build:
+      context: .
+      dockerfile: ./app/publishers/Boosty/Dockerfile
+    restart: always
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+      schema-registry:
+        condition: service_healthy
+      pushgateway:
+        condition: service_started
+    networks:
+      - podboxbot_network
+    volumes:
+      - .env:/app/.env
+      - boosty_data:/app/data
+
   # METRICS AND MONITORING
 
   pushgateway:
@@ -379,6 +398,8 @@ volumes:
   kafka_data:
     driver: local
   wordpress_data:
+    driver: local
+  boosty_data:
     driver: local
   files:
     driver: local
