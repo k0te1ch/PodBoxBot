@@ -60,14 +60,6 @@ class SharedSettings(BaseSettings):
     WP_RESULT_TOPIC: str = "publisher.wordpress.result"
     WP_COOKIE_PATH: str = "/app/data/cookie.pkl"
 
-    # Boosty
-    BOOSTY_BLOG: str | None = None  # slug блога (boosty.to/<slug>)
-    BOOSTY_AUTH_FILE: str = "/app/data/boosty_auth.json"  # экспорт токенов из браузера
-    BOOSTY_AFTERSHOW_LEVEL: str | None = None  # имя или id платного уровня (paywall)
-    BOOSTY_FREE_LEVEL: str | None = None  # имя или id бесплатного уровня (public)
-    BOOSTY_UPLOAD_TOPIC: str = "publisher.boosty.upload"
-    BOOSTY_RESULT_TOPIC: str = "publisher.boosty.result"
-
     # Metrics
     PUSHGATEWAY_URL: str = "http://localhost:9091"
 

@@ -21,14 +21,6 @@ class UploadEvent(BaseModel):
     type_episode: str | None = Field(
         None, description="main | aftershow — определяет paywall для платных publisher'ов"
     )
-    paywall_tier: str | None = Field(
-        None,
-        description=(
-            "Явный id/уровень платного тира. Платный publisher мапит его в свою "
-            "терминологию (Boosty → level_id, sponsr → уровень, VK Donut → donut-only). "
-            "None → публичный пост (если type_episode тоже не aftershow)."
-        ),
-    )
 
     @field_validator("status")
     @classmethod

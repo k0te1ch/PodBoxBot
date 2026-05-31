@@ -5,8 +5,6 @@ database.sqlite
 files/*.mp3
 files/*.pkl
 files/*.json
-boosty_auth.json
-**/boosty_auth.json
 anon.session
 tests/e2e/*.session
 tests/e2e/*.session-journal

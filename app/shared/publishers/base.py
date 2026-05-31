@@ -54,16 +54,6 @@ class BasePublisher(ABC):
     group_id: str
     """Consumer group для horizontal-scalability (на одного potребителя)."""
 
-    # --- Capability flags ---
-    # Декларативные дефолты. Оркестратор/роутер может смотреть на них, чтобы
-    # не слать событие туда, где возможность не реализована (например, не
-    # отправлять paid_only-эпизод в publisher с supports_paywall=False).
-    supports_paywall: bool = False
-    """True если publisher умеет ставить paywall/tier (Boosty, sponsr, VK Donut)."""
-
-    supports_scheduled: bool = False
-    """True если publisher умеет отложенную публикацию по расписанию."""
-
     def __init__(
         self,
         kafka_server: str | None = None,
@@ -96,33 +86,14 @@ class BasePublisher(ABC):
         соберёт и отправит failure-event.
         """
 
-    async def _ensure_auth(self) -> None:
-        """Гарантирует валидные креды перед publish. No-op по умолчанию.
-
-        Token-based publisher'ы (Boosty: access/refresh/device из auth.json)
-        переопределяют: загрузить токен из файла, при истечении/401 — refresh
-        и пересохранить. Blocking file IO заворачивать в asyncio.to_thread.
-        Бесплатные publisher'ы (FTP, WordPress) ничего не делают.
-
-        Вызывается базой в начале каждого _handle; исключение здесь
-        конвертируется в failure-event так же, как из publish().
-        """
-        return None
-
     @staticmethod
     def is_paywalled(event) -> bool:
         """True если эпизод предназначен для платной аудитории.
 
-        Два источника правды, в порядке приоритета:
-        1. Явный `paywall_tier` — если задан, эпизод платный (любой непустой
-           tier означает «только для подписчиков этого уровня и выше»).
-        2. `type_episode == "aftershow"` — исторический неявный маркер.
-
-        Платные publisher'ы (VK Donut, Boosty, Patreon, sponsr) выставляют
-        tier; бесплатные (FTP, WordPress) поле игнорируют.
+        Платные publisher'ы (VK Donut, Boosty, Patreon, sponsr) должны
+        выставлять соответствующий tier/donut_paid флаг. Бесплатные
+        (FTP, WordPress) могут это поле игнорировать.
         """
-        if getattr(event, "paywall_tier", None):
-            return True
         return getattr(event, "type_episode", None) == "aftershow"
 
     def event_key(self, event) -> str:
@@ -167,7 +138,6 @@ class BasePublisher(ABC):
 
         start = time.time()
         try:
-            await self._ensure_auth()
             await self.publish(event)
             self.metrics.success({"target": str(key)})
         except Exception as e:
