@@ -49,9 +49,13 @@ async def test_upload_audio_flow(tmp_path):
     assert init.kwargs["headers"]["Authorization"] == "Bearer t"
     assert init.kwargs["headers"]["X-App"] == "web"
 
-    raw_urls = [call.args[0] for call in client._api.http_client.request_raw.await_args_list]
+    raw_calls = client._api.http_client.request_raw.await_args_list
+    raw_urls = [c.args[0] for c in raw_calls]
     assert any(u.endswith("/upload/aud-1") for u in raw_urls)
     assert any(u.endswith("/upload/aud-1/complete") for u in raw_urls)
+    # чанк несёт X-PartNumber (1-based) — обязателен, иначе 400
+    chunk_call = next(c for c in raw_calls if c.args[0].endswith("/upload/aud-1"))
+    assert chunk_call.kwargs["headers"]["X-PartNumber"] == "1"
 
 
 @pytest.mark.asyncio
