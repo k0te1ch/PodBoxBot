@@ -114,6 +114,15 @@ async def on_startup():
     )
     _wp_task = asyncio.create_task(wp_consumer.start(kafka_router.route))  # noqa: RUF006
 
+    # Boosty result consumer
+    boosty_consumer = KafkaConsumer(
+        kafka_server="kafka:9092",
+        schema_registry_url="http://schema-registry:8081",
+        topic="publisher.boosty.result",
+        group_id="publisher.boosty.result.group",
+    )
+    _boosty_task = asyncio.create_task(boosty_consumer.start(kafka_router.route))  # noqa: RUF006
+
 
 @logger.catch
 async def on_shutdown():

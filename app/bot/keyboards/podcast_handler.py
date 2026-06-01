@@ -22,6 +22,10 @@ def _build(lang: str):
     _wp_menu.row(InlineKeyboardButton(text="Загрузить подкаст на сайт", callback_data="WP_upload"))
     _wp_menu.row(InlineKeyboardButton(text=context[lang].back, callback_data="audio_menu"))
 
+    _boosty_menu = InlineKeyboardBuilder()
+    _boosty_menu.row(InlineKeyboardButton(text="Опубликовать aftershow на Boosty", callback_data="Boosty_upload"))
+    _boosty_menu.row(InlineKeyboardButton(text=context[lang].back, callback_data="audio_menu"))
+
     class _Lang:
         cancel = _cancel.as_markup(resize_keyboard=True)
         type_episode = _type_episode.as_markup(resize_keyboard=True)
@@ -39,10 +43,14 @@ def _build(lang: str):
             .as_markup()
         )
         audio_menu_post = (
-            InlineKeyboardBuilder().add(InlineKeyboardButton(text="FTP", callback_data="FTP_menu")).as_markup()
+            InlineKeyboardBuilder()
+            .add(InlineKeyboardButton(text="FTP", callback_data="FTP_menu"))
+            .add(InlineKeyboardButton(text="Boosty", callback_data="Boosty_menu"))
+            .as_markup()
         )
         FTP_menu = _ftp_menu.as_markup()
         WP_menu = _wp_menu.as_markup()
+        Boosty_menu = _boosty_menu.as_markup()
 
     return _Lang
 

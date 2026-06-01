@@ -60,6 +60,17 @@ class SharedSettings(BaseSettings):
     WP_RESULT_TOPIC: str = "publisher.wordpress.result"
     WP_COOKIE_PATH: str = "/app/data/cookie.pkl"
 
+    # Boosty
+    BOOSTY_BLOG: str | None = None  # slug блога (boosty.to/<slug>)
+    BOOSTY_AUTH_FILE: str = "/app/data/boosty_auth.json"  # экспорт токенов из браузера
+    BOOSTY_OWNER_ID: int | None = None  # числовой id владельца блога (= container_id для upload)
+    BOOSTY_SUBSCRIPTION_LEVEL_ID: str | None = None  # id платного уровня подписки
+    BOOSTY_PRICE: int = 10  # цена поста (pay-per-post), ₽
+    BOOSTY_COVER_PATH: str = "/app/static/boosty_pscover.png"  # обложка-тизер (том static)
+    BOOSTY_ADVERTISER_INFO: str = ""  # маркировка рекламы (обязательное поле, пустое ок)
+    BOOSTY_UPLOAD_TOPIC: str = "publisher.boosty.upload"
+    BOOSTY_RESULT_TOPIC: str = "publisher.boosty.result"
+
     # Metrics
     PUSHGATEWAY_URL: str = "http://localhost:9091"
 
