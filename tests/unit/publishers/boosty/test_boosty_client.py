@@ -75,7 +75,7 @@ async def test_upload_image_init_has_empty_body(tmp_path):
 @pytest.mark.asyncio
 async def test_publish_assembles_payload():
     client = BoostyClient("podbox", "auth.json")
-    client._api = _fake_api({}, request_ret={"data": {"id": "post-9"}})
+    client._api = _fake_api({}, request_ret={"data": {"post": {"id": "post-9", "int_id": 123}}})
 
     post_id = await client.publish(
         title="751. Послешоу",
@@ -92,18 +92,23 @@ async def test_publish_assembles_payload():
 
     assert post_id == "post-9"
 
-    call = client._api.request.await_args
-    assert call.args[0] == "POST"
-    assert call.args[1].endswith("/v1/blog/podbox/post/")
-
-    payload = call.kwargs["data"]
+    calls = client._api.request.await_args_list
+    # 1. PUT post_draft с полным payload
+    put = calls[0]
+    assert put.args[0] == "PUT"
+    assert put.args[1].endswith("/v1/blog/podbox/post_draft")
+    payload = put.kwargs["data"]
     assert payload["title"] == "751. Послешоу"
     assert payload["subscription_level_id"] == "407063"
     assert payload["price"] == "10"
-
     data = json.loads(payload["data"])
     assert any(b.get("type") == "audio_file" and b["id"] == "aud-1" for b in data)
-
     teaser = json.loads(payload["teaser_data"])
     assert teaser[0]["type"] == "image"
     assert teaser[0]["id"] == "img-1"
+
+    # 2. POST publish с is_showcase_visible
+    pub = calls[1]
+    assert pub.args[0] == "POST"
+    assert pub.args[1].endswith("/post_draft/publish/")
+    assert pub.kwargs["data"] == {"is_showcase_visible": "true"}

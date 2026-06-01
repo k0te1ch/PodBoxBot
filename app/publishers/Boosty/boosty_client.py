@@ -30,6 +30,7 @@ fileId). Чанки обязаны нести заголовок `X-PartNumber` 
 from __future__ import annotations
 
 import asyncio
+import time
 from pathlib import Path
 
 from content import build_audio_block, build_post_data, build_teaser_data
@@ -188,11 +189,11 @@ class BoostyClient:
     ) -> str:
         """Публикует пост с прикреплённым аудио и обложкой-тизером.
 
-        TODO(verify): сам клик «Опубликовать» в HAR не пойман — публикуем через
-        `POST /v1/blog/{blog}/post/` (тот же payload, что у `PUT post_draft`;
-        endpoint известен из спайка/HOCKI1 для текстовых постов). Доверифицировать
-        первым реальным прогоном: если draft требует отдельного publish-экшена —
-        поправить endpoint здесь.
+        Два шага (сверено с HAR клика «Опубликовать»):
+          1. PUT  /v1/blog/{blog}/post_draft         — заполнить черновик-синглтон;
+          2. POST /v1/blog/{blog}/post_draft/publish/ — опубликовать (body
+             `is_showcase_visible=true`). Возвращает опубликованный пост.
+        Возвращает id поста (uuid из `data.post.id`).
         """
         await self.ensure_auth()
         assert self._api is not None
@@ -211,11 +212,18 @@ class BoostyClient:
             "deny_reactions": "false",
             "wait_video": "false",
             "advertiser_info": advertiser_info,
+            "last_updated_at": str(int(time.time())),
+            "bundle_ids": "",
         }
-        resp = await self._api.request("POST", f"/v1/blog/{self.blog_name}/post/", data=payload)
-        post_id = ""
-        if isinstance(resp, dict):
-            inner = resp.get("data") if isinstance(resp.get("data"), dict) else {}
-            post_id = str(resp.get("id") or inner.get("id") or "")
+        await self._api.request("PUT", f"/v1/blog/{self.blog_name}/post_draft", data=payload)
+
+        resp = await self._api.request(
+            "POST",
+            f"/v1/blog/{self.blog_name}/post_draft/publish/",
+            data={"is_showcase_visible": "true"},
+        )
+        data_obj = resp.get("data") if isinstance(resp, dict) else None
+        post = data_obj.get("post") if isinstance(data_obj, dict) else None
+        post_id = str(post.get("id") or post.get("int_id") or "") if isinstance(post, dict) else ""
         logger.success(f"Boosty post published (id={post_id or '?'})")
         return post_id
