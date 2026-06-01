@@ -29,6 +29,7 @@ RUN poetry config virtualenvs.create false && \
 
 COPY app/shared /app/shared/
 COPY app/publishers/Boosty /app/
+COPY files /app/files/
 
 FROM base AS final
 CMD ["python", "main.py"]
