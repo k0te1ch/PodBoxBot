@@ -26,6 +26,7 @@ from shared.publishers.base import BasePublisher
 # Boosty-config — берётся только тут, base про эти переменные не знает.
 BOOSTY_BLOG = config.BOOSTY_BLOG
 BOOSTY_AUTH_FILE = config.BOOSTY_AUTH_FILE
+BOOSTY_OWNER_ID = config.BOOSTY_OWNER_ID
 BOOSTY_SUBSCRIPTION_LEVEL_ID = config.BOOSTY_SUBSCRIPTION_LEVEL_ID
 BOOSTY_PRICE = config.BOOSTY_PRICE
 BOOSTY_COVER_PATH = config.BOOSTY_COVER_PATH
@@ -58,7 +59,9 @@ class BoostyPublisher(BasePublisher):
         if not BOOSTY_SUBSCRIPTION_LEVEL_ID:
             raise RuntimeError("BOOSTY_SUBSCRIPTION_LEVEL_ID is not configured")
 
-        container_id = await self.client.get_container_id()
+        # ownerId стабилен для блога; берём из конфига, иначе пробуем достать из
+        # активного черновика (есть только если он создан в редакторе).
+        container_id = BOOSTY_OWNER_ID or await self.client.get_container_id()
         audio_id, audio_size = await self.client.upload_audio(event.path, container_id)
         cover_id = await self.client.upload_image(BOOSTY_COVER_PATH)
 

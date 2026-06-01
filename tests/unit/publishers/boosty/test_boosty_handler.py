@@ -32,6 +32,7 @@ def patched_publisher(monkeypatch):
     client.upload_image = AsyncMock(return_value="img-1")
     client.publish = AsyncMock(return_value="post-1")
     monkeypatch.setattr(main._publisher, "client", client)
+    monkeypatch.setattr(main, "BOOSTY_OWNER_ID", None)  # фоллбэк на client.get_container_id
     monkeypatch.setattr(main, "BOOSTY_SUBSCRIPTION_LEVEL_ID", "407063")
     monkeypatch.setattr(main, "BOOSTY_PRICE", 10)
     monkeypatch.setattr(main, "BOOSTY_COVER_PATH", "/app/files/boosty_pscover.png")
@@ -70,6 +71,18 @@ class TestHandleUpload:
         assert kwargs["price"] == 10
         assert kwargs["cover_id"] == "img-1"
         assert kwargs["audio_id"] == "aud-1"
+
+    @pytest.mark.asyncio
+    async def test_owner_id_from_config_skips_draft_lookup(
+        self, sample_boosty_event_dict, mock_producer, patched_publisher, monkeypatch
+    ):
+        main, client = patched_publisher
+        monkeypatch.setattr(main, "BOOSTY_OWNER_ID", 1900545)
+
+        await main.handle_upload(sample_boosty_event_dict, mock_producer)
+
+        client.get_container_id.assert_not_awaited()
+        assert client.upload_audio.await_args.args[1] == 1900545
 
     @pytest.mark.asyncio
     async def test_missing_path_emits_failure(self, sample_boosty_event_dict, mock_producer, patched_publisher):

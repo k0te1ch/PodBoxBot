@@ -108,9 +108,12 @@ class BoostyClient:
         return headers
 
     async def get_container_id(self) -> int:
-        """ownerId черновика блога — он же `container_id` для upload аудио.
+        """ownerId блога — он же `container_id` для upload аудио.
 
-        Черновик у блога синглтон: GET post_draft отдаёт текущий + ownerId.
+        Фоллбэк, если BOOSTY_OWNER_ID не задан в конфиге: пытаемся достать
+        ownerId из активного черновика. НО черновик существует только когда он
+        создан/сохранён в редакторе — на «пустом» блоге `postDraft` == null.
+        В этом случае задай BOOSTY_OWNER_ID явно (числовой id владельца блога).
         """
         await self.ensure_auth()
         assert self._api is not None
@@ -119,7 +122,11 @@ class BoostyClient:
         draft = data.get("postDraft") if isinstance(data, dict) else None
         owner_id = draft.get("ownerId") if isinstance(draft, dict) else None
         if owner_id is None:
-            raise RuntimeError(f"Cannot resolve ownerId from post_draft response: {resp!r}")
+            raise RuntimeError(
+                "Cannot resolve ownerId: no active post_draft on the blog. "
+                "Set BOOSTY_OWNER_ID in config (numeric blog owner id). "
+                f"Raw response: {resp!r}"
+            )
         return int(owner_id)
 
     async def _upload(self, init_url: str, init_body: dict, path: str) -> str:

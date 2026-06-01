@@ -63,6 +63,7 @@ class SharedSettings(BaseSettings):
     # Boosty
     BOOSTY_BLOG: str | None = None  # slug блога (boosty.to/<slug>)
     BOOSTY_AUTH_FILE: str = "/app/data/boosty_auth.json"  # экспорт токенов из браузера
+    BOOSTY_OWNER_ID: int | None = None  # числовой id владельца блога (= container_id для upload)
     BOOSTY_SUBSCRIPTION_LEVEL_ID: str | None = None  # id платного уровня подписки
     BOOSTY_PRICE: int = 10  # цена поста (pay-per-post), ₽
     BOOSTY_COVER_PATH: str = "/app/files/boosty_pscover.png"  # обложка-тизер (том files)
