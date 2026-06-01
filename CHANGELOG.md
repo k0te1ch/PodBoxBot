@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/k0te1ch/PodBoxBot/compare/v0.3.3...v0.4.0) (2026-06-01)
+
+
+### Features
+
+* **boosty:** publish aftershow episodes to Boosty (mp3 + cover, paid level) ([#19](https://github.com/k0te1ch/PodBoxBot/issues/19)) ([e771c6f](https://github.com/k0te1ch/PodBoxBot/commit/e771c6f91dc360d4eb7462e8940496232c428d4f))
+
 ## [0.3.3](https://github.com/k0te1ch/PodBoxBot/compare/v0.3.2...v0.3.3) (2026-05-31)
 
 
