@@ -66,7 +66,7 @@ class SharedSettings(BaseSettings):
     BOOSTY_OWNER_ID: int | None = None  # числовой id владельца блога (= container_id для upload)
     BOOSTY_SUBSCRIPTION_LEVEL_ID: str | None = None  # id платного уровня подписки
     BOOSTY_PRICE: int = 10  # цена поста (pay-per-post), ₽
-    BOOSTY_COVER_PATH: str = "/app/files/boosty_pscover.png"  # обложка-тизер (том files)
+    BOOSTY_COVER_PATH: str = "/app/static/boosty_pscover.png"  # обложка-тизер (том static)
     BOOSTY_ADVERTISER_INFO: str = ""  # маркировка рекламы (обязательное поле, пустое ок)
     BOOSTY_UPLOAD_TOPIC: str = "publisher.boosty.upload"
     BOOSTY_RESULT_TOPIC: str = "publisher.boosty.result"

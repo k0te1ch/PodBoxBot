@@ -35,7 +35,7 @@ def patched_publisher(monkeypatch):
     monkeypatch.setattr(main, "BOOSTY_OWNER_ID", None)  # фоллбэк на client.get_container_id
     monkeypatch.setattr(main, "BOOSTY_SUBSCRIPTION_LEVEL_ID", "407063")
     monkeypatch.setattr(main, "BOOSTY_PRICE", 10)
-    monkeypatch.setattr(main, "BOOSTY_COVER_PATH", "/app/files/boosty_pscover.png")
+    monkeypatch.setattr(main, "BOOSTY_COVER_PATH", "/app/static/boosty_pscover.png")
     monkeypatch.setattr(main, "BOOSTY_ADVERTISER_INFO", "")
     return main, client
 
@@ -50,7 +50,7 @@ class TestHandleUpload:
         # mp3-путь и container_id пробрасываются в upload_audio
         assert client.upload_audio.await_args.args[0] == "/app/files/0123_postshow.mp3"
         assert client.upload_audio.await_args.args[1] == 1900545
-        client.upload_image.assert_awaited_once_with("/app/files/boosty_pscover.png")
+        client.upload_image.assert_awaited_once_with("/app/static/boosty_pscover.png")
         client.publish.assert_awaited_once()
 
         mock_producer.send.assert_called_once()
