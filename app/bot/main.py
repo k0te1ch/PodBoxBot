@@ -17,7 +17,7 @@ from handlers import ROUTERS
 from middlewares.base.user_context_middleware import UserContextMiddleware
 from services import init_services, redis
 from services.none_module import _NoneModule
-from utils.bot_methods import send_release_note
+from utils.bot_methods import get_version, send_release_note
 from utils.error_reporting import register_error_handler
 
 # IMPORT SETTINGS
@@ -81,6 +81,15 @@ def _get_bot_obj() -> Bot:
 
 @logger.catch
 async def on_startup():
+    # Версия запускаемого бота. logger.info выпустит строку только при
+    # уровне INFO и ниже — при WARNING+ она молча подавляется (как просили).
+    try:
+        running_version = await get_version()
+    except Exception as e:
+        running_version = None
+        logger.debug(f"could not read bot version: {e!r}")
+    logger.info(f"PodBoxBot v{running_version or '?'} (aiogram {aiogram_version})")
+
     # Запускаем стартап задачи параллельно с поллингом.
     # send_release_note и kafka-консьюмеры независимы — изолируем падения
     # одного, чтобы не утащить за собой другое. До этого фикса любая
