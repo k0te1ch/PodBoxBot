@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.1](https://github.com/k0te1ch/PodBoxBot/compare/v0.4.0...v0.4.1) (2026-06-02)
+
+
+### Bug Fixes
+
+* **release-note:** repair changelog broadcast and log bot version ([241f697](https://github.com/k0te1ch/PodBoxBot/commit/241f697d9caf762c3fe9dc34bffff40cdaa59312))
+
 ## [0.4.0](https://github.com/k0te1ch/PodBoxBot/compare/v0.3.3...v0.4.0) (2026-06-01)
 
 
