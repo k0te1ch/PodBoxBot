@@ -115,16 +115,59 @@ def _markdown_inline_to_html(text: str) -> str:
     return "".join(out)
 
 
+# --- release-please CHANGELOG parsing ---
+# release-please пишет CHANGELOG в таком виде:
+#   ## [0.4.0](compare-url) (2026-06-01)
+#   ### Features
+#   * **scope:** summary ([#19](url)) ([hash](url))
+# Версию/дату берём из заголовка верхнего (самого свежего) релизного блока,
+# секции — из "### ..."-подзаголовков. Старый ручной формат
+# (# 0.3.0 / ## Добавлено / дата ДД.ММ.ГГГГ) больше не используется.
+_VERSION_HEADING = re.compile(r"^##\s+\[?(\d+\.\d+\.\d+)\]?", re.MULTILINE)
+_DATE_IN_HEADING = re.compile(r"\((\d{4}-\d{2}-\d{2})\)")
+_SECTION_HEADING = re.compile(r"^###\s+(.+?)\s*$", re.MULTILINE)
+_MD_LINK = re.compile(r"\[([^\]]+)\]\([^)]+\)")
+
+# Английские заголовки секций release-please → русские подписи.
+# Неизвестные секции показываем как есть (как в changelog).
+_SECTION_LABELS = {
+    "Features": "Добавлено",
+    "Bug Fixes": "Исправлено",
+    "Performance Improvements": "Производительность",
+    "Code Refactoring": "Рефакторинг",
+    "Reverts": "Откаты",
+    "Documentation": "Документация",
+    "Tests": "Тесты",
+    "Build System": "Сборка",
+    "Continuous Integration": "CI",
+    "Miscellaneous Chores": "Прочее",
+    "Styles": "Стиль",
+}
+
+
+def _format_bullet(text: str) -> str:
+    """Очищает один пункт changelog для показа в Telegram (HTML).
+
+    Markdown-ссылки `[text](url)` сворачиваем в `text` (убираем url-шум от
+    хэшей коммитов и PR), маркеры жирного `**` отбрасываем, дальше отдаём
+    в `_markdown_inline_to_html` — он экранирует HTML и переводит inline
+    `code` в <code>.
+    """
+    text = _MD_LINK.sub(r"\1", text)
+    text = text.replace("**", "")
+    return _markdown_inline_to_html(text)
+
+
 async def get_release_note() -> list[str] | None:
-    """Read CHANGELOG.md and format the latest section as HTML chunks.
+    """Read CHANGELOG.md and format the latest release block as HTML chunks.
 
-    Returns a list of HTML-formatted message parts (one per section + a
-    header), each safe to send as a single Telegram message in HTML
-    parse-mode. Returns None when CHANGELOG.md is missing or unreadable
-    — the release-note broadcast is a courtesy and must never crash
-    on_startup.
+    Returns a list of HTML-formatted message parts (header + one or more
+    per-section messages), each safe to send as a single Telegram message
+    in HTML parse-mode. Returns None when CHANGELOG.md is missing,
+    unreadable, or has no release block — the broadcast is a courtesy and
+    must never crash on_startup.
 
-    Why HTML and not MarkdownV2: the v0.3.0 changelog contains plenty of
+    Why HTML and not MarkdownV2: changelog entries contain plenty of
     punctuation MarkdownV2 reserves (`!`, `(`, `)`, `.`, `-`, `:`, etc).
     Escaping all of them by hand is error-prone; HTML only requires
     escaping `<`, `>`, `&`, which html.escape() handles for us.
@@ -144,14 +187,21 @@ async def get_release_note() -> list[str] | None:
         logger.warning(f"Failed to read {path}: {e!r}")
         return None
 
-    version_pattern = re.compile(r"# (\d+\.\d+\.\d+)")
-    date_pattern = re.compile(r"\((\d{1,2}\.\d{1,2}\.\d{4})\)")
+    # Верхний релизный блок: от первого версия-заголовка до следующего.
+    headings = list(_VERSION_HEADING.finditer(content))
+    if not headings:
+        logger.warning("No release block found in CHANGELOG.md; skipping broadcast")
+        return None
 
-    version_match = version_pattern.search(content)
-    date_match = date_pattern.search(content)
+    first = headings[0]
+    block_end = headings[1].start() if len(headings) > 1 else len(content)
+    line_end = content.find("\n", first.start())
+    heading_line = content[first.start() : line_end if line_end != -1 else len(content)]
+    block = content[first.end() : block_end]
 
-    version = version_match.group(1) if version_match else "Неизвестно"
-    date = date_match.group(1) if date_match else "Неизвестно"
+    version = first.group(1)
+    date_match = _DATE_IN_HEADING.search(heading_line)
+    date = date_match.group(1) if date_match else "неизвестно"
 
     parts: list[str] = [
         f"<b>Бот обновлён!</b>\n\n<b>Список изменений (версия {html.escape(version)}, от {html.escape(date)}):</b>"
@@ -159,22 +209,28 @@ async def get_release_note() -> list[str] | None:
 
     # Cyrillic в UTF-8 — по 2 байта, так что 4096-байтовый лимит TG
     # достигается раньше, чем кажется по числу символов. Шлём каждую
-    # секцию отдельным сообщением. Если секция всё равно перерастает
-    # лимит — режем её по пунктам (пакуем столько bullets, сколько
-    # помещается, дальше начинаем новое сообщение с тем же заголовком).
-    sections = ["Добавлено", "Улучшено", "Исправлено"]
-    for section in sections:
-        section_pattern = re.compile(rf"## {section}(.+?)(?=## |\n#|\Z)", re.DOTALL)
-        section_match = section_pattern.search(content)
-        if not section_match:
+    # секцию отдельным сообщением; если секция перерастает лимит — режем
+    # её по пунктам (см. _pack_html_chunks).
+    section_matches = list(_SECTION_HEADING.finditer(block))
+    for i, section in enumerate(section_matches):
+        name = section.group(1).strip()
+        sec_end = section_matches[i + 1].start() if i + 1 < len(section_matches) else len(block)
+        body = block[section.end() : sec_end]
+
+        bullets: list[str] = []
+        for raw in body.split("\n"):
+            line = raw.strip()
+            if not line.startswith("* "):
+                continue
+            item = line[2:].strip()
+            if item:
+                bullets.append(f"• {_format_bullet(item)}")
+
+        if not bullets:
             continue
 
-        heading = f"<i>{html.escape(section)}</i>:"
-        bullets = [
-            f"• {_markdown_inline_to_html(item)}"
-            for raw in section_match.group(1).strip().split("\n")
-            if (item := raw.replace("- ", "", 1).strip())
-        ]
+        label = _SECTION_LABELS.get(name, name)
+        heading = f"<i>{html.escape(label)}</i>:"
         parts.extend(_pack_html_chunks(heading, bullets))
 
     return parts
@@ -421,7 +477,6 @@ async def pin_message(
     message_id: int,
     disable_notification: bool = False,
 ) -> None:
-
     try:
         await bot.pin_chat_message(
             chat_id=chat_id,

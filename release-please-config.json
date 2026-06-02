@@ -7,7 +7,10 @@
       "include-component-in-tag": false,
       "bump-minor-pre-major": true,
       "draft": false,
-      "prerelease": false
+      "prerelease": false,
+      "extra-files": [
+        { "type": "generic", "path": "app/bot/pyproject.toml" }
+      ]
     }
   }
 }
