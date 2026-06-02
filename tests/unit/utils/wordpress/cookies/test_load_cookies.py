@@ -8,7 +8,6 @@ from unittest.mock import mock_open, patch
 def test_load_cookies_file_exists_and_has_content(
     mock_pickle_load, mock_open, mock_getsize, mock_exists, wordpress, mock_session
 ):
-
     # Выполняем метод _load_cookies
     result = wordpress._load_cookies()
 

@@ -30,7 +30,7 @@ class _Keyboards:
 
             return r
 
-        elif isinstance(r, (ReplyKeyboardMarkup, InlineKeyboardMarkup)):
+        elif isinstance(r, ReplyKeyboardMarkup | InlineKeyboardMarkup):
             return r
 
         elif isinstance(r, type):
@@ -55,7 +55,7 @@ class _Keyboards:
 
             return r
 
-        elif isinstance(r, (ReplyKeyboardMarkup, InlineKeyboardMarkup)):
+        elif isinstance(r, ReplyKeyboardMarkup | InlineKeyboardMarkup):
             return r
 
         elif isinstance(r, type):
