@@ -3,9 +3,8 @@
 from unittest.mock import AsyncMock
 
 import pytest
-from pydantic import ValidationError
-
 from app.shared.kafka.models.boosty_event import BoostyEvent
+from pydantic import ValidationError
 
 
 @pytest.fixture

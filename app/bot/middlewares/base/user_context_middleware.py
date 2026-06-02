@@ -18,7 +18,7 @@ class UserContextMiddleware(BaseMiddleware):
 
     async def get_user(self, event: Message | CallbackQuery) -> User:
         """Извлекает объект пользователя из события"""
-        if isinstance(event, (Message, CallbackQuery)):
+        if isinstance(event, Message | CallbackQuery):
             return event.from_user
         raise ValueError(f"Неизвестный тип события: {type(event)}")
 
