@@ -138,6 +138,12 @@ services:
   schema-registry:
     image: confluentinc/cp-schema-registry:7.5.0
     container_name: podboxbot_schema-registry
+    # Без restart-политики SR при ребуте (где depends_on не соблюдается)
+    # стартует раньше Kafka, не дожидается брокера и САМ выключается —
+    # и больше не поднимается. Kafka позже становится healthy, а SR уже
+    # мёртв → бот жив, но публикации не работают. restart: always заставляет
+    # Docker перезапускать SR, пока Kafka не станет доступна.
+    restart: always
     depends_on:
       kafka:
         condition: service_healthy
