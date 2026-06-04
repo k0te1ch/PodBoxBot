@@ -3,7 +3,6 @@
 from unittest.mock import patch
 
 import pytest
-
 from app.shared.kafka import wait_for_kafka as wk
 
 
