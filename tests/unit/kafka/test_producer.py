@@ -22,10 +22,16 @@ class TestKafkaProducer:
         mock_avro.load.assert_not_called()
         mock_avro_producer.assert_not_called()
 
+    @patch("app.shared.kafka.producer.wait_for_kafka_stack")
     @patch("app.shared.kafka.producer.avro")
     @patch("app.shared.kafka.producer.AvroProducer")
     @pytest.mark.asyncio
-    async def test_send(self, mock_avro_producer_cls, mock_avro):
+    async def test_send(self, mock_avro_producer_cls, mock_avro, mock_wait):
+        # Readiness-гейт — инфраструктурная зависимость; мокаем как и брокер.
+        async def _noop(*args, **kwargs):
+            return None
+
+        mock_wait.side_effect = _noop
         mock_avro.load.return_value = {"type": "record", "name": "test"}
         mock_producer_instance = mock_avro_producer_cls.return_value
         mock_producer_instance.produce = MagicMock()
