@@ -105,32 +105,42 @@ async def on_startup():
     from services import kafka_router
     from services.kafka.handlers import upload_event  # noqa: F401 — регистрирует хендлеры
 
-    # FTP result consumer
-    ftp_consumer = KafkaConsumer(
-        kafka_server="kafka:9092",
-        schema_registry_url="http://schema-registry:8081",
-        topic="publisher.ftp.result",
-        group_id="publisher.ftp.result.group",
-    )
-    _ftp_task = asyncio.create_task(ftp_consumer.start(kafka_router.route))  # noqa: RUF006
+    # Каждый result-топик слушается в отдельной supervised-задаче. Сам
+    # consumer.start() уже дожидается готовности Kafka/Schema Registry, но
+    # readiness-ожидание может истечь по таймауту и поднять исключение, а сам
+    # poll-loop теоретически может завершиться. Супервайзер ловит любой выход
+    # и перезапускает consumer — так бот не остаётся «полуживым» (Telegram
+    # отвечает, а приём result-событий молча мёртв) после ребута хоста.
+    result_topics = [
+        ("publisher.ftp.result", "publisher.ftp.result.group"),
+        ("publisher.wordpress.result", "publisher.wordpress.result.group"),
+        ("publisher.boosty.result", "publisher.boosty.result.group"),
+    ]
+    for topic, group_id in result_topics:
+        consumer = KafkaConsumer(
+            kafka_server="kafka:9092",
+            schema_registry_url="http://schema-registry:8081",
+            topic=topic,
+            group_id=group_id,
+        )
+        _task = asyncio.create_task(_supervise_consumer(consumer, kafka_router.route))  # noqa: RUF006
 
-    # WordPress result consumer
-    wp_consumer = KafkaConsumer(
-        kafka_server="kafka:9092",
-        schema_registry_url="http://schema-registry:8081",
-        topic="publisher.wordpress.result",
-        group_id="publisher.wordpress.result.group",
-    )
-    _wp_task = asyncio.create_task(wp_consumer.start(kafka_router.route))  # noqa: RUF006
 
-    # Boosty result consumer
-    boosty_consumer = KafkaConsumer(
-        kafka_server="kafka:9092",
-        schema_registry_url="http://schema-registry:8081",
-        topic="publisher.boosty.result",
-        group_id="publisher.boosty.result.group",
-    )
-    _boosty_task = asyncio.create_task(boosty_consumer.start(kafka_router.route))  # noqa: RUF006
+async def _supervise_consumer(consumer: "KafkaConsumer", handler, restart_delay: float = 5.0) -> None:
+    """Перезапускает consumer-loop при любом выходе/падении.
+
+    consumer.start() в норме блокирует навсегда; вернуться/упасть он может
+    только если зависимости не поднялись (readiness-таймаут) или poll-loop
+    словил фатальную ошибку. В этом случае ждём и поднимаем заново — бот
+    самовосстанавливается без вмешательства.
+    """
+    while True:
+        try:
+            await consumer.start(handler)
+            logger.warning(f"[supervisor] consumer for {consumer.topic} exited; restarting in {restart_delay:.0f}s")
+        except Exception as e:
+            logger.exception(f"[supervisor] consumer for {consumer.topic} crashed: {e!r}; restarting in {restart_delay:.0f}s")
+        await asyncio.sleep(restart_delay)
 
 
 @logger.catch
