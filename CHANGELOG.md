@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.1](https://github.com/k0te1ch/PodBoxBot/compare/v0.5.0...v0.5.1) (2026-06-04)
+
+
+### Bug Fixes
+
+* **compose:** add restart policy to schema-registry so it recovers after reboot ([#27](https://github.com/k0te1ch/PodBoxBot/issues/27)) ([71d2b69](https://github.com/k0te1ch/PodBoxBot/commit/71d2b6936e83a8bb7c362689464eefbb24187b29))
+
 ## [0.5.0](https://github.com/k0te1ch/PodBoxBot/compare/v0.4.1...v0.5.0) (2026-06-04)
 
 
