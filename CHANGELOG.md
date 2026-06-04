@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/k0te1ch/PodBoxBot/compare/v0.4.1...v0.5.0) (2026-06-04)
+
+
+### Features
+
+* **reboot:** make stack resilient to host reboots ([#25](https://github.com/k0te1ch/PodBoxBot/issues/25)) ([c9adcd1](https://github.com/k0te1ch/PodBoxBot/commit/c9adcd156a02d5e3ef5149f008fa7eba74f44249))
+
 ## [0.4.1](https://github.com/k0te1ch/PodBoxBot/compare/v0.4.0...v0.4.1) (2026-06-02)
 
 
