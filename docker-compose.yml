@@ -96,6 +96,11 @@ services:
     image: confluentinc/cp-kafka:latest
     container_name: podboxbot_kafka
     restart: always
+    # Дать брокеру дописать KRaft-логи и сняться с группы перед kill при
+    # ребуте/останове — иначе «жёсткий» стоп рискует повредить kafka_data,
+    # после чего consumer'ы/SR ведут себя странно. Парно с ExecStop в
+    # deploy/podboxbot.service (там общий бюджет на стек).
+    stop_grace_period: 60s
     environment:
       # --- Основные настройки KRaft ---
       KAFKA_PROCESS_ROLES: broker,controller

@@ -1,0 +1,42 @@
+# systemd-юнит для оркестрованного старта/останова стека PodBoxBot.
+#
+# ЗАЧЕМ. Docker по `restart: always` поднимает контейнеры после ребута БЕЗ
+# соблюдения `depends_on` — порядок старта не гарантирован. Этот юнит на каждом
+# старте хоста выполняет `docker compose up -d` (порядок depends_on соблюдается),
+# а на остановке/ребуте — `docker compose stop` с запасом времени (graceful
+# shutdown Kafka → нет коррупции kafka_data при «жёстком» ребуте по cron).
+#
+# In-process readiness-гейты (shared/kafka/wait_for_kafka.py) делают стек
+# устойчивым даже без этого юнита — но юнит добавляет graceful shutdown и
+# гарантированный orchestrated up. Это нижний, инфраструктурный слой защиты.
+#
+# УСТАНОВКА на минипк (один раз):
+#   1. Поправь WorkingDirectory ниже под реальный путь к репозиторию.
+#   2. sudo cp deploy/podboxbot.service /etc/systemd/system/podboxbot.service
+#   3. sudo systemctl daemon-reload
+#   4. sudo systemctl enable --now podboxbot.service
+#
+# После этого ЛЮБОЙ `reboot`/`shutdown` (в т.ч. cron брата) проходит через
+# graceful ExecStop, а на загрузке стек поднимается оркестрованно.
+# Проверка: systemctl status podboxbot,  journalctl -u podboxbot -f
+
+[Unit]
+Description=PodBoxBot docker compose stack
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+# !!! ПОПРАВЬ ПУТЬ под минипк (где лежит docker-compose.yml) !!!
+WorkingDirectory=/opt/PodBoxBot
+ExecStart=/usr/bin/docker compose up -d
+ExecStop=/usr/bin/docker compose stop -t 40
+# Старт может занять время на холодной Kafka — не душим таймаутом.
+TimeoutStartSec=0
+# Дать ExecStop спокойно завершить graceful-стоп всех контейнеров.
+TimeoutStopSec=120
+
+[Install]
+WantedBy=multi-user.target

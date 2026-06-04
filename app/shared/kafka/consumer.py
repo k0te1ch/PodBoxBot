@@ -5,6 +5,8 @@ from confluent_kafka import KafkaError
 from confluent_kafka.avro import AvroConsumer, SerializerError
 from loguru import logger
 
+from shared.kafka.wait_for_kafka import wait_for_kafka_stack
+
 _RETRY_INITIAL_DELAY = 2.0  # seconds
 _RETRY_MAX_DELAY = 60.0  # seconds
 _RETRY_MULTIPLIER = 2.0
@@ -20,6 +22,8 @@ class KafkaConsumer:
         max_workers: int = 4,
     ):
         self.topic = topic
+        self._kafka_server = kafka_server
+        self._schema_registry_url = schema_registry_url
         self._running = True
         self._executor = ThreadPoolExecutor(max_workers=max_workers)
 
@@ -33,7 +37,15 @@ class KafkaConsumer:
         )
 
     async def start(self, handler):
-        """Async Kafka polling loop with retry backoff on transient errors."""
+        """Async Kafka polling loop with retry backoff on transient errors.
+
+        Перед подпиской ждём готовности Kafka и Schema Registry. Это снимает
+        зависимость от порядка старта контейнеров: после ребута хоста, где
+        `depends_on` не соблюдается, consumer просто дождётся зависимостей,
+        вместо того чтобы стартовать в сломанном состоянии и терять события.
+        """
+        await wait_for_kafka_stack(self._kafka_server, self._schema_registry_url)
+
         self.consumer.subscribe([self.topic])
         logger.info(f"[AsyncAvroConsumer] Listening {self.topic}")
 
@@ -71,9 +83,16 @@ class KafkaConsumer:
                 _task = asyncio.create_task(handler(value))  # noqa: RUF006
 
             except SerializerError as e:
+                # Обычно schema registry недоступна/схема не зарегистрирована.
+                # Пауза, чтобы не молотить broker и логи в плотном цикле, пока
+                # зависимость не восстановится.
                 logger.error(f"[Kafka Avro] Serialization error: {e}")
+                await asyncio.sleep(retry_delay)
+                retry_delay = min(retry_delay * _RETRY_MULTIPLIER, _RETRY_MAX_DELAY)
             except Exception as e:
                 logger.exception(f"[KafkaConsumer] Unexpected error: {e}")
+                await asyncio.sleep(retry_delay)
+                retry_delay = min(retry_delay * _RETRY_MULTIPLIER, _RETRY_MAX_DELAY)
 
         self.consumer.close()
         logger.info("[AsyncAvroConsumer] Stopped")

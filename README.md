@@ -157,6 +157,30 @@ docker compose build --no-cache bot publisher_ftp publisher_wordpress publisher_
 docker compose up -d
 ```
 
+### Устойчивость к ребуту хоста
+
+После перезагрузки хоста Docker поднимает контейнеры по `restart: always`
+**без** соблюдения `depends_on` (это правило уровня `docker compose up`, а не
+рантайма демона). Поэтому бот/publisher'ы могут стартовать раньше Kafka и
+Schema Registry. Защита выстроена в три слоя:
+
+1. **In-process readiness-гейты** (`app/shared/kafka/wait_for_kafka.py`):
+   каждый consumer ждёт Kafka + Schema Registry перед подпиской, каждый
+   producer — перед первой публикацией. Порядок старта перестаёт иметь
+   значение; события не теряются в окне прогрева.
+2. **Супервайзер result-consumer'ов в боте**: если consumer-loop падает или
+   readiness истекает по таймауту — он перезапускается. Бот не остаётся
+   «полуживым» (Telegram отвечает, а приём result-событий мёртв).
+3. **systemd-юнит** (`deploy/podboxbot.service`): на загрузке поднимает стек
+   оркестрованно (`docker compose up -d`, depends_on соблюдается), на
+   ребуте/останове — graceful `docker compose stop` (Kafka успевает дописать
+   KRaft-логи → нет коррупции `kafka_data`). Установка — см. комментарий в
+   самом файле юнита. После `systemctl enable --now` любой `reboot` (в т.ч.
+   по cron) проходит безопасно.
+
+Слои 1–2 работают сами по себе; слой 3 рекомендуется на проде, который
+регулярно перезагружается.
+
 ## Разработка
 
 - Локальные venv'ы по сервисам:
