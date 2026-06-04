@@ -139,7 +139,9 @@ async def _supervise_consumer(consumer: "KafkaConsumer", handler, restart_delay:
             await consumer.start(handler)
             logger.warning(f"[supervisor] consumer for {consumer.topic} exited; restarting in {restart_delay:.0f}s")
         except Exception as e:
-            logger.exception(f"[supervisor] consumer for {consumer.topic} crashed: {e!r}; restarting in {restart_delay:.0f}s")
+            logger.exception(
+                f"[supervisor] consumer for {consumer.topic} crashed: {e!r}; restarting in {restart_delay:.0f}s"
+            )
         await asyncio.sleep(restart_delay)
 
 
