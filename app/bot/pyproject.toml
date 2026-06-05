@@ -33,6 +33,9 @@ pydantic = "^2.12.3"
 pydantic-settings = "^2.9.1"
 pre-commit = "^4.5.1"
 pytz = "^2026.1.post1"
+# Multi-step dialog engine. Pulled from GitHub until it lands on PyPI,
+# then this switches to a plain version constraint.
+dialog-engine = { git = "https://github.com/k0te1ch/DialogEngine.git" }
 
 
 [tool.poetry.group.testing.dependencies]

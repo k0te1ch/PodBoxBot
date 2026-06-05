@@ -5,7 +5,7 @@ import shutil
 from pathlib import Path
 
 from aiogram import Bot, F, Router
-from aiogram.filters import CommandStart, StateFilter
+from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.types import FSInputFile, Message, ReplyKeyboardRemove
 from loguru import logger
@@ -21,9 +21,11 @@ from config import (
     LOCAL,
     PODCAST_PATH,
 )
+from filters.dialog_filters import InDialog, OnStep
 from filters.dispatcher_filters import ContextButton, IsAdmin, IsPrivate
-from forms.upload_file import UploadFile
+from forms.upload_file import MP3, TEMPLATE, TYPE_EPISODE, upload_file_engine
 from services import context, keyboards
+from utils.dialog import load_session, save_session, start_dialog
 from utils.FTP_methods import get_last_post_ID
 from utils.MP3_methods import audio_tag
 from utils.podcast_methods import generate_file_name
@@ -66,11 +68,11 @@ async def start(msg: Message, state: FSMContext, language: str):
         context[language].ask_typeEpisode,
         reply_markup=keyboards["podcast_handler"][language].type_episode,
     )
-    await state.set_state(UploadFile.type_episode)
+    await start_dialog(state, upload_file_engine)
 
 
 @logger.catch
-@router.message(F.text, ContextButton("cancel"), StateFilter(UploadFile))
+@router.message(F.text, ContextButton("cancel"), InDialog())
 async def cancel(msg: Message, state: FSMContext, language: str, username: str):
     """Отмена загрузки MP3."""
     logger.debug(f"[{username}]: Отмена загрузки MP3")
@@ -85,12 +87,14 @@ async def cancel(msg: Message, state: FSMContext, language: str, username: str):
 @router.message(
     F.text,
     ContextButton(["main_episode", "episode_aftershow"]),
-    UploadFile.type_episode,
+    OnStep(TYPE_EPISODE),
 )
 async def get_type(msg: Message, state: FSMContext, language: str, username: str):
     """Выбор типа эпизода."""
     type_episode = "main" if msg.text == context[language].main_episode else "aftershow"
-    await state.update_data(type_episode=type_episode)
+    session = await load_session(state, upload_file_engine)
+    await upload_file_engine.async_submit(session, type_episode)
+    await save_session(state, session)
     logger.debug(f"[{username}]: Выбран тип эпизода: {type_episode}")
 
     type_episode_text = (  # noqa: F841 — used by context format_map
@@ -100,13 +104,13 @@ async def get_type(msg: Message, state: FSMContext, language: str, username: str
         context[language].ask_mp3,
         reply_markup=keyboards["podcast_handler"][language].cancel,
     )
-    await state.set_state(UploadFile.mp3)
 
 
 @logger.catch
-@router.message(UploadFile.mp3, F.audio)
+@router.message(OnStep(MP3), F.audio)
 async def get_MP3(msg: Message, state: FSMContext, bot: Bot, language: str, username: str):
     """Обработка загрузки MP3."""
+    session = await load_session(state, upload_file_engine)
     await clear_old_mp3_files()
 
     logger.debug(f"[{username}]: Загружает MP3...")
@@ -153,24 +157,26 @@ async def get_MP3(msg: Message, state: FSMContext, bot: Bot, language: str, user
         await state.clear()
         return
 
-    episode_data = await state.get_data()
-    type_episode = episode_data["type_episode"]
+    type_episode = session.answers[TYPE_EPISODE]
 
     numberLastEpisode = str(int(await get_last_post_ID(type_episode, FTP_SERVER, FTP_LOGIN, FTP_PASSWORD)) + 1)
+
+    await upload_file_engine.async_submit(session, msg.audio.file_id)
+    await save_session(state, session)
 
     await download_msg.edit_text(context[language].downloaded)
     await msg.answer(
         context[language].ask_template[type_episode].replace("600", numberLastEpisode),
         reply_markup=keyboards["podcast_handler"][language].cancel,
     )
-    await state.set_state(UploadFile.template)
 
 
 @logger.catch
-@router.message(F.text, UploadFile.template, flags={"long_operation": "upload_audio"})
+@router.message(F.text, OnStep(TEMPLATE), flags={"long_operation": "upload_audio"})
 async def set_template(msg: Message, state: FSMContext, language: str, username: str):
     """Обработка шаблона для MP3-тегов."""
-    type_episode = (await state.get_data())["type_episode"]
+    session = await load_session(state, upload_file_engine)
+    type_episode = session.answers[TYPE_EPISODE]
     logger.debug(f"[{username}]: Выбранный тип эпизода: {type_episode}")
 
     info = validate_template(msg.text)
@@ -220,4 +226,7 @@ async def set_template(msg: Message, state: FSMContext, language: str, username:
 
     await tmp.delete()
     logger.debug(f"[{username}]: MP3 загружен и отправлен в чат")
+
+    # Final step — mark the dialog complete, then drop the session from storage.
+    await upload_file_engine.async_submit(session, msg.text)
     await state.clear()

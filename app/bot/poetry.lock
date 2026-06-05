@@ -1121,6 +1121,27 @@ files = [
 packaging = "*"
 
 [[package]]
+name = "dialog-engine"
+version = "0.1.0"
+description = "Universal multi-step dialog engine for building form-driven flows and Telegram bots."
+optional = false
+python-versions = ">=3.12,<4.0"
+groups = ["main"]
+files = []
+develop = false
+
+[package.extras]
+aiogram = ["aiogram (>=3.0,<4.0)"]
+validation = ["pydantic (>=2.0,<3.0)"]
+yaml = ["PyYAML (>=6.0)"]
+
+[package.source]
+type = "git"
+url = "https://github.com/k0te1ch/DialogEngine.git"
+reference = "HEAD"
+resolved_reference = "be5bf7c9fbd252156a220dc3bfd0e6e8e4b9c521"
+
+[[package]]
 name = "distlib"
 version = "0.4.0"
 description = "Distribution utilities"
@@ -3846,4 +3867,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.15"
-content-hash = "705c8f8b44f4283dd69f826443c5178f1b8cea7e3c42ddf0ef4234542804ff96"
+content-hash = "7be49509b6490f44accfd9e1ad908ad2de8df455dd46dd128227741c15e2e2fd"
