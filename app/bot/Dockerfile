@@ -22,11 +22,9 @@ RUN sed -i 's/# ru_RU.UTF-8 UTF-8/ru_RU.UTF-8 UTF-8/' /etc/locale.gen && \
 ENV LANG=ru_RU.UTF-8
 ENV LC_ALL=ru_RU.UTF-8
 
-# Устанавливаем Poetry и необходимые инструменты сборки.
-# dulwich>=0.24 нужен git-клиенту Poetry (новый WorkTree API,
-# модуль dulwich.worktree) для установки dialog-engine из git.
+# Устанавливаем Poetry и необходимые инструменты сборки
 RUN python -m pip install --upgrade pip setuptools wheel && \
-    python -m pip install --upgrade poetry "dulwich>=0.24.0"
+    python -m pip install --upgrade poetry
 
 # Копируем файлы зависимостей и устанавливаем их
 COPY app/bot/pyproject.toml app/bot/poetry.lock /app/

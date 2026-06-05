@@ -851,7 +851,7 @@ version = "7.13.5"
 description = "Code coverage measurement for Python"
 optional = false
 python-versions = ">=3.10"
-groups = ["dev"]
+groups = ["testing"]
 files = [
     {file = "coverage-7.13.5-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:e0723d2c96324561b9aa76fb982406e11d93cdb388a7a7da2b16e04719cf7ca5"},
     {file = "coverage-7.13.5-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:52f444e86475992506b32d4e5ca55c24fc88d73bcbda0e9745095b28ef4dc0cf"},
@@ -2946,7 +2946,7 @@ version = "5.0.0"
 description = "Pytest plugin for measuring coverage."
 optional = false
 python-versions = ">=3.8"
-groups = ["dev"]
+groups = ["testing"]
 files = [
     {file = "pytest-cov-5.0.0.tar.gz", hash = "sha256:5837b58e9f6ebd335b0f8060eecce69b662415b16dc503883a02f45dfeb14857"},
     {file = "pytest_cov-5.0.0-py3-none-any.whl", hash = "sha256:4f0764a1219df53214206bf1feea4633c3b558a2925c8b59f144f682861ce652"},
@@ -3867,4 +3867,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.15"
-content-hash = "7be49509b6490f44accfd9e1ad908ad2de8df455dd46dd128227741c15e2e2fd"
+content-hash = "a91f41bb744b9c3eb03c33a0bcf147cc9b850e5cb1f857f75a3bed5c32011651"
