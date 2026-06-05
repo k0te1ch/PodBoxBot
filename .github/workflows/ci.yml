@@ -39,14 +39,14 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install Poetry
-        run: python -m pip install --upgrade pip poetry
+        # dulwich is pinned because Poetry's git-dependency client needs the new
+        # WorkTree API (dulwich>=0.24, module ``dulwich.worktree``); an older
+        # dulwich on the runner breaks installing the dialog-engine git dep.
+        run: python -m pip install --upgrade pip poetry "dulwich>=0.24.0"
       - name: Install bot dependencies (system env, mirrors Dockerfile)
         working-directory: app/bot
         run: |
           poetry config virtualenvs.create false
-          # Use the system git binary for git dependencies; Poetry's bundled
-          # dulwich client fails to install them ("No module named dulwich.worktree").
-          poetry config system-git-client true
           poetry install --with testing,dev --no-root
       - name: Run tests
         # Publisher microservice tests need each service's own deps (asyncssh,

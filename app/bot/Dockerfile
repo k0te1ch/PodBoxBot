@@ -8,12 +8,10 @@ ENV PYTHONUNBUFFERED=1
 # Рабочая директория
 WORKDIR /app
 
-# Обновляем системные пакеты и устанавливаем необходимые утилиты.
-# git нужен Poetry для установки зависимостей из git-репозиториев
-# (system-git-client ниже) — встроенный dulwich-клиент на этом ломается.
+# Обновляем системные пакеты и устанавливаем необходимые утилиты
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-    ca-certificates curl git locales && \
+    ca-certificates curl locales && \
     update-ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
@@ -24,16 +22,17 @@ RUN sed -i 's/# ru_RU.UTF-8 UTF-8/ru_RU.UTF-8 UTF-8/' /etc/locale.gen && \
 ENV LANG=ru_RU.UTF-8
 ENV LC_ALL=ru_RU.UTF-8
 
-# Устанавливаем Poetry и необходимые инструменты сборки
+# Устанавливаем Poetry и необходимые инструменты сборки.
+# dulwich>=0.24 нужен git-клиенту Poetry (новый WorkTree API,
+# модуль dulwich.worktree) для установки dialog-engine из git.
 RUN python -m pip install --upgrade pip setuptools wheel && \
-    python -m pip install --upgrade poetry
+    python -m pip install --upgrade poetry "dulwich>=0.24.0"
 
 # Копируем файлы зависимостей и устанавливаем их
 COPY app/bot/pyproject.toml app/bot/poetry.lock /app/
 # Настраиваем Poetry для работы без виртуальных окружений
 
 RUN poetry config virtualenvs.create false && \
-    poetry config system-git-client true && \
     poetry install --only main --no-root
 
 # Копируем исходный код
