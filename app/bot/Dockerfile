@@ -8,10 +8,12 @@ ENV PYTHONUNBUFFERED=1
 # Рабочая директория
 WORKDIR /app
 
-# Обновляем системные пакеты и устанавливаем необходимые утилиты
+# Обновляем системные пакеты и устанавливаем необходимые утилиты.
+# git нужен Poetry для установки зависимостей из git-репозиториев
+# (system-git-client ниже) — встроенный dulwich-клиент на этом ломается.
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-    ca-certificates curl locales && \
+    ca-certificates curl git locales && \
     update-ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
@@ -31,6 +33,7 @@ COPY app/bot/pyproject.toml app/bot/poetry.lock /app/
 # Настраиваем Poetry для работы без виртуальных окружений
 
 RUN poetry config virtualenvs.create false && \
+    poetry config system-git-client true && \
     poetry install --only main --no-root
 
 # Копируем исходный код

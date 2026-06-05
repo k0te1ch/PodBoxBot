@@ -44,6 +44,9 @@ jobs:
         working-directory: app/bot
         run: |
           poetry config virtualenvs.create false
+          # Use the system git binary for git dependencies; Poetry's bundled
+          # dulwich client fails to install them ("No module named dulwich.worktree").
+          poetry config system-git-client true
           poetry install --with testing,dev --no-root
       - name: Run tests
         # Publisher microservice tests need each service's own deps (asyncssh,
