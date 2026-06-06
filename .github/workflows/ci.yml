@@ -28,16 +28,16 @@ jobs:
       - name: Ruff format check
         run: ruff format --check "$GITHUB_WORKSPACE/app" "$GITHUB_WORKSPACE/tests"
 
+  # Job id is the status-check context required by the "main protection"
+  # ruleset ("test"). A matrix would report it as "test (3.12)" and never
+  # satisfy that requirement, so keep it a single un-matrixed job.
   test:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.12"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: "3.12"
       - name: Install Poetry
         run: python -m pip install --upgrade pip poetry
       - name: Install bot dependencies (system env, mirrors Dockerfile)
