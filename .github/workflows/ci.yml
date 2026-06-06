@@ -28,23 +28,29 @@ jobs:
       - name: Ruff format check
         run: ruff format --check "$GITHUB_WORKSPACE/app" "$GITHUB_WORKSPACE/tests"
 
+  # Job id is the status-check context required by the "main protection"
+  # ruleset ("test"). A matrix would report it as "test (3.12)" and never
+  # satisfy that requirement, so keep it a single un-matrixed job.
   test:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.12"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: "3.12"
       - name: Install Poetry
         run: python -m pip install --upgrade pip poetry
       - name: Install bot dependencies (system env, mirrors Dockerfile)
         working-directory: app/bot
+        # --only main,testing: the dev group (a non-optional group, so installed
+        # by default) pulls poetry-plugin-up -> an old poetry -> dulwich<0.22,
+        # which with virtualenvs.create false clobbers Poetry's own dulwich
+        # mid-install and breaks fetching the dialog-engine git dependency
+        # ("No module named dulwich.worktree"). Tests need pytest-cov, which now
+        # lives in the testing group.
         run: |
           poetry config virtualenvs.create false
-          poetry install --with testing,dev --no-root
+          poetry install --only main,testing --no-root
       - name: Run tests
         # Publisher microservice tests need each service's own deps (asyncssh,
         # aioprometheus, ...) which aren't in the bot env — they run in the

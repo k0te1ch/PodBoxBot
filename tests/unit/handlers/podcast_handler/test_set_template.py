@@ -8,9 +8,10 @@ from aiogram.types import Message
 from aiogram_tests.requester import Calls
 from aiogram_tests.types.dataset import MESSAGE, USER
 
-from forms.upload_file import UploadFile
+from forms.upload_file import TEMPLATE
 from handlers.podcast_handler import set_template
 from services import context, keyboards
+from utils.dialog import SESSION_KEY
 
 
 @pytest.fixture
@@ -54,15 +55,17 @@ async def test_set_template(
     type_episode,
     username,
     language,
+    dialog_state,
+    session_state_data,
 ):
-    state_data = {"type_episode": type_episode}
+    # Session sits on the template step; the episode type comes from its answers.
+    state_data = session_state_data(step=TEMPLATE, type_episode=type_episode)
 
     # Настроим mock-ответ от validate_template для успешного кейса
     valid_info = {"number": "42", "title": "Podcast Episode Title"}
     mock_validate_template.return_value = valid_info
 
-    # Создаём моки для бота, пользователя, сообщения и состояния
-    handler = handler_factory(set_template, state=UploadFile.template, state_data=state_data)
+    handler = handler_factory(set_template, state=dialog_state, state_data=state_data)
     bot = await bot_factory(handler)
     user = USER.as_object(username=username, language_code=language)
     msg = MESSAGE.as_object(text="Some valid template text", from_user=user)
@@ -111,8 +114,11 @@ async def test_set_template(
                             else keyboards["podcast_handler"][language].audio_menu_post
                         )
 
-                        # Проверяем, что состояние было очищено
+                        # On success the dialog is finished and its session is
+                        # dropped from FSM storage.
                         state_context = await state_context_factory(handler, message=msg)
+                        data = await state_context.get_data()
+                        assert SESSION_KEY not in data, "Dialog session was not cleared"
                         assert await state_context.get_state() is None, "State was not cleared"
 
 
@@ -127,14 +133,15 @@ async def test_set_template_invalid_input(
     mock_validate_template,
     username,
     language,
+    dialog_state,
+    session_state_data,
 ):
-    state_data = {"type_episode": "main"}
+    state_data = session_state_data(step=TEMPLATE, type_episode="main")
 
     # Устанавливаем mock-ответ validate_template как None для проверки обработки невалидного ввода
     mock_validate_template.return_value = None
 
-    # Создаём моки для бота, пользователя, сообщения и состояния
-    handler = handler_factory(set_template, state=UploadFile.template, state_data=state_data)
+    handler = handler_factory(set_template, state=dialog_state, state_data=state_data)
     bot = await bot_factory(handler)
     user = USER.as_object(username=username, language_code=language)
     msg = MESSAGE.as_object(text="Invalid template", from_user=user)
@@ -152,3 +159,7 @@ async def test_set_template_invalid_input(
         # Проверяем, что никакой файл не был отправлен
         attrs = calls._get_attributes()
         assert "send_audio" not in attrs, "Audio should not be sent on invalid input"
+
+        # The dialog stays on the template step so the user can retry.
+        state_context = await state_context_factory(handler, message=msg)
+        assert SESSION_KEY in (await state_context.get_data()), "Session should survive an invalid template"
