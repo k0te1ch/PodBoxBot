@@ -1,10 +1,11 @@
 # Files
+**/.ruff_cache/
 test.py
 test2.py
 database.sqlite
-files/*.mp3
-files/*.pkl
-files/*.json
+**/files/*.mp3
+**/files/*.pkl
+**/files/*.json
 boosty_auth.json
 **/boosty_auth.json
 
