@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/k0te1ch/PodBoxBot/compare/v0.5.1...v0.6.0) (2026-06-13)
+
+
+### Features
+
+* **bot:** drive episode upload dialog via dialog-engine ([#29](https://github.com/k0te1ch/PodBoxBot/issues/29)) ([d1d11cf](https://github.com/k0te1ch/PodBoxBot/commit/d1d11cf5915be22534c9a66933b875fe55ae9858))
+
 ## [0.5.1](https://github.com/k0te1ch/PodBoxBot/compare/v0.5.0...v0.5.1) (2026-06-04)
 
 
