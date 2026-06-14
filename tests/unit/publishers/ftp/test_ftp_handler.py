@@ -47,6 +47,27 @@ class TestHandleUpload:
         mock_producer.send.assert_not_called()
 
 
+class TestRemotePath:
+    """Маршрутизация файла по подпапкам в зависимости от type_episode."""
+
+    def test_main_episode_goes_to_root(self):
+        from app.publishers.FTP.main import _remote_path
+
+        assert _remote_path("0042_rz_13062026.mp3", "main") == "0042_rz_13062026.mp3"
+
+    def test_none_type_goes_to_root(self):
+        from app.publishers.FTP.main import _remote_path
+
+        assert _remote_path("0042_rz_13062026.mp3", None) == "0042_rz_13062026.mp3"
+
+    @pytest.mark.parametrize("type_episode", ["aftershow", "postshow"])
+    def test_postshow_goes_to_subdir(self, type_episode):
+        from app.publishers.FTP.main import FTP_POSTSHOW_DIR, _remote_path
+
+        result = _remote_path("0042_postshow_13062026.mp3", type_episode)
+        assert result == f"{FTP_POSTSHOW_DIR}/0042_postshow_13062026.mp3"
+
+
 class TestUploadEventModel:
     def test_valid_event(self, sample_upload_event_dict):
         event = UploadEvent(**sample_upload_event_dict)
