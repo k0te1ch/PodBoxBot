@@ -22,6 +22,23 @@ FTP_LOGIN = config.FTP_LOGIN
 FTP_PASSWORD = config.FTP_PASSWORD
 FTP_POSTSHOW_DIR = config.FTP_POSTSHOW_DIR
 
+# type_episode в state/UI — "aftershow", в именах файлов и enum — "postshow"
+# (см. bot/utils/podcast_methods.py). Принимаем оба, чтобы маршрутизация не
+# зависела от того, какой алиас доедет до publisher'а.
+_POSTSHOW_ALIASES = frozenset({"aftershow", "postshow"})
+
+
+def _remote_path(file_name: str, type_episode: str | None) -> str:
+    """Куда класть файл на SFTP относительно домашнего каталога.
+
+    Postshow-эпизоды уходят в отдельную подпапку FTP_POSTSHOW_DIR; основные —
+    в корень (home). Раньше всё валилось в корень, потому что FTP_POSTSHOW_DIR
+    читался, но не применялся — отсюда «aftershow лёг не в ту папку».
+    """
+    if type_episode in _POSTSHOW_ALIASES:
+        return f"{FTP_POSTSHOW_DIR}/{file_name}"
+    return file_name
+
 
 async def upload_to_ftp(
     path: str,
@@ -53,7 +70,12 @@ async def upload_to_ftp(
         conn.start_sftp_client() as sftp,
         aiofiles.open(path, "rb") as f,
     ):
-        async with sftp.open(file_name, "wb") as remote_file:
+        remote_path = _remote_path(file_name, type_episode)
+        if remote_path != file_name:
+            # Подпапка может ещё не существовать на сервере — создаём идемпотентно.
+            await sftp.makedirs(FTP_POSTSHOW_DIR, exist_ok=True)
+
+        async with sftp.open(remote_path, "wb") as remote_file:
             while True:
                 data = await f.read(chunk_size)
                 if not data:
