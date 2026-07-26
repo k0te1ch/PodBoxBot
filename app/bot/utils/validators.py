@@ -1,7 +1,23 @@
 import re
+from datetime import datetime
 from pathlib import Path
 
 from loguru import logger
+
+# Дата записи в шаблоне: принимаем DD.MM.YYYY (также /, - как разделители),
+# нормализуем в ISO YYYY-MM-DD — именно этот формат ждёт Podlove.
+_RECORDING_DATE_RE = re.compile(r"^[ \t]*Recording Date:[ \t]*(.+?)[ \t]*$\n?", re.MULTILINE)
+
+
+def _parse_recording_date(raw: str) -> str | None:
+    """DD.MM.YYYY (./-/пробел как разделитель) -> ISO YYYY-MM-DD, иначе None."""
+    for fmt in ("%d.%m.%Y", "%d/%m/%Y", "%d-%m-%Y", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(raw.strip(), fmt).strftime("%Y-%m-%d")
+        except ValueError:
+            continue
+    logger.warning(f"Unrecognized recording date {raw!r}; ignoring")
+    return None
 
 
 @logger.catch
@@ -21,6 +37,14 @@ def validate_template(text: str) -> dict[str, str] | None:
     >>> validate_template(template)
     {'number': '1', 'title': '1. Example of a header', 'comment': 'Example of a comment'}
     """
+    # Дату записи парсим отдельно и вырезаем строку до основного regex —
+    # так поле остаётся опциональным и не усложняет и без того капризный шаблон.
+    recording_date = None
+    date_match = _RECORDING_DATE_RE.search(text)
+    if date_match:
+        recording_date = _parse_recording_date(date_match.group(1))
+        text = text[: date_match.start()] + text[date_match.end() :]
+
     headers = ["number", "title", "comment"]
     if "chapters" in text.lower():
         reg = r"(?:<pre.*?>)?Number: (\d+)\nTitle: (.*?)\nComment: (.*?)\nTags: (.*?)\nChapters: \|\n((?:(?!<\/pre>).)*)(?:<\/pre>)?$"
@@ -44,6 +68,9 @@ def validate_template(text: str) -> dict[str, str] | None:
 
     if "tags" in res:
         res["tags"] = list({tag.strip() for tag in re.split(r",\s*|,\s*|\s*,\s*", res["tags"])})
+
+    if recording_date:
+        res["recording_date"] = recording_date
 
     return res
 
