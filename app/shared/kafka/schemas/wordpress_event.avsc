@@ -16,6 +16,7 @@
     {"name": "tags", "type": {"type": "array", "items": "string"}},
     {"name": "slug", "type": "string", "doc": "Slug файла (имя без .mp3)"},
     {"name": "duration", "type": ["null", "long"], "default": null, "doc": "Длительность в секундах"},
+    {"name": "recording_date", "type": ["null", "string"], "default": null, "doc": "Дата записи (ISO YYYY-MM-DD)"},
     {"name": "type_episode", "type": ["null", "string"], "default": null, "doc": "main | aftershow — определяет paywall для платных publisher'ов"}
   ]
 }

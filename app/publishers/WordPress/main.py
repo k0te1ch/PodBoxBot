@@ -40,6 +40,7 @@ class WordPressPublisher(BasePublisher):
             "tags": event.tags,
             "slug": event.slug,
             "duration": event.duration,
+            "recording_date": event.recording_date,
         }
 
         # WordPress.upload_post() — синхронный (requests-based). Запускаем
