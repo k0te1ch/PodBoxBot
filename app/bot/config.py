@@ -96,7 +96,6 @@ class Settings(BaseSettings):
     COVER_RZ_NAME: str | None = None
     COVER_PS_NAME: str | None = None
     PODCAST: str | None = None
-    WP_COOKIE_FILENAME: str | None = None
     FILES_PATH: str = "files"
     LOGS_PATH: str = "logs"
     LOGS_ZIP_NAME: str = "logs.zip"
@@ -231,7 +230,6 @@ PODCAST_LINK = settings.PODCAST_LINK
 COVER_RZ_NAME = settings.COVER_RZ_NAME
 COVER_PS_NAME = settings.COVER_PS_NAME
 PODCAST = settings.PODCAST
-WP_COOKIE_FILENAME = settings.WP_COOKIE_FILENAME
 LOGS_ZIP_NAME = settings.LOGS_ZIP_NAME
 
 FILES_PATH: Path = PROJECT_PATH / settings.FILES_PATH
@@ -240,7 +238,6 @@ LOGS_PATH: Path = PROJECT_PATH / settings.LOGS_PATH
 PODCAST_PATH = FILES_PATH / PODCAST if PODCAST else FILES_PATH / "podcast.mp3"
 COVER_RZ_PATH = FILES_PATH / COVER_RZ_NAME if COVER_RZ_NAME else FILES_PATH / "cover.jpg"
 COVER_PS_PATH = FILES_PATH / COVER_PS_NAME if COVER_PS_NAME else FILES_PATH / "pscover.jpg"
-WP_COOKIE_PATH = FILES_PATH / WP_COOKIE_FILENAME if WP_COOKIE_FILENAME else FILES_PATH / "cookie.pkl"
 KEYBOARDS_PATH = SRC_PATH / KEYBOARDS_DIR if KEYBOARDS_DIR else SRC_PATH / "keyboards"
 
 

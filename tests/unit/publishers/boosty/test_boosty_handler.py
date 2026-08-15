@@ -139,3 +139,41 @@ class TestBoostyEventModel:
         dump = event.model_dump()
         assert dump["tags"] == ["тест", "подкаст"]
         assert BoostyEvent(**dump) == event
+
+
+class TestRunLifecycle:
+    """Фоновый refresh-таск не должен переживать consumer-цикл."""
+
+    @staticmethod
+    def _patch_base_run(monkeypatch, impl):
+        """Подменяет BasePublisher.run у того класса, от которого реально
+        наследуется publisher: main.py импортирует `shared.publishers.base`
+        (in-container путь), и это НЕ тот же модуль, что `app.shared...`.
+        """
+        from app.publishers.Boosty import main
+
+        monkeypatch.setattr(main.BasePublisher, "run", impl)
+        return main
+
+    @pytest.mark.asyncio
+    async def test_refresh_task_cancelled_when_loop_fails(self, monkeypatch):
+        async def failing_run(self):
+            raise RuntimeError("consumer down")
+
+        main = self._patch_base_run(monkeypatch, failing_run)
+
+        with pytest.raises(RuntimeError):
+            await main._publisher.run()
+
+        assert main._publisher._refresh_task.cancelled()
+
+    @pytest.mark.asyncio
+    async def test_refresh_task_cancelled_on_clean_exit(self, monkeypatch):
+        async def clean_run(self):
+            return None
+
+        main = self._patch_base_run(monkeypatch, clean_run)
+
+        await main._publisher.run()
+
+        assert main._publisher._refresh_task.cancelled()

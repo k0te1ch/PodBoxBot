@@ -67,6 +67,7 @@ async def upload_WP(callback: CallbackQuery, language: str, username: str) -> No
             tags=info["tags"],
             slug=info["slug"],
             duration=info["duration"],
+            recording_date=info.get("recording_date"),
             type_episode=type_episode,
         )
 
