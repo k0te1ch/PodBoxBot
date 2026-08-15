@@ -6,6 +6,7 @@ from typing import Any
 
 from aiogram import BaseMiddleware
 from aiogram.types import TelegramObject
+from loguru import logger
 
 
 class MetricsMiddleware(BaseMiddleware):
@@ -36,7 +37,7 @@ class MetricsMiddleware(BaseMiddleware):
             with self.metrics_path.open("w", encoding="utf-8") as f:
                 json.dump(self.call_counts, f, indent=4, ensure_ascii=False)
         except Exception as e:
-            print(f"[MetricsMiddleware] Error saving metrics: {e}")
+            logger.warning(f"[MetricsMiddleware] Error saving metrics: {e!r}")
 
     def get_metrics(self) -> dict[str, int]:
         return dict(self.call_counts)

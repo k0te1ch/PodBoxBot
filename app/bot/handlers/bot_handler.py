@@ -1,6 +1,7 @@
 import os
 
 from aiogram import F, Router, types
+from loguru import logger
 
 router = Router(name=os.path.splitext(os.path.basename(__file__))[0])
 # router.message.filter(IsPrivate, IsAdmin)
@@ -15,4 +16,4 @@ async def delete_pinned_service_message(message: types.Message, bot):
     try:
         await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
     except Exception as e:
-        print(f"Failed to delete pinned service message: {e}")
+        logger.warning(f"Failed to delete pinned service message: {e!r}")

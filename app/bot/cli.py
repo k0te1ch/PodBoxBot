@@ -129,7 +129,7 @@ def makemigrations(message, sync):
         )
         print("Alembic revision")
     except CommandError as err:
-        print("Alembic Command Error")
+        print(f"Alembic Command Error: {err}")
         if str(err) == "Target database is not up to date.":
             print('Run "python main.py migrate"')
 
