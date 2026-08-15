@@ -25,6 +25,7 @@ bot_commands = [["Выключить бота", "shutdown_bot"], ["Присла�
 ask_template = {
     .main = |
         <pre language="text">Number: 600
+        Recording Date: 26.07.2026
         Title: Название эпизода
         Comment: Описание эпизода
         Tags: Окно, жесть, спина
@@ -35,6 +36,7 @@ ask_template = {
         02:17:25 - Озвучили наших патронов и анонсировали послешоу</pre>
     .aftershow = |
         <pre language="text">Number: 600
+        Recording Date: 26.07.2026
         Title: Послешоу. Название эпизода
         Comment: Описание эпизода</pre>
 }

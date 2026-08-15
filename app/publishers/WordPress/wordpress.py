@@ -292,13 +292,19 @@ class WordPress:
 
     def _update_podlove_episode(self, episode_id: int, info: dict) -> None:
         payload = {
-            "title": f"Разговорный жанр — {info['number']}",
+            "title": info["title"],
             "summary": info["comment"],
             "number": int(info["number"]) if str(info["number"]).isdigit() else info["number"],
             "slug": info["slug"],
             "duration": self._format_duration(info["duration"]),
             "type": "full",
         }
+        # Дата записи задаётся при оформлении (info["recording_date"], ISO
+        # YYYY-MM-DD). Если её нет — не шлём ключ, чтобы Podlove не затирал
+        # значение пустотой.
+        recording_date = info.get("recording_date")
+        if recording_date:
+            payload["recording_date"] = recording_date
         self._rest_request("POST", f"/podlove/v2/episodes/{episode_id}", json_body=payload)
         logger.debug(f"Podlove episode {episode_id} metadata updated")
 
@@ -356,7 +362,15 @@ class WordPress:
         for time_str, chapterName in info["chapters"]:
             chapters += f"[skipto time={time_str}]{time_str}[/skipto] — {chapterName}\n"
 
+        # Дата записи: если задана при оформлении (ISO YYYY-MM-DD) — берём её,
+        # иначе фолбэк на текущую дату (как было раньше).
+        recording_iso = info.get("recording_date")
         time = datetime.now(self._timezone)
+        if recording_iso:
+            try:
+                time = datetime.strptime(recording_iso, "%Y-%m-%d")
+            except ValueError as e:
+                logger.warning(f"Invalid recording_date {recording_iso!r} ({e}); falling back to today")
 
         months = (
             "января",
@@ -376,15 +390,12 @@ class WordPress:
 
         form = {
             "post_title": f"Разговорный жанр — {podcastID}",
-            "content": f"""<span style="font-size: large;">{name.replace(podcastID + ". ", "")}</span><code>
-</code>
+            "content": f"""<span style="font-size: large;">{name.replace(podcastID + ". ", "")}</span>
 <b><i>Описание:</i></b>
-<code>{summary}
-</code>
+{summary}
 <!--more--><b><i>Таймлайн:</i></b>
 {chapters}
-<code>
-</code>Всё это вы услышите в {podcastID}-м эпизоде подкаста «Разговорный жанр».
+Всё это вы услышите в {podcastID}-м эпизоде подкаста «Разговорный жанр».
 [podlove-template template="subscriptions"]
 <span style="font-size: small;">Дата записи: {timeStr}</span>""",
             "post_name": f"Разговорный жанр — {podcastID}",
@@ -392,9 +403,6 @@ class WordPress:
             "newcategory": "Название новой рубрики",
             "newcategory_parent": "-1",
             "trackback_url": "",
-            "metakeyselect": "big_post",
-            "metakeyinput": "",
-            "metavalue": "1",
             "comment_status": "open",
             "ping_status": "open",
             "post_author_override": "361",

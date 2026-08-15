@@ -25,6 +25,7 @@ bot_commands = [["Turn off the bot", "shutdown_bot"], ["Send log files", "send_l
 ask_template = {
     .main = |
         <pre language="text">Number: 600
+        Recording Date: 26.07.2026
         Title: Episode title
         Comment: Episode description
         Tags: Tag1, Tag2, Tag3
@@ -35,6 +36,7 @@ ask_template = {
         02:17:25 - Patrons and aftershow announcement</pre>
     .aftershow = |
         <pre language="text">Number: 600
+        Recording Date: 26.07.2026
         Title: Aftershow. Episode title
         Comment: Episode description</pre>
 }

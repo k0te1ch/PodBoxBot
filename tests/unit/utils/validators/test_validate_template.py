@@ -11,7 +11,11 @@ from utils.validators import validate_template
     ],
 )
 def test_valid_template(template):
-    expected_output = {"number": "1", "title": "1. Example header", "comment": "Example comment"}
+    expected_output = {
+        "number": "1",
+        "title": "1. Example header",
+        "comment": "Example comment",
+    }
     assert validate_template(template) == expected_output
 
 
@@ -37,6 +41,50 @@ def test_template_with_chapters_and_tags(template):
     assert result["comment"] == expected_output["comment"]
     assert set(result["tags"]) == expected_output["tags"]  # Сравниваем множества
     assert result["chapters"] == expected_output["chapters"]
+
+
+@pytest.mark.parametrize(
+    ("template", "expected_date"),
+    [
+        # DD.MM.YYYY -> ISO
+        (
+            "Number: 5\nRecording Date: 05.06.2026\nTitle: Header\nComment: Comment",
+            "2026-06-05",
+        ),
+        # разделитель "/" тоже принимаем
+        (
+            "Number: 5\nRecording Date: 05/06/2026\nTitle: Header\nComment: Comment",
+            "2026-06-05",
+        ),
+        # с тегами/главами дата всё ещё вырезается корректно
+        (
+            "Number: 5\nRecording Date: 05.06.2026\nTitle: Header\nComment: Comment"
+            "\nTags: t1, t2\nChapters: |\n00:00:00 - Intro",
+            "2026-06-05",
+        ),
+    ],
+)
+def test_template_with_recording_date(template, expected_date):
+    result = validate_template(template)
+    assert result is not None
+    assert result["recording_date"] == expected_date
+    # дата вырезана — Title/Comment распарсились штатно
+    assert result["title"] == "5. Header"
+    assert result["comment"] == "Comment"
+
+
+def test_template_without_recording_date_has_no_key():
+    result = validate_template("Number: 1\nTitle: Header\nComment: Comment")
+    assert result is not None
+    assert "recording_date" not in result
+
+
+def test_template_with_unparseable_recording_date_is_ignored():
+    # Некорректная дата не роняет шаблон — просто отбрасывается
+    result = validate_template("Number: 1\nRecording Date: не дата\nTitle: Header\nComment: Comment")
+    assert result is not None
+    assert "recording_date" not in result
+    assert result["title"] == "1. Header"
 
 
 @pytest.mark.parametrize(
