@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.6.0](https://github.com/k0te1ch/PodBoxBot/compare/v0.5.1...v0.6.0) (2026-08-15)
+
+
+### Features
+
+* **bot:** drive episode upload dialog via dialog-engine ([#29](https://github.com/k0te1ch/PodBoxBot/issues/29)) ([d1d11cf](https://github.com/k0te1ch/PodBoxBot/commit/d1d11cf5915be22534c9a66933b875fe55ae9858))
+* **wordpress:** fix podcast draft fields and add recording date ([#36](https://github.com/k0te1ch/PodBoxBot/issues/36)) ([01bcdd4](https://github.com/k0te1ch/PodBoxBot/commit/01bcdd428155fb10180b4dfefb83c6a1f8410c41))
+
+
+### Bug Fixes
+
+* **boosty:** cancel hourly refresh task when publisher stops ([#37](https://github.com/k0te1ch/PodBoxBot/issues/37)) ([3a7671c](https://github.com/k0te1ch/PodBoxBot/commit/3a7671cc39dcc8635babe2cb3f0031f8a4463a30))
+* **bot:** log handler and middleware failures instead of printing them ([#40](https://github.com/k0te1ch/PodBoxBot/issues/40)) ([b5ca5ed](https://github.com/k0te1ch/PodBoxBot/commit/b5ca5ed30c7f6c4b1b1bc9ff86054eb3476a0586))
+* **ftp:** upload postshow episodes into FTP_POSTSHOW_DIR ([#32](https://github.com/k0te1ch/PodBoxBot/issues/32)) ([af7754d](https://github.com/k0te1ch/PodBoxBot/commit/af7754d395c0fc467ca5f33ce3fc3be64401a69f))
+
 ## [0.5.1](https://github.com/k0te1ch/PodBoxBot/compare/v0.5.0...v0.5.1) (2026-06-04)
 
 
