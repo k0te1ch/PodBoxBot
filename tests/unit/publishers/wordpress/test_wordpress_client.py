@@ -136,6 +136,45 @@ class TestWordPressUploadPost:
         mock_session.request.assert_called()
         wp._rest_session.request.assert_called()
 
+    def test_upload_post_form_and_rest_payload(self, mock_session, sample_post_info):
+        """Регресс на баги черновика: Title = имя эпизода, без <code> и big_post,
+        recording_date уходит в Podlove и в тело поста."""
+        sample_post_info["recording_date"] = "2026-06-05"
+
+        get_resp = MagicMock(status_code=200, ok=True, content=_FORM_PAGE, text=_FORM_PAGE.decode())
+        post_resp = MagicMock(status_code=302, ok=True, text="")
+        captured = {}
+
+        def _request(method, url, **kwargs):
+            if method == "POST" and url.endswith("/wp-admin/post.php"):
+                captured["form"] = kwargs["data"]
+                return post_resp
+            return get_resp
+
+        mock_session.request.side_effect = _request
+
+        wp = _make_wp(mock_session)
+        with patch.object(wp, "_dump_cookies", return_value=True):
+            assert wp.upload_post(sample_post_info) is True
+
+        content = captured["form"]["content"]
+        # #3 — никаких <code> в теле
+        assert "<code>" not in content
+        # описание присутствует как обычный текст
+        assert sample_post_info["comment"] in content
+        # #2 — дата записи из info, а не сегодняшняя
+        assert "Дата записи: 5 июня 2026" in content
+        # #4 — big_post убран
+        assert "metakeyselect" not in captured["form"]
+        assert "metavalue" not in captured["form"]
+
+        # #1 + #2 — REST-обновление Podlove: title = имя эпизода, recording_date проброшен
+        episode_calls = [c for c in wp._rest_session.request.call_args_list if "/podlove/v2/episodes/" in c.args[1]]
+        assert episode_calls, "Podlove episode update not called"
+        payload = episode_calls[0].kwargs["json"]
+        assert payload["title"] == sample_post_info["title"]
+        assert payload["recording_date"] == "2026-06-05"
+
     def test_upload_post_no_form_retries_login(self, mock_session, sample_post_info):
         empty_page = b"<html><body>No form here</body></html>"
         get_calls = {"n": 0}
