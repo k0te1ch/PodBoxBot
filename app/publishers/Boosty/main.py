@@ -13,6 +13,7 @@ Boosty — только для aftershow: бот шлёт сюда событи�
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import os
 
 from boosty_client import BoostyClient
@@ -111,8 +112,19 @@ class BoostyPublisher(BasePublisher):
                 logger.warning(f"Boosty hourly token refresh failed: {e!r}")
 
     async def run(self) -> None:  # type: ignore[override]
+        """Consumer-цикл + фоновый прогрев сессии.
+
+        Прогрев живёт ровно столько же, сколько цикл: при остановке (отмена
+        снаружи, падение consumer'а) таск гасится, иначе он переживает
+        publisher и продолжает дёргать refresh уже никому не нужной сессии.
+        """
         self._refresh_task = asyncio.create_task(self._refresh_loop())
-        await super().run()
+        try:
+            await super().run()
+        finally:
+            self._refresh_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await self._refresh_task
 
 
 _publisher = BoostyPublisher()
