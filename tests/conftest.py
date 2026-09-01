@@ -42,10 +42,6 @@ _ENV_DEFAULTS = {
     "FTP_SERVER": "ftp.example.com",
     "FTP_LOGIN": "ftp-user",
     "FTP_PASSWORD": "ftp-pass",
-    "WP_URL": "https://example.com",
-    "WP_LOGIN": "wp-user",
-    "WP_PASSWORD": "wp-pass",
-    "WP_APP_PASSWORD": "wp-app-pass",
     # List/dir settings the bot reads to parametrize tests and load keyboards.
     # Pinned here so the suite behaves identically with or without a local .env.
     "LANGUAGES": '["ru", "en"]',

@@ -45,12 +45,6 @@ class Settings(BaseSettings):
     FTP_LOGIN: str
     FTP_PASSWORD: str
 
-    # WP SETTINGS
-    WP_URL: str
-    WP_LOGIN: str
-    WP_PASSWORD: str
-    WP_APP_PASSWORD: str
-
     # DEBUG
     DEBUG: bool = False
 
@@ -103,11 +97,6 @@ class Settings(BaseSettings):
     # KAFKA
     KAFKA_SERVER: str = "kafka:9092"
     SCHEMA_REGISTRY_URL: str = "http://schema-registry:8081"
-
-    @field_validator("WP_URL")
-    @classmethod
-    def strip_wp_url(cls, v: str) -> str:
-        return v.rstrip("/")
 
     @field_validator("FORWARD_CHAT_USERNAME")
     @classmethod
@@ -167,12 +156,6 @@ API_HASH = settings.TELEGRAM_SERVER_API_HASH
 FTP_SERVER = settings.FTP_SERVER
 FTP_LOGIN = settings.FTP_LOGIN
 FTP_PASSWORD = settings.FTP_PASSWORD
-
-# WP
-WP_URL = settings.WP_URL
-WP_LOGIN = settings.WP_LOGIN
-WP_PASSWORD = settings.WP_PASSWORD
-WP_APP_PASSWORD = settings.WP_APP_PASSWORD
 
 # Debug/Logger
 DEBUG = settings.DEBUG
