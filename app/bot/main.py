@@ -20,7 +20,6 @@ from services.none_module import _NoneModule
 from utils.bot_methods import get_version, send_release_note
 from utils.error_reporting import register_error_handler
 
-# IMPORT SETTINGS
 MAIN_MODULE_NAME = os.path.basename(__file__)[:-3]
 
 from config import API_TOKEN, DEBUG, PARSE_MODE
@@ -47,7 +46,6 @@ class TrustEnvAiohttpSession(AiohttpSession):
         return self._session
 
 
-# GET TG BOT OBJECT
 def _get_bot_obj() -> Bot:
     from config import LOCAL, TG_SERVER
 
@@ -156,7 +154,6 @@ def _add_middlewares_to_observers(observers: list[TelegramEventObserver], middle
             observer.middleware(middleware)
 
 
-# GET DISPATCHER OBJECT
 def _get_dp_obj(bot, redis):
     logger.debug("Dispatcher configurate:")
     if not isinstance(redis, _NoneModule):

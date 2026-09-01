@@ -46,17 +46,14 @@ def get_zip_logs(log_name: str) -> Path | None:
         log_zip (Path | None): The path to the created ZIP archive, or None if no logs were found or an error occurred
     """
     try:
-        # Retrieve all log files with the .log extension in the LOGS_PATH directory
         log_files = sorted(LOGS_PATH.glob("*.log"))
 
         if not log_files:
             logger.warning("No log files found for archiving.")
             return None
 
-        # Define the path for the ZIP archive
         log_zip = FILES_PATH / log_name
 
-        # Create the ZIP archive and write log files into it
         with zipfile.ZipFile(log_zip, mode="w") as archive:
             for log_file in log_files:
                 if log_file.is_file():  # Ensure it is a file, not a directory
@@ -65,7 +62,6 @@ def get_zip_logs(log_name: str) -> Path | None:
         return log_zip  # Return the path to the created ZIP archive
 
     except Exception as e:
-        # Log the error without interrupting the program
         logger.error(f"Error occurred while creating the log archive: {e}")
         return None
 
@@ -288,17 +284,17 @@ async def check_version() -> bool:
 
 
 async def get_version() -> str | None:
-    # Открываем файл с использованием aiofiles
+    """Версия бота из его же pyproject.toml, либо None если её там нет."""
     async with aiofiles.open("pyproject.toml") as f:
         content = await f.read()
 
-    # Загружаем данные с помощью toml
-    config = toml.loads(content)
-
-    # Извлекаем версию
-    version = config.get("tool", {}).get("poetry", {}).get("version", None)
-
-    return version
+    try:
+        return toml.loads(content)["tool"]["poetry"]["version"]
+    except KeyError:
+        # Раньше тут была цепочка .get(..., {}) — отсутствующая секция была
+        # неотличима от отсутствующей версии, и обе тихо давали None.
+        logger.warning("pyproject.toml has no tool.poetry.version")
+        return None
 
 
 # region Messages methods
