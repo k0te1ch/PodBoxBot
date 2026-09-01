@@ -3,6 +3,7 @@ import html
 import os
 import re
 import signal
+import sys
 import zipfile
 from pathlib import Path
 
@@ -18,8 +19,6 @@ from config import ADMINS_ID, FILES_PATH, LOGS_PATH
 from services import redis
 from services.none_module import _NoneModule
 
-# TODO: Рестарт бота
-
 CHUNK_SIZE = 64 * 1024  # Размер блока 64 КБ
 
 
@@ -29,7 +28,10 @@ def shutdown_bot():
 
 
 def restart_bot():
-    exit()
+    # Процесс просто выходит — назад его поднимает restart-политика
+    # оркестратора (в docker-compose у бота `restart: always`).
+    # exit() — это хелпер из site, доступный не во всяком интерпретаторе.
+    sys.exit()
 
 
 # region Logs methods
