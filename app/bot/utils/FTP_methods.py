@@ -3,6 +3,7 @@ import ftplib
 
 from loguru import logger
 
+from config import FTP_POSTSHOW_DIR
 from shared.kafka.consumer import KafkaConsumer
 from shared.kafka.models.upload_event import UploadEvent
 from shared.kafka.producer import KafkaProducer
@@ -74,7 +75,7 @@ async def get_last_post_ID(typePodcast: str, server: str, login: str, password: 
     """Возвращает последний ID файла на FTP"""
     with ftplib.FTP_TLS(server, login, password, encoding="utf-8") as FTP:
         if "aftershow" in typePodcast:
-            FTP.cwd("postshow")  # TODO: вынести в настройки
+            FTP.cwd(FTP_POSTSHOW_DIR)
 
         file_list: list[str] = FTP.nlst()
 

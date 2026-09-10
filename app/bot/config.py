@@ -44,6 +44,9 @@ class Settings(BaseSettings):
     FTP_SERVER: str
     FTP_LOGIN: str
     FTP_PASSWORD: str
+    # Подпапка для послешоу. Тот же ключ .env, что читает FTP-публишер
+    # (app/shared/config) — бот ищет последний эпизод там, куда публишер льёт.
+    FTP_POSTSHOW_DIR: str = "postshow"
 
     # DEBUG
     DEBUG: bool = False
@@ -156,6 +159,7 @@ API_HASH = settings.TELEGRAM_SERVER_API_HASH
 FTP_SERVER = settings.FTP_SERVER
 FTP_LOGIN = settings.FTP_LOGIN
 FTP_PASSWORD = settings.FTP_PASSWORD
+FTP_POSTSHOW_DIR = settings.FTP_POSTSHOW_DIR
 
 # Debug/Logger
 DEBUG = settings.DEBUG
