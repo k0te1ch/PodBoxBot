@@ -423,6 +423,30 @@ async def broadcast_message_to_users(
     return count
 
 
+def _split_oversized(item: str, max_length: int) -> list[str]:
+    """Режет один элемент по границам символов так, чтобы каждый кусок
+    укладывался в ``max_length`` байт.
+
+    Разметку не учитывает: HTML-тег может попасть на стык кусков. Для
+    аккуратно нарезанных секций (``get_release_note``) этот путь не нужен —
+    он страховка от одиночной строки, которая длиннее лимита сама по себе.
+    """
+    chunks: list[str] = []
+    current = ""
+    current_length = 0
+
+    for char in item:
+        char_length = len(char.encode("utf-8"))
+        if current_length + char_length > max_length:
+            chunks.append(current)
+            current, current_length = "", 0
+        current += char
+        current_length += char_length
+
+    chunks.append(current)
+    return chunks
+
+
 def split_into_messages(header: str, separator: str, items: list[str], max_length: int = 4096) -> list[str]:
     """
     Splits a list of text items into Telegram messages based on a maximum byte length
@@ -435,8 +459,6 @@ def split_into_messages(header: str, separator: str, items: list[str], max_lengt
     :return: A list of messages
     """
 
-    # TODO: if item_length > max_length
-
     messages = []
     current_message = header  # Start with the header as the first message
     separator_length = len(separator.encode("utf-8"))
@@ -444,6 +466,16 @@ def split_into_messages(header: str, separator: str, items: list[str], max_lengt
     for item in items:
         item_length = len(item.encode("utf-8"))
         current_length = len(current_message.encode("utf-8"))
+
+        if item_length > max_length:
+            # Элемент не влезает в сообщение даже один. Раньше он уезжал в
+            # результат целиком и Telegram отвечал 'message is too long';
+            # режем его на куски и продолжаем набор с последнего.
+            if current_message.strip():
+                messages.append(current_message.strip())
+            *head, current_message = _split_oversized(item, max_length)
+            messages.extend(chunk.strip() for chunk in head if chunk.strip())
+            continue
 
         # If the item is small enough, add it to the current message
         if current_length + item_length + separator_length > max_length:
