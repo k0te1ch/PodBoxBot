@@ -4,7 +4,6 @@ version = "0.5.1"  # x-release-please-version
 description = ""
 authors = ["k0te1ch <khvostov40@gmail.com>"]
 license = "LICENSE"
-readme = "README.md"
 
 
 [tool.poetry.dependencies]
@@ -28,7 +27,6 @@ fastavro = "^1.12.1"
 confluent-kafka = {extras = ["avro"], version = "^2.12.0"}
 pydantic = "^2.12.3"
 pydantic-settings = "^2.9.1"
-pre-commit = "^4.5.1"
 pytz = "^2026.1.post1"
 # Multi-step dialog engine. Pulled from GitHub until it lands on PyPI,
 # then this switches to a plain version constraint.
@@ -51,8 +49,8 @@ tgtest = {git = "https://github.com/k0te1ch/tgtest"}
 
 
 [tool.poetry.group.dev.dependencies]
+pre-commit = "^4.5.1"
 ruff = "^0.11"
-poetry-plugin-up = "^0.7.1"
 pytest = "^8.3.2"
 
 

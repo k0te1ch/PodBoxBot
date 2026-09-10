@@ -20,11 +20,10 @@ ENV LANG=ru_RU.UTF-8
 ENV LC_ALL=ru_RU.UTF-8
 
 RUN python -m pip install --upgrade pip && \
-    python -m pip install --upgrade poetry
+    python -m pip install poetry==2.3.4
 
-COPY app/publishers/Boosty/pyproject.toml /app/
+COPY app/publishers/Boosty/pyproject.toml app/publishers/Boosty/poetry.lock /app/
 RUN poetry config virtualenvs.create false && \
-    poetry lock && \
     poetry install --only main --no-root
 
 COPY app/shared /app/shared/

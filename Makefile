@@ -3,7 +3,7 @@
 pip-tools:
 	python -m pip install -U pip
 	python -m pip install -U poetry
-	poetry add poetry-plugin-up --group dev
+	poetry self add poetry-plugin-up
 	poetry add pre-commit --group dev
 
 requirements: pip-tools
