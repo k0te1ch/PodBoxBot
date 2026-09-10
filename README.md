@@ -6,13 +6,14 @@ Telegram-бот для подкаст-команды [«Разговорный �
 и chapters, пересылка анонса в чат.
 
 Стек микросервисный: бот собирает запрос → шлёт в Kafka → отдельные
-publisher-сервисы (FTP, WordPress, Boosty, Patreon) забирают и выполняют →
+publisher-сервисы (FTP, WordPress, Boosty) забирают и выполняют →
 возвращают результат через Kafka → бот апдейтит сообщение в Telegram. Полное
 наблюдение через Prometheus + Loki + Grafana.
 
-Boosty и Patreon — платные площадки: на них уходит только aftershow
-(послешоу), пост публикуется на платном уровне/tier подписки (см.
-`BasePublisher.is_paywalled`). FTP и WordPress — для основного эпизода.
+Boosty — платная площадка: туда уходит только aftershow (послешоу), пост
+публикуется на платном уровне подписки (см. `BasePublisher.is_paywalled`).
+FTP и WordPress — для основного эпизода. Patreon заложен в `BasePublisher`
+тем же способом, но сервиса под него ещё нет.
 
 ## Что внутри
 
@@ -23,8 +24,7 @@ app/
 │   ├── FTP/              # ftp upload эпизода на хостинг
 │   ├── WordPress/        # WP post-new form + Podlove REST API (Application Password)
 │   │                     #   для метаданных и chapters
-│   ├── Boosty/           # пост на платном уровне (mp3 + обложка-тизер), internal API — aftershow
-│   └── Patreon/          # пост для патронов на платном tier (official API) — aftershow
+│   └── Boosty/           # пост на платном уровне (mp3 + обложка-тизер), internal API — aftershow
 ├── kafka/                # kafka-init: создаёт топики из topics.yaml при старте кластера
 ├── schema-watcher/       # регистрирует Avro-схемы в Schema Registry
 └── shared/
@@ -43,13 +43,13 @@ utils/bootstrap.sh        # первичный деплой на чистый pr
 Telegram user
     │
     ▼
-podboxbot_bot ──► Kafka topic publisher.{ftp,wordpress,boosty,patreon}.upload
+podboxbot_bot ──► Kafka topic publisher.{ftp,wordpress,boosty}.upload
                                                      │
                                                      ▼
-                                 podboxbot_publisher_{ftp,wordpress,boosty,patreon}
+                                 podboxbot_publisher_{ftp,wordpress,boosty}
                                                      │
                                                      ▼
-                            Kafka topic publisher.{ftp,wordpress,boosty,patreon}.result
+                            Kafka topic publisher.{ftp,wordpress,boosty}.result
                                                      │
                                                      ▼
                                        podboxbot_bot (Telegram edit_message)
@@ -153,7 +153,7 @@ docker compose version   # должно показать v2.x
 
 ```bash
 git pull
-docker compose build --no-cache bot publisher_ftp publisher_wordpress publisher_boosty publisher_patreon
+docker compose build --no-cache bot publisher_ftp publisher_wordpress publisher_boosty
 docker compose up -d
 ```
 
@@ -188,7 +188,6 @@ Schema Registry. Защита выстроена в три слоя:
   - `cd app/publishers/FTP && poetry install`
   - `cd app/publishers/WordPress && poetry install`
   - `cd app/publishers/Boosty && poetry install`
-  - `cd app/publishers/Patreon && poetry install`
 - Lint: `poetry -C app/bot run ruff check app`
 - Unit-тесты бота:
   `poetry -C app/bot run pytest -c app/bot/pyproject.toml --ignore=tests/unit/publishers -q`
@@ -198,8 +197,8 @@ Schema Registry. Защита выстроена в три слоя:
   `poetry -C app/publishers/FTP run pytest -c app/bot/pyproject.toml -o addopts="" tests/unit/publishers/ftp -q`
 - CI (GitHub Actions, `.github/workflows/ci.yml`): ruff lint + format,
   тесты бота и отдельная джоба на каждый publisher-сервис
-  (`test-publisher-ftp` / `test-publisher-wordpress` / `test-publisher-boosty`
-  / `test-publisher-patreon`). `main` всегда зелёный.
+  (`test-publisher-ftp` / `test-publisher-wordpress` /
+  `test-publisher-boosty`). `main` всегда зелёный.
 - Ветки: GitHub flow — ветка на задачу (`feat/...`, `fix/...`,
   `chore/...`) → PR в `main` → squash-merge. Напрямую в `main` не пушим;
   `main` всегда releasable.
