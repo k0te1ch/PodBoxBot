@@ -12,7 +12,7 @@ from requests.cookies import RequestsCookieJar
 
 class TestWordPressInit:
     @patch("app.publishers.WordPress.wordpress.requests.Session")
-    @patch("app.publishers.WordPress.wordpress.os.path.exists", return_value=False)
+    @patch("app.publishers.WordPress.wp_http.os.path.exists", return_value=False)
     @patch("app.publishers.WordPress.wordpress.UserAgent")
     def test_creates_session_on_init(self, mock_ua, mock_exists, mock_session_cls):
         mock_ua.return_value.random = "TestAgent/1.0"
@@ -27,7 +27,7 @@ class TestWordPressInit:
         assert wp._session is not None
 
     @patch("app.publishers.WordPress.wordpress.requests.Session")
-    @patch("app.publishers.WordPress.wordpress.os.path.exists", return_value=False)
+    @patch("app.publishers.WordPress.wp_http.os.path.exists", return_value=False)
     @patch("app.publishers.WordPress.wordpress.UserAgent")
     def test_strips_trailing_slash(self, mock_ua, mock_exists, mock_session_cls):
         mock_ua.return_value.random = "TestAgent/1.0"
