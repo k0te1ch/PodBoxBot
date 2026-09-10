@@ -1,12 +1,13 @@
 """Tests for the WordPress publisher client."""
 
-import pickle
+import json
 from unittest.mock import MagicMock, patch
 
 import pytest
 import pytz
 from app.publishers.WordPress.wordpress import WordPress
 from requests.auth import HTTPBasicAuth
+from requests.cookies import RequestsCookieJar
 
 
 class TestWordPressInit:
@@ -38,20 +39,25 @@ class TestWordPressInit:
 
 
 class TestWordPressCookies:
-    def test_dump_cookies(self, mock_session, tmp_path):
-        cookie_path = str(tmp_path / "cookie.pkl")
+    def test_dump_cookies_writes_json_with_domain_and_path(self, mock_session, tmp_path):
+        cookie_path = str(tmp_path / "cookie.json")
+        jar = RequestsCookieJar()
+        jar.set("wordpress_logged_in", "abc", domain="example.com", path="/")
+        jar.set("bpc", "deadbeef", domain="cdn.example.com", path="/")
 
         wp = WordPress.__new__(WordPress)
         wp._session = mock_session
         wp._cookie_path = cookie_path
-        wp._session.cookies = {"test": "value"}
+        wp._session.cookies = jar
 
-        result = wp._dump_cookies()
-        assert result is True
+        assert wp._dump_cookies() is True
 
-        with open(cookie_path, "rb") as f:
-            loaded = pickle.load(f)
-        assert loaded == {"test": "value"}
+        with open(cookie_path, encoding="utf-8") as f:
+            written = json.load(f)
+        assert {(c["name"], c["value"], c["domain"], c["path"]) for c in written} == {
+            ("wordpress_logged_in", "abc", "example.com", "/"),
+            ("bpc", "deadbeef", "cdn.example.com", "/"),
+        }
 
     def test_dump_cookies_empty_path_raises(self, mock_session):
         wp = WordPress.__new__(WordPress)
@@ -61,26 +67,43 @@ class TestWordPressCookies:
         with pytest.raises(ValueError, match="Cookie path cannot be empty"):
             wp._dump_cookies()
 
-    def test_load_cookies_file_exists(self, mock_session, tmp_path):
-        cookie_path = str(tmp_path / "cookie.pkl")
-        with open(cookie_path, "wb") as f:
-            pickle.dump({"loaded": "cookie"}, f)
+    def test_cookies_survive_a_dump_load_round_trip(self, tmp_path):
+        cookie_path = str(tmp_path / "cookie.json")
+        source = RequestsCookieJar()
+        source.set("wordpress_logged_in", "abc", domain="example.com", path="/")
 
-        wp = WordPress.__new__(WordPress)
-        wp._session = mock_session
-        wp._cookie_path = cookie_path
+        writer = WordPress.__new__(WordPress)
+        writer._session = MagicMock(cookies=source)
+        writer._cookie_path = cookie_path
+        assert writer._dump_cookies() is True
 
-        result = wp._load_cookies()
-        assert result is True
-        mock_session.cookies.update.assert_called_once()
+        reader = WordPress.__new__(WordPress)
+        reader._session = MagicMock(cookies=RequestsCookieJar())
+        reader._cookie_path = cookie_path
+        assert reader._load_cookies() is True
+
+        restored = reader._session.cookies
+        assert restored.get("wordpress_logged_in", domain="example.com", path="/") == "abc"
 
     def test_load_cookies_no_file(self, mock_session, tmp_path):
         wp = WordPress.__new__(WordPress)
         wp._session = mock_session
-        wp._cookie_path = str(tmp_path / "nonexistent.pkl")
+        wp._cookie_path = str(tmp_path / "nonexistent.json")
 
-        result = wp._load_cookies()
-        assert result is False
+        assert wp._load_cookies() is False
+
+    def test_legacy_pickle_file_is_ignored_not_unpickled(self, tmp_path):
+        """A file left by the pickle version must never be deserialized."""
+        cookie_path = tmp_path / "cookie.pkl"
+        # Начало pickle-протокола: точно не JSON.
+        cookie_path.write_bytes(bytes([0x80, 0x04, 0x95]) + b"not-json")
+
+        wp = WordPress.__new__(WordPress)
+        wp._session = MagicMock(cookies=RequestsCookieJar())
+        wp._cookie_path = str(cookie_path)
+
+        assert wp._load_cookies() is False
+        assert len(wp._session.cookies) == 0
 
 
 def _make_wp(mock_session, *, timezone="Europe/Moscow"):

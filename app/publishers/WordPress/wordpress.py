@@ -1,6 +1,5 @@
 import json
 import os
-import pickle
 import re
 from datetime import datetime
 from time import sleep
@@ -54,22 +53,41 @@ class WordPress:
         self.close()
 
     def _dump_cookies(self) -> bool:
+        """Сохраняет куки сессии в JSON.
+
+        Раньше тут был ``pickle.dump``: загрузка такого файла исполняет
+        произвольный код, а формат нечитаем глазами. Пишем name/value/domain/path
+        явно — domain нужен для bot-protection куки, которая ставится на
+        конкретный домен.
+        """
         if not self._cookie_path:
             raise ValueError("Cookie path cannot be empty")
         try:
-            with open(self._cookie_path, "wb") as f:
-                pickle.dump(self._session.cookies, f)
+            jar = [
+                {"name": c.name, "value": c.value, "domain": c.domain, "path": c.path} for c in self._session.cookies
+            ]
+            with open(self._cookie_path, "w", encoding="utf-8") as f:
+                json.dump(jar, f, ensure_ascii=False, indent=2)
             return True
         except Exception as e:
             logger.error(f"Error saving cookies: {e}")
             return False
 
     def _load_cookies(self) -> bool:
-        if os.path.exists(self._cookie_path) and os.path.getsize(self._cookie_path) > 0:
-            with open(self._cookie_path, "rb") as f:
-                self._session.cookies.update(pickle.load(f))
-            return True
-        return False
+        if not (os.path.exists(self._cookie_path) and os.path.getsize(self._cookie_path) > 0):
+            return False
+        try:
+            with open(self._cookie_path, encoding="utf-8") as f:
+                jar = json.load(f)
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            # Файл от прежней pickle-версии. Читать его не будем — pickle.load
+            # исполняет произвольный код. Логинимся заново, _dump_cookies
+            # перезапишет файл в JSON.
+            logger.warning(f"{self._cookie_path} is not JSON (legacy pickle?); re-authenticating instead")
+            return False
+        for c in jar:
+            self._session.cookies.set(c["name"], c["value"], domain=c.get("domain", ""), path=c.get("path", "/"))
+        return True
 
     @staticmethod
     def _bot_protection_cookie(html: str) -> tuple[str, str, str] | None:
