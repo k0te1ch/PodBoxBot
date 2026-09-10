@@ -1,4 +1,3 @@
-import asyncio
 import logging
 import os
 import sys
@@ -56,14 +55,6 @@ for _key, _value in _ENV_DEFAULTS.items():
 # должны быть выставлены до того, как что-либо потянет `config`.
 import pytest
 from loguru import logger
-
-
-@pytest.fixture(scope="function")
-def event_loop():
-    """Создаёт новый цикл событий для каждого теста"""
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
 
 
 # Перенаправление логов loguru в caplog
