@@ -11,7 +11,7 @@ router = Router(name=os.path.splitext(os.path.basename(__file__))[0])
 async def delete_pinned_service_message(message: types.Message, bot):
     """Убирает служебное «... закрепил сообщение», но только своё.
 
-    Бот сам закрепляет анонсы (utils.bot_methods.pin_message) и подчищает
+    Бот сам закрепляет анонсы (utils.messaging.pin_message) и подчищает
     за собой уведомление. Закрепы, сделанные людьми, — их действие, стирать
     служебку за них нельзя.
     """

@@ -7,7 +7,7 @@ from loguru import logger
 from config import FORWARD_CHAT_USERNAME
 from filters.dispatcher_filters import IsAdmin, IsPrivate
 from services import context, keyboards
-from utils.bot_methods import pin_message
+from utils.messaging import pin_message
 from utils.podcast_methods import generate_podcast_text
 from utils.template_store import load as load_template_info
 

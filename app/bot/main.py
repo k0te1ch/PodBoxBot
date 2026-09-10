@@ -17,8 +17,8 @@ from handlers import ROUTERS
 from middlewares.base.user_context_middleware import UserContextMiddleware
 from services import init_services, redis
 from services.none_module import _NoneModule
-from utils.bot_methods import get_version, send_release_note
 from utils.error_reporting import register_error_handler
+from utils.release_notes import get_version, send_release_note
 
 MAIN_MODULE_NAME = os.path.basename(__file__)[:-3]
 

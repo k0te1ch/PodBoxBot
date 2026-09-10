@@ -1,6 +1,6 @@
 import pytest
 
-from utils.bot_methods import split_into_messages
+from utils.messaging import split_into_messages
 
 
 def _fits(messages: list[str], max_length: int) -> bool:
