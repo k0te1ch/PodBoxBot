@@ -52,6 +52,8 @@ _ENV_DEFAULTS = {
 for _key, _value in _ENV_DEFAULTS.items():
     os.environ.setdefault(_key, _value)
 
+# Импорты ниже bootstrap'а намеренно: sys.path и переменные окружения выше
+# должны быть выставлены до того, как что-либо потянет `config`.
 import pytest
 from loguru import logger
 

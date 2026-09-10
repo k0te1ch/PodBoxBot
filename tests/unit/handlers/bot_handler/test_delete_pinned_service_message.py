@@ -2,6 +2,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
+
 from handlers.bot_handler import delete_pinned_service_message
 
 BOT_ID = 4242
@@ -27,15 +28,11 @@ async def test_deletes_own_pin_notice(bot):
 
     await delete_pinned_service_message(message, bot)
 
-    bot.delete_message.assert_awaited_once_with(
-        chat_id=message.chat.id, message_id=message.message_id
-    )
+    bot.delete_message.assert_awaited_once_with(chat_id=message.chat.id, message_id=message.message_id)
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "pinned_by_id", [BOT_ID + 1, None], ids=["another user", "no from_user"]
-)
+@pytest.mark.parametrize("pinned_by_id", [BOT_ID + 1, None], ids=["another user", "no from_user"])
 async def test_keeps_pin_notices_the_bot_did_not_make(bot, pinned_by_id):
     await delete_pinned_service_message(_service_message(pinned_by_id), bot)
 

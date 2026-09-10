@@ -50,6 +50,9 @@ except Exception as e:  # pragma: no cover - зависит от окружен�
     API_URL = "https://api.boosty.to"
     _IMPORT_ERROR = e
 
+# Не конфиг: это фиксированный хост реверснутого internal-API Boosty, парный
+# к API_URL из либы. Менять его через окружение некому — если Boosty его
+# переедет, ломается весь флоу загрузки, а не одна настройка.
 UPLOAD_URL = "https://upload.boosty.to"
 _CHUNK = 5 * 1024 * 1024  # 5 МБ — размер чанка, как у веб-редактора
 # Заголовки, которые редактор шлёт к Boosty-эндпоинтам помимо Bearer.
