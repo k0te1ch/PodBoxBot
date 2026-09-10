@@ -1,0 +1,47 @@
+# Каталогов пять только потому, что каждый сервис — отдельный poetry-проект.
+# Корня в списке нет: pyproject.toml/poetry.lock в корне репозитория не
+# существует, и алерты, которые Dependabot заводил на "/", относились к
+# файлу, удалённому ещё раньше.
+version: 2
+updates:
+  - package-ecosystem: pip
+    directories:
+      - /app/bot
+      - /app/publishers/FTP
+      - /app/publishers/WordPress
+      - /app/publishers/Boosty
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      # Один PR на все патч/минор-бампы: иначе четыре сервиса с почти
+      # одинаковым списком зависимостей дают четыре PR на каждый aiohttp.
+      pip:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+    commit-message:
+      prefix: chore
+      include: scope
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: ci
+
+  - package-ecosystem: docker
+    directories:
+      - /app/bot
+      - /app/kafka
+      - /app/schema-watcher
+      - /app/publishers/FTP
+      - /app/publishers/WordPress
+      - /app/publishers/Boosty
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: build
