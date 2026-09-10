@@ -79,10 +79,10 @@ async def _run():
         await init_scheduler_jobs()
         logger.success("Schedulers init jobs configurated and scheduler started!")
 
-    # Добавляем команды в бота
     from aiogram.types import BotCommandScopeAllPrivateChats
 
-    # TODO BotCommand или в env, или формировать при помощи handlers
+    # COMMANDS живёт рядом с роутерами (handlers/__init__.py), чтобы список
+    # команд и их обработчики правились в одном месте.
     await main.bot.set_my_commands(
         commands=COMMANDS,
         scope=BotCommandScopeAllPrivateChats(),

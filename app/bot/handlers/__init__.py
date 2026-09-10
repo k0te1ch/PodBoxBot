@@ -18,7 +18,9 @@ ROUTERS = [
     bot_handler_router,
 ]
 
+# Меню команд для всех приватных чатов. /admin сюда намеренно не попадает:
+# его роутер закрыт фильтрами IsPrivate+IsAdmin, и светить его всем незачем.
+# menu и feedback, стоявшие тут закомментированными, обработчиков не имеют.
 COMMANDS = [
-    # BotCommand(command="menu", description="Вызов меню"),
-    # BotCommand(command="feedback", description="Обратная связь"),
+    BotCommand(command="start", description="Оформить эпизод"),
 ]

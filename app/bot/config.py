@@ -48,6 +48,9 @@ class Settings(BaseSettings):
     # (app/shared/config) — бот ищет последний эпизод там, куда публишер льёт.
     FTP_POSTSHOW_DIR: str = "postshow"
 
+    # Тихий ли закреп анонса в чате форварда: True — без уведомления подписчикам.
+    FORWARD_PIN_SILENT: bool = False
+
     # DEBUG
     DEBUG: bool = False
 
@@ -152,6 +155,7 @@ TIMEZONE = pytz.timezone(settings.TIMEZONE)
 API_TOKEN = settings.TELEGRAM_API_TOKEN
 SKIP_UPDATES = settings.SKIP_UPDATES
 FORWARD_CHAT_USERNAME = settings.FORWARD_CHAT_USERNAME
+FORWARD_PIN_SILENT = settings.FORWARD_PIN_SILENT
 API_ID = settings.TELEGRAM_SERVER_API_ID
 API_HASH = settings.TELEGRAM_SERVER_API_HASH
 

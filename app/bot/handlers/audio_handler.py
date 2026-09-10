@@ -4,7 +4,7 @@ from aiogram import Bot, F, Router
 from aiogram.types import CallbackQuery
 from loguru import logger
 
-from config import FORWARD_CHAT_USERNAME
+from config import FORWARD_CHAT_USERNAME, FORWARD_PIN_SILENT
 from filters.dispatcher_filters import IsAdmin, IsPrivate
 from services import context, keyboards
 from utils.messaging import pin_message
@@ -79,8 +79,6 @@ async def forward_yes(callback: CallbackQuery, bot: Bot, language: str, username
             caption=podcast_text,
         )
 
-        disable_notification = False  # TODO: to settings
-
         # Закрепляем аудио в чате
         await pin_message(
             bot,
@@ -88,7 +86,7 @@ async def forward_yes(callback: CallbackQuery, bot: Bot, language: str, username
             callback.message,
             FORWARD_CHAT_USERNAME,
             forward_message.message_id,
-            disable_notification=disable_notification,
+            disable_notification=FORWARD_PIN_SILENT,
         )
 
         logger.success(f"[{username}]: Successfully forwarded audio")
