@@ -19,8 +19,6 @@ from config import ADMINS_ID, FILES_PATH, LOGS_PATH
 from services import redis
 from services.none_module import _NoneModule
 
-CHUNK_SIZE = 64 * 1024  # Размер блока 64 КБ
-
 
 # region Bot methods
 def shutdown_bot():

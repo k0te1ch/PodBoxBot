@@ -49,7 +49,6 @@ class TrustEnvAiohttpSession(AiohttpSession):
 def _get_bot_obj() -> Bot:
     from config import LOCAL, TG_SERVER
 
-    # TODO CHECK THIS
     if TG_SERVER is None and LOCAL:
         from aiogram.client.telegram import TelegramAPIServer
 

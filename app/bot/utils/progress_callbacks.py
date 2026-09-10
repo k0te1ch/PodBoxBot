@@ -13,10 +13,6 @@ from loguru import logger
 
 from config import LOCAL, PODCAST_PATH
 
-# TODO: Рестарт бота
-
-CHUNK_SIZE = 64 * 1024  # Размер блока 64 КБ
-
 
 # region Progressbars
 class CustomFSInputFile(InputFile):
