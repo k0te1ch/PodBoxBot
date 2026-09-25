@@ -112,6 +112,10 @@ async def check_exists_file_by_size(dir_path: Path, file_size: int) -> Path | No
     return None
 
 
+def _has_size(path: Path, size: int) -> bool:
+    return path.is_file() and path.stat().st_size == size
+
+
 @logger.catch
 async def monitor_file_progress(
     file_path: Path,
@@ -145,11 +149,23 @@ async def monitor_file_progress(
             # Поиск файла, если он ещё не был определён
             if not mp3_file:
                 logger.debug(f"Ищем скачивающийся файл{next(dots_cycle)}")
-                for file in file_path.iterdir():
-                    if file.is_file() and file.stem.isdigit():
-                        mp3_file = file
-                        logger.debug(f"Найден файл: {mp3_file.name}")
-                        break
+                # Каталога temp у свежего Bot API ещё нет, пока он не начал
+                # качать, — это «ещё не началось», а не ошибка.
+                if file_path.is_dir():
+                    for file in file_path.iterdir():
+                        if file.is_file() and file.stem.isdigit():
+                            mp3_file = file
+                            logger.debug(f"Найден файл: {mp3_file.name}")
+                            break
+                # Маленький файл Bot API успевает скачать и перенести в
+                # finally_dir (а handler — дальше в PODCAST_PATH) раньше, чем
+                # мы увидим его в temp. Без этой проверки цикл ждал бы вечно.
+                if not mp3_file and _has_size(PODCAST_PATH, total_size):
+                    checked = True
+                    break
+                if not mp3_file and await check_exists_file_by_size(finally_dir_path, total_size):
+                    checked = True
+                    break
 
             # Отслеживание прогресса файла
             if mp3_file and mp3_file.exists():
