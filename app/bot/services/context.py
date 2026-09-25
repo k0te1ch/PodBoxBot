@@ -19,7 +19,9 @@ def _parse_ftl_value(value: str) -> Any:
             return json.loads(trimmed)
         except json.JSONDecodeError:
             pass
-    return trimmed
+    # Однострочное значение не может содержать перенос, поэтому в .ftl пишут
+    # «\n» — без замены он уходил пользователю буквально.
+    return trimmed.replace("\\n", "\n")
 
 
 def _collect_multiline(

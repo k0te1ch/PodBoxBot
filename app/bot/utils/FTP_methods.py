@@ -90,5 +90,7 @@ async def get_last_post_ID(typePodcast: str, server: str, login: str, password: 
                 file_list,
             )
 
-        last_id = sorted(file_list)[-1]
+        # По числу, а не по строке: иначе "999_…" > "1000_…", и номера с разной
+        # шириной (600 и 0999) сравниваются неверно.
+        last_id = max(file_list, key=lambda x: int(x.split("_")[0]))
         return last_id.split("_")[0]
