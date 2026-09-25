@@ -68,7 +68,8 @@ def phrase():
     for line in (LOCALES_DIR / f"{_LANG}.ftl").read_text(encoding="utf-8").splitlines():
         key, sep, value = line.partition(" = ")
         if sep and key.isidentifier():
-            entries[key] = value.strip()
+            # Как services/context.py: «\n» в однострочном значении — перенос.
+            entries[key] = value.strip().replace("\\n", "\n")
 
     def get(key: str, *, full: bool = False) -> str:
         value = entries[key]
