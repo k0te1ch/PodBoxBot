@@ -6,13 +6,18 @@ from loguru import logger
 router = Router(name=os.path.splitext(os.path.basename(__file__))[0])
 # router.message.filter(IsPrivate, IsAdmin)
 
-# Предположим, что переменная из config называется DELETE_PINNED_SERVICE_MESSAGE
-# from config import DELETE_PINNED_SERVICE_MESSAGE
 
-
-# TODO: ПРОВЕРКА НА ТО, ЧТОБЫ ЗАКРЕПИЛ БОТ!
 @router.message(F.pinned_message)
 async def delete_pinned_service_message(message: types.Message, bot):
+    """Убирает служебное «... закрепил сообщение», но только своё.
+
+    Бот сам закрепляет анонсы (utils.messaging.pin_message) и подчищает
+    за собой уведомление. Закрепы, сделанные людьми, — их действие, стирать
+    служебку за них нельзя.
+    """
+    if message.from_user is None or message.from_user.id != bot.id:
+        return
+
     try:
         await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
     except Exception as e:

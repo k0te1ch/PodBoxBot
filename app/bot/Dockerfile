@@ -24,7 +24,7 @@ ENV LC_ALL=ru_RU.UTF-8
 
 # Устанавливаем Poetry и необходимые инструменты сборки
 RUN python -m pip install --upgrade pip setuptools wheel && \
-    python -m pip install --upgrade poetry
+    python -m pip install poetry==2.3.4
 
 # Копируем файлы зависимостей и устанавливаем их
 COPY app/bot/pyproject.toml app/bot/poetry.lock /app/

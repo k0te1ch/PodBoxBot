@@ -7,7 +7,7 @@
 
 import pytest
 
-from utils.bot_methods import get_release_note
+from utils.release_notes import get_release_note
 
 # Реальный формат release-please: два релизных блока, английские секции,
 # ссылки на PR/коммиты и **bold**-скоупы внутри пунктов.

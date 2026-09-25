@@ -1,4 +1,3 @@
-import asyncio
 import logging
 import os
 import sys
@@ -42,10 +41,6 @@ _ENV_DEFAULTS = {
     "FTP_SERVER": "ftp.example.com",
     "FTP_LOGIN": "ftp-user",
     "FTP_PASSWORD": "ftp-pass",
-    "WP_URL": "https://example.com",
-    "WP_LOGIN": "wp-user",
-    "WP_PASSWORD": "wp-pass",
-    "WP_APP_PASSWORD": "wp-app-pass",
     # List/dir settings the bot reads to parametrize tests and load keyboards.
     # Pinned here so the suite behaves identically with or without a local .env.
     "LANGUAGES": '["ru", "en"]',
@@ -56,16 +51,10 @@ _ENV_DEFAULTS = {
 for _key, _value in _ENV_DEFAULTS.items():
     os.environ.setdefault(_key, _value)
 
+# Импорты ниже bootstrap'а намеренно: sys.path и переменные окружения выше
+# должны быть выставлены до того, как что-либо потянет `config`.
 import pytest
 from loguru import logger
-
-
-@pytest.fixture(scope="function")
-def event_loop():
-    """Создаёт новый цикл событий для каждого теста"""
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
 
 
 # Перенаправление логов loguru в caplog

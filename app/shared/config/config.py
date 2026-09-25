@@ -58,7 +58,7 @@ class SharedSettings(BaseSettings):
     WP_APP_PASSWORD: str | None = None
     WP_UPLOAD_TOPIC: str = "publisher.wordpress.upload"
     WP_RESULT_TOPIC: str = "publisher.wordpress.result"
-    WP_COOKIE_PATH: str = "/app/data/cookie.pkl"
+    WP_COOKIE_PATH: str = "/app/data/cookie.json"
 
     # Boosty
     BOOSTY_BLOG: str | None = None  # slug блога (boosty.to/<slug>)

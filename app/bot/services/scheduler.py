@@ -8,8 +8,8 @@ from config import TIMEZONE
 from services import redis
 from services.none_module import _NoneModule
 
-# TODO: Аннотации
-# TODO: Обработка ошибок
+# Планировщик пока каркас: init_scheduler_jobs не регистрирует задач, а сам
+# он поднимается только при ENABLE_APSCHEDULER (по умолчанию выключен).
 
 
 def _get_scheduler_obj(redis_instance: Redis | _NoneModule) -> AsyncIOScheduler:

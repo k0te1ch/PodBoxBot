@@ -3,7 +3,6 @@ name = "publisher_ftp"
 version = "0.3.0"
 description = ""
 authors = ["k0te1ch <khvostov40@gmail.com>"]
-readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.12"

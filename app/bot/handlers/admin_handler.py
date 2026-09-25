@@ -39,7 +39,7 @@ async def shutdown(callback: CallbackQuery, username: str):
     logger.warning(f"User {username} is shutting down the bot")
 
     await callback.answer("Bot is shutting down", show_alert=True)
-    await shutdown_bot()
+    shutdown_bot()
 
 
 @router.callback_query(F.data == "restart_bot")
@@ -49,7 +49,7 @@ async def restart(callback: CallbackQuery, username: str):
     logger.warning(f"User {username} is restarting the bot")
 
     await callback.answer("Bot is restarting", show_alert=True)
-    await restart_bot()
+    restart_bot()
 
 
 @router.callback_query(F.data == "admin_back")

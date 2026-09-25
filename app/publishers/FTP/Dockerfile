@@ -17,7 +17,7 @@ RUN apt-get update && \
 
 # Устанавливаем Poetry
 RUN python -m pip install --upgrade pip && \
-    python -m pip install --upgrade poetry
+    python -m pip install poetry==2.3.4
 
 # Копируем файлы зависимостей и устанавливаем их
 COPY app/publishers/FTP/pyproject.toml app/publishers/FTP/poetry.lock /app/

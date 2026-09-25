@@ -79,10 +79,10 @@ async def _run():
         await init_scheduler_jobs()
         logger.success("Schedulers init jobs configurated and scheduler started!")
 
-    # Добавляем команды в бота
     from aiogram.types import BotCommandScopeAllPrivateChats
 
-    # TODO BotCommand или в env, или формировать при помощи handlers
+    # COMMANDS живёт рядом с роутерами (handlers/__init__.py), чтобы список
+    # команд и их обработчики правились в одном месте.
     await main.bot.set_my_commands(
         commands=COMMANDS,
         scope=BotCommandScopeAllPrivateChats(),
@@ -127,11 +127,15 @@ def makemigrations(message, sync):
             version_path=None,
             rev_id=None,
         )
-        print("Alembic revision")
+        click.echo("Alembic revision")
     except CommandError as err:
-        print(f"Alembic Command Error: {err}")
+        msg = f"Alembic Command Error: {err}"
         if str(err) == "Target database is not up to date.":
-            print('Run "python main.py migrate"')
+            msg += ' Run "python main.py migrate" first.'
+        # ClickException prints to stderr and exits 1. The command used to
+        # print the failure and still exit 0, so a failed revision read as
+        # success to anything checking the exit code.
+        raise click.ClickException(msg) from err
 
 
 @logger.catch

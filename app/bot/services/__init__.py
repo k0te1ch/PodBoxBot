@@ -44,7 +44,7 @@ class _KeyboardsRegistry:
 # import time — Redis.from_url() doesn't actually open a socket, so it's
 # safe pre-event-loop. We re-export instead of reassigning in
 # init_services() because `from services import redis` in other modules
-# (utils/bot_methods.py, services/scheduler.py, main.py) captures the
+# (utils/release_notes.py, services/scheduler.py, main.py) captures the
 # name at *import* time; later reassignment here would not propagate to
 # those modules, leaving them stuck with whatever was bound first.
 # `keyboards` solves the same problem via an in-place-mutated registry

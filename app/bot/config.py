@@ -44,12 +44,12 @@ class Settings(BaseSettings):
     FTP_SERVER: str
     FTP_LOGIN: str
     FTP_PASSWORD: str
+    # Подпапка для послешоу. Тот же ключ .env, что читает FTP-публишер
+    # (app/shared/config) — бот ищет последний эпизод там, куда публишер льёт.
+    FTP_POSTSHOW_DIR: str = "postshow"
 
-    # WP SETTINGS
-    WP_URL: str
-    WP_LOGIN: str
-    WP_PASSWORD: str
-    WP_APP_PASSWORD: str
+    # Тихий ли закреп анонса в чате форварда: True — без уведомления подписчикам.
+    FORWARD_PIN_SILENT: bool = False
 
     # DEBUG
     DEBUG: bool = False
@@ -104,11 +104,6 @@ class Settings(BaseSettings):
     KAFKA_SERVER: str = "kafka:9092"
     SCHEMA_REGISTRY_URL: str = "http://schema-registry:8081"
 
-    @field_validator("WP_URL")
-    @classmethod
-    def strip_wp_url(cls, v: str) -> str:
-        return v.rstrip("/")
-
     @field_validator("FORWARD_CHAT_USERNAME")
     @classmethod
     def normalize_forward_username(cls, v: str) -> str:
@@ -160,6 +155,7 @@ TIMEZONE = pytz.timezone(settings.TIMEZONE)
 API_TOKEN = settings.TELEGRAM_API_TOKEN
 SKIP_UPDATES = settings.SKIP_UPDATES
 FORWARD_CHAT_USERNAME = settings.FORWARD_CHAT_USERNAME
+FORWARD_PIN_SILENT = settings.FORWARD_PIN_SILENT
 API_ID = settings.TELEGRAM_SERVER_API_ID
 API_HASH = settings.TELEGRAM_SERVER_API_HASH
 
@@ -167,12 +163,7 @@ API_HASH = settings.TELEGRAM_SERVER_API_HASH
 FTP_SERVER = settings.FTP_SERVER
 FTP_LOGIN = settings.FTP_LOGIN
 FTP_PASSWORD = settings.FTP_PASSWORD
-
-# WP
-WP_URL = settings.WP_URL
-WP_LOGIN = settings.WP_LOGIN
-WP_PASSWORD = settings.WP_PASSWORD
-WP_APP_PASSWORD = settings.WP_APP_PASSWORD
+FTP_POSTSHOW_DIR = settings.FTP_POSTSHOW_DIR
 
 # Debug/Logger
 DEBUG = settings.DEBUG
