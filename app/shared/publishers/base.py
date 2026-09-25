@@ -43,7 +43,7 @@ class BasePublisher(ABC):
     """Pydantic-модель события, на которое подписан publisher."""
 
     schema_path: str
-    """Путь к .avsc внутри контейнера (для AvroProducer)."""
+    """Путь к .avsc внутри контейнера (для KafkaProducer)."""
 
     upload_topic: str
     """Топик, который publisher слушает."""
