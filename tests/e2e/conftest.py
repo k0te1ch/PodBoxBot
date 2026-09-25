@@ -1,15 +1,25 @@
+import functools
 import os
+import re
 from pathlib import Path
 
 import pytest
 from dotenv import load_dotenv
+from tgtest import client as tgtest_client
 
 pytest_plugins = ["tgtest.pytest_plugin"]
 
 E2E_DIR = Path(__file__).parent
 FIXTURES_DIR = E2E_DIR / "fixtures"
+LOCALES_DIR = E2E_DIR.parents[1] / "app" / "bot" / "locales"
 
 load_dotenv(E2E_DIR / ".env", override=False)
+
+# Бот выбирает язык по language_code, который Telegram берёт из lang_code
+# клиента (у Telethon по умолчанию "en"). Подключаемся с языком E2E_LANG,
+# чтобы ответы бота совпадали с фрагментами из phrase().
+_LANG = os.getenv("E2E_LANG", "ru")
+tgtest_client.TelegramClient = functools.partial(tgtest_client.TelegramClient, lang_code=_LANG, system_lang_code=_LANG)
 
 
 def pytest_collection_modifyitems(config, items):
@@ -41,6 +51,30 @@ def episode_template() -> str:
         "Title: e2e test episode\n"
         "Comment: smoke test from tgtest\n"
         "Tags: e2e, smoke, test\n"
-        "Chapters:\n"
+        "Chapters: |\n"
         "00:00:00 - intro\n"
     )
+
+
+@pytest.fixture(scope="session")
+def phrase():
+    """Устойчивый фрагмент строки бота на языке E2E_LANG (по умолчанию ru).
+
+    Бот отвечает на языке из настроек Telegram-аккаунта, поэтому тексты
+    берутся из его же .ftl, а не хардкодятся. Из значения выкидываются
+    HTML-теги и {подстановки}, остаётся самый длинный цельный кусок.
+    """
+    entries = {}
+    for line in (LOCALES_DIR / f"{_LANG}.ftl").read_text(encoding="utf-8").splitlines():
+        key, sep, value = line.partition(" = ")
+        if sep and key.isidentifier():
+            entries[key] = value.strip()
+
+    def get(key: str, *, full: bool = False) -> str:
+        value = entries[key]
+        if full:
+            return value
+        parts = re.split(r"<[^>]+>|\{[^}]*\}", value)
+        return max((p.strip(" ,.!") for p in parts), key=len)
+
+    return get
