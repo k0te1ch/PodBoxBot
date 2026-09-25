@@ -227,8 +227,19 @@ FILES_PATH: Path = PROJECT_PATH / settings.FILES_PATH
 LOGS_PATH: Path = PROJECT_PATH / settings.LOGS_PATH
 
 PODCAST_PATH = FILES_PATH / PODCAST if PODCAST else FILES_PATH / "podcast.mp3"
-COVER_RZ_PATH = FILES_PATH / COVER_RZ_NAME if COVER_RZ_NAME else FILES_PATH / "cover.jpg"
-COVER_PS_PATH = FILES_PATH / COVER_PS_NAME if COVER_PS_NAME else FILES_PATH / "pscover.jpg"
+STATIC_PATH: Path = PROJECT_PATH / "static"
+
+
+def _cover_path(name: str) -> Path:
+    # Обложку можно подменить, положив файл в том files; по умолчанию берётся
+    # та, что запечена в образ из static/. Раньше путь вёл только в files, и на
+    # свежем томе бот падал на sendAudio (thumbnail не найден).
+    override = FILES_PATH / name
+    return override if override.is_file() else STATIC_PATH / name
+
+
+COVER_RZ_PATH = _cover_path(COVER_RZ_NAME or "cover.jpg")
+COVER_PS_PATH = _cover_path(COVER_PS_NAME or "pscover.jpg")
 KEYBOARDS_PATH = SRC_PATH / KEYBOARDS_DIR if KEYBOARDS_DIR else SRC_PATH / "keyboards"
 
 

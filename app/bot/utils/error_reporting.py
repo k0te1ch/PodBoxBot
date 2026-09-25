@@ -10,6 +10,7 @@
 
 from __future__ import annotations
 
+import html
 import traceback
 from datetime import datetime
 
@@ -37,6 +38,9 @@ def _extract_user(event: ErrorEvent) -> str:
 async def _notify_developer(bot: Bot, event: ErrorEvent) -> None:
     exc = event.exception
     tb = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
+    # Сетевые ошибки aiogram несут URL вида .../bot<token>/sendAudio — токен
+    # не должен уезжать в чат вместе с трейсбеком.
+    tb = tb.replace(bot.token, "<BOT_TOKEN>")
     if len(tb) > _MAX_TB_CHARS:
         # Хвост важнее головы — там само исключение и ближайшие кадры.
         tb = "…(обрезано)…\n" + tb[-_MAX_TB_CHARS:]
@@ -45,7 +49,7 @@ async def _notify_developer(bot: Bot, event: ErrorEvent) -> None:
         f"⚠️ <b>Ошибка в боте</b>\n\n"
         f"<b>🕒 Время:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
         f"<b>🆔 Пользователь:</b> {_extract_user(event)}\n"
-        f"<b>💥 Ошибка:</b>\n<pre><code>{tb}</code></pre>"
+        f"<b>💥 Ошибка:</b>\n<pre><code>{html.escape(tb)}</code></pre>"
     )
     try:
         await bot.send_message(DEVELOPER, message, parse_mode="HTML")
