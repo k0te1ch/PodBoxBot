@@ -16,18 +16,18 @@ from config import (
     SUPPORT_LINK,
     TIMEZONE,
 )
-from utils.MP3_methods import audio_tag
+from utils.mp3_methods import audio_tag
 
 
 @pytest.fixture
 def mock_paths():
     """Мокаем только те объекты, которые реально используются"""
     with (
-        mock.patch("utils.MP3_methods.PODCAST_PATH", Path("/mocked/podcast.mp3")),
-        mock.patch("utils.MP3_methods.COVER_RZ_PATH", Path("/mocked/cover_rz.jpg")),
-        mock.patch("utils.MP3_methods.COVER_PS_PATH", Path("/mocked/cover_ps.jpg")),
-        mock.patch("utils.MP3_methods.PODCAST_GENRE", 186),
-        mock.patch("utils.MP3_methods.TIMEZONE", pytz.timezone("Europe/Moscow")),
+        mock.patch("utils.mp3_methods.PODCAST_PATH", Path("/mocked/podcast.mp3")),
+        mock.patch("utils.mp3_methods.COVER_RZ_PATH", Path("/mocked/cover_rz.jpg")),
+        mock.patch("utils.mp3_methods.COVER_PS_PATH", Path("/mocked/cover_ps.jpg")),
+        mock.patch("utils.mp3_methods.PODCAST_GENRE", 186),
+        mock.patch("utils.mp3_methods.TIMEZONE", pytz.timezone("Europe/Moscow")),
     ):
         yield
 

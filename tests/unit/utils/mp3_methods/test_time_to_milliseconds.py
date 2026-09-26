@@ -1,4 +1,4 @@
-from utils.MP3_methods import time_to_milliseconds
+from utils.mp3_methods import time_to_milliseconds
 
 
 def test_time_to_seconds_valid_input():

@@ -2,7 +2,7 @@ from unittest import mock
 
 from eyed3.id3 import ID3_V2_4, UTF_16_ENCODING
 
-from utils.MP3_methods import set_chapters
+from utils.mp3_methods import set_chapters
 
 
 def initialize_mock_audio_file(mock_audio_file):
@@ -36,7 +36,7 @@ def test_set_chapters_with_single_chapter(mock_audio_file):
     chapters = [("00:00:10", "Introduction")]
     initialize_mock_audio_file(mock_audio_file)
 
-    with mock.patch("utils.MP3_methods.time_to_milliseconds", return_value=10000) as mock_time_to_ms:
+    with mock.patch("utils.mp3_methods.time_to_milliseconds", return_value=10000) as mock_time_to_ms:
         # Мокаем возврат главы для метода set
         mock_chapter = mock.Mock()
         mock_chapter.encoding = UTF_16_ENCODING  # Явно устанавливаем кодировку
@@ -64,7 +64,7 @@ def test_set_chapters_with_multiple_chapters(mock_audio_file):
     """Тестирование с несколькими главами — проверка корректного добавления всех глав"""
     chapters = [("00:00:10", "Introduction"), ("00:10:00", "Chapter 1"), ("00:20:00", "Chapter 2")]
 
-    with mock.patch("utils.MP3_methods.time_to_milliseconds", side_effect=[10000, 600000, 600000, 1200000, 1200000]):
+    with mock.patch("utils.mp3_methods.time_to_milliseconds", side_effect=[10000, 600000, 600000, 1200000, 1200000]):
         set_chapters(mock_audio_file, chapters)
 
         # Проверка добавления первой главы
@@ -79,7 +79,7 @@ def test_set_chapters_with_mock_time_to_milliseconds(mock_audio_file):
     """Тестирование с моком time_to_milliseconds — проверка всех вызовов и добавлений"""
     chapters = [("00:00:10", "Introduction"), ("00:10:00", "Chapter 1")]
 
-    with mock.patch("utils.MP3_methods.time_to_milliseconds", side_effect=[10000, 600000, 600000]) as mock_time_to_ms:
+    with mock.patch("utils.mp3_methods.time_to_milliseconds", side_effect=[10000, 600000, 600000]) as mock_time_to_ms:
         set_chapters(mock_audio_file, chapters)
 
         # Проверка вызовов time_to_milliseconds
