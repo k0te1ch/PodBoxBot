@@ -22,7 +22,7 @@ from utils.release_notes import get_version, send_release_note
 
 MAIN_MODULE_NAME = os.path.basename(__file__)[:-3]
 
-from config import API_TOKEN, DEBUG, PARSE_MODE
+from config import API_TOKEN, DEBUG, KAFKA_SERVER, PARSE_MODE, SCHEMA_REGISTRY_URL
 from shared.kafka.consumer import KafkaConsumer
 
 logger.debug("Loading settings from config")
@@ -115,8 +115,8 @@ async def on_startup():
     ]
     for topic, group_id in result_topics:
         consumer = KafkaConsumer(
-            kafka_server="kafka:9092",
-            schema_registry_url="http://schema-registry:8081",
+            kafka_server=KAFKA_SERVER,
+            schema_registry_url=SCHEMA_REGISTRY_URL,
             topic=topic,
             group_id=group_id,
         )
