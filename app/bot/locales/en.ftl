@@ -19,7 +19,7 @@ episode_aftershow = Aftershow episode
 admin_panel_opened = Admin panel
 admin_panel_open = Admin panel
 admin_panel_close = Admin panel closed
-admin_panel_main = [["Bot", "botPanel"]]
+admin_panel_main = [["Bot", "bot_panel"]]
 bot_commands = [["Turn off the bot", "shutdown_bot"], ["Send log files", "send_logs"]]
 
 ask_template = {
