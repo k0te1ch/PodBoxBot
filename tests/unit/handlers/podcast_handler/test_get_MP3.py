@@ -36,7 +36,7 @@ def configure_paths(temp_dir):
 
 @pytest.fixture
 def mock_get_last_post_id():
-    with patch("handlers.podcast_handler.get_last_post_ID", new_callable=AsyncMock, return_value=42) as mock:
+    with patch("handlers.podcast_handler.get_last_post_id", new_callable=AsyncMock, return_value=42) as mock:
         yield mock
 
 
@@ -109,7 +109,7 @@ async def test_get_MP3_handler(
         assert upload_file_engine.current_step(session).id == TEMPLATE
 
         # Проверка текста сообщения и клавиатуры
-        number_last_episode = "43"  # так как `get_last_post_ID` вернул 42
+        number_last_episode = "43"  # так как `get_last_post_id` вернул 42
         expected_text = context[language].ask_template["main"].replace("600", number_last_episode)
 
         sent_message = calls.send_message.fetchone()
