@@ -8,8 +8,8 @@ from loguru import logger
 
 from config import LOGS_ZIP_NAME
 from filters.dispatcher_filters import IsAdmin, IsPrivate
-from keyboards import KEYBOARDS
-from services import context, keyboards
+from keyboards import admin_panel_kb, bot_commands_kb, tests_commands_kb
+from services import context
 from utils.bot_methods import get_zip_logs, restart_bot, shutdown_bot
 
 router = Router(name=os.path.splitext(os.path.basename(__file__))[0])
@@ -20,7 +20,7 @@ router.message.filter(IsPrivate, IsAdmin)
 async def admin(msg: Message, username: str):
     """Handle the /admin command"""
     logger.opt(colors=True).debug(f"[<y>{username}</y>]: Admin panel called")
-    return await msg.answer(context["ru"].admin_panel_opened, reply_markup=KEYBOARDS.admin_panel_kb)
+    return await msg.answer(context["ru"].admin_panel_opened, reply_markup=admin_panel_kb())
 
 
 @router.callback_query(F.data == "bot_panel")
@@ -28,8 +28,8 @@ async def bot_panel(callback: CallbackQuery, username: str):
     """Handle the transition to the bot management panel"""
     logger.opt(colors=True).debug(f"[<y>{username}</y>]: Bot management panel selected")
 
-    await callback.message.edit_text("Bot operations", reply_markup=KEYBOARDS.bot_commands_kb)
-    return callback.answer()
+    await callback.message.edit_text("Bot operations", reply_markup=bot_commands_kb())
+    return await callback.answer()
 
 
 @router.callback_query(F.data == "shutdown_bot")
@@ -59,7 +59,7 @@ async def back(callback: CallbackQuery, username: str):
 
     await callback.message.edit_text(
         context["ru"].admin_panel_opened,
-        reply_markup=keyboards.admin_panel_kb,
+        reply_markup=admin_panel_kb(),
     )
     return await callback.answer()
 
@@ -90,5 +90,5 @@ async def tests_panel(callback: CallbackQuery, username: str):
     """Handle the transition to the tests panel"""
     logger.opt(colors=True).debug(f"[<y>{username}</y>]: Tests panel selected")
 
-    await callback.message.edit_text("Test operations for the bot", reply_markup=KEYBOARDS.tests_commands_kb)
-    return callback.answer()
+    await callback.message.edit_text("Test operations for the bot", reply_markup=tests_commands_kb())
+    return await callback.answer()
