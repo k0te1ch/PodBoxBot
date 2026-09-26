@@ -8,13 +8,9 @@ from alembic.command import revision as alembic_revision
 from alembic.config import Config
 from alembic.util.exc import CommandError
 from loguru import logger
-from telethon import TelegramClient
 
 import main
 from config import (
-    API_HASH,
-    API_ID,
-    API_TOKEN,
     DATABASE_URL,
     ENABLE_APSCHEDULER,
     SKIP_UPDATES,
@@ -151,17 +147,3 @@ def migrate(revision, upgrade, sync):
     else:
         alembic.downgrade(cfg, "-1" if revision == "head" else revision)
         logger.debug("Alembic downgrade")
-
-
-@logger.catch
-async def _init():
-    logger.info("Starting init...")
-
-    async with TelegramClient("anon", API_ID, API_HASH, system_version="4.16.30-vxCUSTOM") as client:
-        await client.start(API_TOKEN)
-
-
-@cli.command()
-@logger.catch
-def init():
-    asyncio.run(_init())

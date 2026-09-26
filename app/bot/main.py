@@ -142,11 +142,6 @@ async def _supervise_consumer(consumer: "KafkaConsumer", handler, restart_delay:
         await asyncio.sleep(restart_delay)
 
 
-@logger.catch
-async def on_shutdown():
-    pass
-
-
 def _add_middlewares_to_observers(observers: list[TelegramEventObserver], middlewares: list[BaseMiddleware]) -> None:
     for observer in observers:
         for middleware in middlewares:
@@ -167,7 +162,6 @@ def _get_dp_obj(bot, redis):
     dp.include_routers(*ROUTERS)
 
     dp.startup.register(on_startup)
-    dp.shutdown.register(on_shutdown)
 
     logger.debug("Dispatcher is configured")
     return dp
