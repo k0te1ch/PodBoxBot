@@ -99,6 +99,8 @@ def set_up_logger(level: str = "INFO", logs_path: Path = PROJECT_PATH / "logs"):
     logger.add(
         logs_path / "file_{time:YYYY-MM-DD_HH-mm-ss}.log",
         rotation="5 MB",
+        retention="14 days",
+        compression="gz",
         format="{time:YYYY-MM-DD HH:mm:ss} | {level}::{module}::{function}::{line} | {message}",
         level="TRACE",
         backtrace=True,

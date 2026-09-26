@@ -35,6 +35,8 @@ def test_set_up_logger():
         mock_add.assert_any_call(
             expected_file_path,
             rotation="5 MB",
+            retention="14 days",
+            compression="gz",
             format="{time:YYYY-MM-DD HH:mm:ss} | {level}::{module}::{function}::{line} | {message}",
             level="TRACE",
             backtrace=True,

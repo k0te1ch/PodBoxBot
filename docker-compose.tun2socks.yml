@@ -9,10 +9,19 @@
 #   ./utils/bootstrap.sh -f docker-compose.tun2socks.yml   # через bootstrap
 #   ./utils/bootstrap.sh                                   # дефолт — без tun2socks
 
+# Лимит json-логов Docker: без него stdout контейнеров (особенно
+# telegram-bot-api с TELEGRAM_VERBOSITY=3) растёт без конца и забивает диск.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   # Заворачивает весь трафик telegram-bot-api в хостовый SOCKS (xray на :10808),
   # т.к. сам telegram-bot-api ходит к DC Telegram по MTProto и HTTP(S)_PROXY игнорирует.
   tun2socks:
+    logging: *default-logging
     container_name: podboxbot_tun2socks
     image: xjasonlyu/tun2socks:latest
     restart: always
@@ -36,6 +45,7 @@ services:
           - api
 
   api:
+    logging: *default-logging
     container_name: podboxbot_telegram_api
     image: aiogram/telegram-bot-api:latest
     restart: always
@@ -53,6 +63,7 @@ services:
       - telegram-bot-api-data:/var/lib/telegram-bot-api
 
   bot:
+    logging: *default-logging
     image: podboxbot_bot:latest
     container_name: podboxbot_bot
     stop_signal: SIGINT
@@ -86,6 +97,7 @@ services:
       - files:/app/files
 
   redis:
+    logging: *default-logging
     image: redis:7.4-alpine
     container_name: podboxbot_redis
     expose:
@@ -118,6 +130,7 @@ services:
   # KAFKA
 
   kafka:
+    logging: *default-logging
     image: confluentinc/cp-kafka:latest
     container_name: podboxbot_kafka
     restart: always
@@ -161,6 +174,7 @@ services:
 
 
   schema-registry:
+    logging: *default-logging
     image: confluentinc/cp-schema-registry:7.5.0
     container_name: podboxbot_schema-registry
     # Без restart-политики SR при ребуте (где depends_on не соблюдается)
@@ -193,6 +207,7 @@ services:
       start_period: 60s
 
   kafka-init:
+    logging: *default-logging
     container_name: podboxbot_kafka_init
     build:
       context: ./app/kafka
@@ -207,6 +222,7 @@ services:
     restart: "no"
 
   schema-watcher:
+    logging: *default-logging
     build:
       context: .
       dockerfile: ./app/schema-watcher/Dockerfile
@@ -228,6 +244,7 @@ services:
   # PUBLISHERS
 
   publisher_ftp:
+    logging: *default-logging
     container_name: podboxbot_publisher_ftp
     build:
       context: .
@@ -247,6 +264,7 @@ services:
       - files:/app/files
 
   publisher_wordpress:
+    logging: *default-logging
     container_name: podboxbot_publisher_wordpress
     build:
       context: .
@@ -266,6 +284,7 @@ services:
       - ./secrets/wordpress:/app/data
 
   publisher_boosty:
+    logging: *default-logging
     container_name: podboxbot_publisher_boosty
     build:
       context: .
@@ -288,6 +307,7 @@ services:
   # METRICS AND MONITORING
 
   pushgateway:
+    logging: *default-logging
     container_name: podboxbot_pushgateway
     restart: always
     image: prom/pushgateway
@@ -298,6 +318,7 @@ services:
       - podboxbot_network
 
   prometheus:
+    logging: *default-logging
     container_name: podboxbot_prometheus
     restart: always
     image: prom/prometheus
@@ -310,6 +331,7 @@ services:
       - monitoring
 
   kafdrop:
+    logging: *default-logging
     image: obsidiandynamics/kafdrop:latest
     container_name: podboxbot_kafdrop
     restart: always
@@ -324,6 +346,7 @@ services:
       - podboxbot_network
 
   alloy:
+    logging: *default-logging
     container_name: podboxbot_alloy
     image: grafana/alloy:latest
     expose:
@@ -337,6 +360,7 @@ services:
     restart: always
 
   grafana:
+    logging: *default-logging
     container_name: podboxbot_grafana
     image: grafana/grafana:latest
     ports:
@@ -357,6 +381,7 @@ services:
     restart: always
 
   loki:
+    logging: *default-logging
     image: grafana/loki:main
     container_name: podboxbot_loki
     expose:
@@ -370,6 +395,7 @@ services:
     restart: always
 
   node-exporter:
+    logging: *default-logging
     image: prom/node-exporter
     container_name: podboxbot_node-exporter
     expose:
@@ -388,6 +414,7 @@ services:
       - podboxbot_network
 
   kafka_exporter:
+      logging: *default-logging
       image: danielqsj/kafka-exporter:latest
       container_name: podboxbot_kafka_exporter
       expose:
@@ -402,6 +429,7 @@ services:
       restart: always
 
   redis_exporter:
+    logging: *default-logging
     image: oliver006/redis_exporter:latest
     container_name: podboxbot_redis_exporter
     depends_on:
