@@ -17,6 +17,7 @@ from handlers import ROUTERS
 from middlewares.base.user_context_middleware import UserContextMiddleware
 from services import init_services, redis
 from services.none_module import _NoneModule
+from utils.disk_watch import watch_disk
 from utils.error_reporting import register_error_handler
 from utils.release_notes import get_version, send_release_note
 
@@ -98,6 +99,8 @@ async def on_startup():
             await send_release_note()
         except Exception as e:
             logger.warning(f"send_release_note failed (continuing): {e!r}")
+
+    _disk_task = asyncio.create_task(watch_disk())  # noqa: RUF006
 
     from services import kafka_router
     from services.kafka.handlers import upload_event  # noqa: F401 — регистрирует хендлеры
