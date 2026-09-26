@@ -26,8 +26,8 @@ from filters.dispatcher_filters import ContextButton, IsAdmin, IsPrivate
 from forms.upload_file import MP3, TEMPLATE, TYPE_EPISODE, upload_file_engine
 from services import context, keyboards
 from utils.dialog import load_session, save_session, start_dialog
-from utils.FTP_methods import get_last_post_ID
-from utils.MP3_methods import audio_tag
+from utils.ftp_methods import get_last_post_id
+from utils.mp3_methods import audio_tag, read_duration_and_artist
 from utils.podcast_methods import generate_file_name
 from utils.progress_callbacks import (
     CustomFSInputFile,
@@ -159,7 +159,7 @@ async def get_MP3(msg: Message, state: FSMContext, bot: Bot, language: str, user
 
     type_episode = session.answers[TYPE_EPISODE]
 
-    numberLastEpisode = str(int(await get_last_post_ID(type_episode, FTP_SERVER, FTP_LOGIN, FTP_PASSWORD)) + 1)
+    numberLastEpisode = str(int(await get_last_post_id(type_episode, FTP_SERVER, FTP_LOGIN, FTP_PASSWORD)) + 1)
 
     await upload_file_engine.async_submit(session, msg.audio.file_id)
     await save_session(state, session)
@@ -204,17 +204,15 @@ async def set_template(msg: Message, state: FSMContext, language: str, username:
     async def progress_callback(bytes_uploaded: int):
         await telegram_progress_callback(bytes_uploaded, tmp, file.stat().st_size)
 
-    import eyed3
-
-    af = eyed3.load(file)
+    duration, performer = read_duration_and_artist(file)
 
     await save_template_info(new_file_name, info, type_episode)
 
     await msg.reply_audio(
         CustomFSInputFile(file, new_file_name, progress_callback=progress_callback),
         caption=context[language].done_mp3,
-        duration=int(af.info.time_secs),
-        performer=af.tag.artist,
+        duration=duration,
+        performer=performer,
         title=info["title"],
         thumbnail=FSInputFile(COVER_RZ_PATH if type_episode == "main" else COVER_PS_PATH),
         reply_markup=(

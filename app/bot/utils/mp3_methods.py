@@ -99,3 +99,9 @@ def audio_tag(info: dict, type: str) -> None:
         set_chapters(audio_file, info.get("chapters", []))
 
     audio_file.tag.save()
+
+
+def read_duration_and_artist(path) -> tuple[int, str | None]:
+    """Длительность в секундах и исполнитель из ID3 уже размеченного файла."""
+    audio = eyed3.load(path)
+    return int(audio.info.time_secs), audio.tag.artist

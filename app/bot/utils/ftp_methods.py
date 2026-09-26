@@ -3,15 +3,15 @@ import ftplib
 from config import FTP_POSTSHOW_DIR
 
 
-async def get_last_post_ID(typePodcast: str, server: str, login: str, password: str) -> str:
+async def get_last_post_id(type_podcast: str, server: str, login: str, password: str) -> str:
     """Возвращает последний ID файла на FTP"""
-    with ftplib.FTP_TLS(server, login, password, encoding="utf-8") as FTP:
-        if "aftershow" in typePodcast:
-            FTP.cwd(FTP_POSTSHOW_DIR)
+    with ftplib.FTP_TLS(server, login, password, encoding="utf-8") as ftp:
+        if "aftershow" in type_podcast:
+            ftp.cwd(FTP_POSTSHOW_DIR)
 
-        file_list: list[str] = FTP.nlst()
+        file_list: list[str] = ftp.nlst()
 
-        if "aftershow" not in typePodcast:
+        if "aftershow" not in type_podcast:
             file_list = filter(
                 lambda x: "_rz_" in x and ".mp3" in x and x.split("_")[0].isdigit(),
                 file_list,
