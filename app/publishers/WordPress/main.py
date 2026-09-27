@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import asyncio
 
+import aiohttp
 from loguru import logger
 from wordpress import WordPress
 
@@ -21,6 +22,7 @@ WP_PASSWORD = config.WP_PASSWORD
 WP_APP_PASSWORD = config.WP_APP_PASSWORD
 WP_COOKIE_PATH = config.WP_COOKIE_PATH
 TIMEZONE = config.TIMEZONE
+WP_VERIFY = config.WP_VERIFY
 
 
 class WordPressPublisher(BasePublisher):
@@ -30,6 +32,8 @@ class WordPressPublisher(BasePublisher):
     upload_topic = config.WP_UPLOAD_TOPIC
     result_topic = config.WP_RESULT_TOPIC
     group_id = "wordpress_group"
+    retry_attempts = config.WP_RETRY_ATTEMPTS
+    retry_backoff = config.WP_RETRY_BACKOFF
 
     async def publish(self, event: WordPressEvent) -> None:  # type: ignore[override]
         info = {
@@ -45,19 +49,33 @@ class WordPressPublisher(BasePublisher):
 
         # WordPress.upload_post() — синхронный (requests-based). Запускаем
         # в default executor через to_thread, чтобы не блокировать event loop.
-        def _run() -> bool:
+        def _run() -> str | None:
             with WordPress(WP_URL, WP_LOGIN, WP_PASSWORD, WP_APP_PASSWORD, WP_COOKIE_PATH, TIMEZONE) as wp:
-                return wp.upload_post(info)
+                if not wp.upload_post(info):
+                    raise RuntimeError("WordPress returned non-success response")
+                return wp.last_post_id
 
-        success = await asyncio.to_thread(_run)
+        post_id = await self.call_with_retry(event, "publish", lambda: asyncio.to_thread(_run))
 
-        if not success:
-            # base.py поймает и сконвертирует в failure-event
-            raise RuntimeError("WordPress returned non-success response")
+        metadata: dict[str, str] = {}
+        if post_id:
+            metadata["post_id"] = post_id
+            if WP_VERIFY:
+                url = await self._verify_draft(event, post_id)
+                metadata["url"] = url
 
-        result = event.model_copy(update={"event_type": "result", "status": "success"})
+        result = event.model_copy(update={"event_type": "result", "status": "success", "metadata": metadata or None})
         await self.producer.send(self.result_topic, result.model_dump())
         logger.success(f"WordPress upload completed for episode {event.number}")
+
+    async def _verify_draft(self, event: WordPressEvent, post_id: str) -> str:
+        """Пост сохраняется черновиком, публично его не видно — проверяем
+        через REST под Application Password, что черновик действительно есть."""
+        url = f"{(WP_URL or '').rstrip('/')}/wp-json/wp/v2/podcast/{post_id}?context=edit"
+        auth = aiohttp.BasicAuth(WP_LOGIN or "", WP_APP_PASSWORD) if WP_APP_PASSWORD else None
+        async with aiohttp.ClientSession(auth=auth) as session:
+            await self.verify(event, url, session=session)
+        return url
 
     def event_key(self, event: WordPressEvent) -> str:  # type: ignore[override]
         return event.number

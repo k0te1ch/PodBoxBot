@@ -1787,6 +1787,29 @@ socks = ["PySocks (>=1.5.6,!=1.5.7)"]
 use-chardet-on-py3 = ["chardet (>=3.0.2,<8)"]
 
 [[package]]
+name = "sagenza-tgbot-sdk"
+version = "0.1.0"
+description = "Shared SDK for the Sagenza family of aiogram 3 Telegram bots."
+optional = false
+python-versions = ">=3.12,<4.0"
+groups = ["main"]
+files = []
+develop = false
+
+[package.dependencies]
+aiohttp = ">=3.9,<4.0"
+loguru = ">=0.7,<1.0"
+
+[package.extras]
+aiogram = ["aiogram (>=3.20,<4.0)", "prometheus-client (>=0.21,<1.0)", "pydantic (>=2.7,<3.0)", "pydantic-settings (>=2.5,<3.0)"]
+
+[package.source]
+type = "git"
+url = "https://github.com/k0te1ch/sagenza-tgbot-sdk.git"
+reference = "v0.1.0"
+resolved_reference = "9623b2160031da2c81820d847b39a355f9dfcc46"
+
+[[package]]
 name = "typing-extensions"
 version = "4.16.0"
 description = "Backported and Experimental Type Hints for Python 3.9+"
@@ -1993,4 +2016,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.12"
-content-hash = "6c5e1a65b8f2ab73c7457c42b86ae62e4097b9ff1d2beb6637952a0f3c663b07"
+content-hash = "0b78ae7316e0bdf9b007c23bead28a9be7c3d4bba811c7597b63cb82912c9ed6"

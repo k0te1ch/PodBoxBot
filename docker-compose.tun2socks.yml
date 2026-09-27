@@ -259,6 +259,8 @@ services:
     build:
       context: .
       dockerfile: ./app/publishers/FTP/Dockerfile
+      secrets:
+        - sdk_deploy_key
     restart: always
     depends_on:
       kafka-init:
@@ -279,6 +281,8 @@ services:
     build:
       context: .
       dockerfile: ./app/publishers/WordPress/Dockerfile
+      secrets:
+        - sdk_deploy_key
     restart: always
     depends_on:
       kafka-init:
@@ -299,6 +303,8 @@ services:
     build:
       context: .
       dockerfile: ./app/publishers/Boosty/Dockerfile
+      secrets:
+        - sdk_deploy_key
     restart: always
     depends_on:
       kafka-init:

@@ -1,8 +1,8 @@
 """Стандартный Prometheus-набор для publisher'ов.
 
-Каждый publisher получает свою Registry с тремя метриками одинаковой
+Каждый publisher получает свою Registry с четырьмя метриками одинаковой
 формы: `<name>_upload_success_total`, `<name>_upload_failure_total`,
-`<name>_upload_duration_seconds`. PUSHGATEWAY-адрес и job-name
+`<name>_upload_retry_total`, `<name>_upload_duration_seconds`. PUSHGATEWAY-адрес и job-name
 выводятся из shared.config — не требуют конфигурации subclasses.
 """
 
@@ -32,6 +32,11 @@ class PublisherMetrics:
             f"Total failed {name} uploads",
             registry=self.registry,
         )
+        self._retry = Counter(
+            f"{name}_upload_retry_total",
+            f"Failed {name} attempts that were retried",
+            registry=self.registry,
+        )
         self._duration = Summary(
             f"{name}_upload_duration_seconds",
             f"Duration of {name} upload in seconds",
@@ -45,6 +50,9 @@ class PublisherMetrics:
 
     def failure(self, labels: dict) -> None:
         self._failure.inc(labels)
+
+    def retry(self, labels: dict) -> None:
+        self._retry.inc(labels)
 
     def duration(self, labels: dict, seconds: float) -> None:
         self._duration.observe(labels, seconds)

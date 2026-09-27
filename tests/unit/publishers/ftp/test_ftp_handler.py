@@ -33,11 +33,33 @@ class TestHandleUpload:
 
             await handle_upload(sample_upload_event_dict, mock_producer)
 
-            mock_producer.send.assert_called_once()
-            call_args = mock_producer.send.call_args
-            result = call_args[0][1]
-            assert result["status"] == "failure"
+            from app.publishers.FTP.main import _publisher
+
+            attempts = _publisher.retry_attempts
+            assert mock_ftp.await_count == attempts
+            sent = [call.args[1] for call in mock_producer.send.call_args_list]
+            assert [e["status"] for e in sent] == ["retrying"] * (attempts - 1) + ["failure"]
+            assert all(e["event_type"] == "result" for e in sent)
+            assert sent[0]["metadata"] == {"stage": "upload", "attempt": "1", "attempts": str(attempts)}
+            result = sent[-1]
             assert "SFTP connection refused" in result["error"]
+            assert result["metadata"]["stage"] == "upload"
+
+    @pytest.mark.asyncio
+    async def test_transient_error_is_retried(self, sample_upload_event_dict, mock_producer):
+        with patch("app.publishers.FTP.main.upload_to_ftp", new_callable=AsyncMock) as mock_ftp:
+            mock_ftp.side_effect = [ConnectionError("reset"), None]
+
+            from app.publishers.FTP.main import handle_upload
+
+            await handle_upload(sample_upload_event_dict, mock_producer)
+
+            assert mock_ftp.await_count == 2
+            retry_event = mock_producer.send.call_args_list[0].args[1]
+            assert retry_event["status"] == "retrying"
+            assert retry_event["progress"] is None
+            assert "reset" in retry_event["error"]
+            assert all(c.args[1]["status"] != "failure" for c in mock_producer.send.call_args_list)
 
     @pytest.mark.asyncio
     async def test_invalid_payload_skipped(self, mock_producer):
