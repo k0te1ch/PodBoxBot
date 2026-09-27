@@ -1,6 +1,7 @@
 from aiogram.types import BotCommand
 
 from .bot_handler import router as bot_handler_router
+from .collector_handler import router as collector_handler_router
 from .menus import menus as bot_menus
 from .menus import router as menus_router
 from .podcast_handler import router as podcast_handler_router
@@ -11,6 +12,7 @@ from .service_handler import router as service_handler_router
 # он ставится в main._setup_sdk, здесь только команды и диалог загрузки.
 ROUTERS = [
     menus_router,
+    collector_handler_router,
     podcast_handler_router,
     service_handler_router,
     rss_handler_router,
@@ -22,4 +24,5 @@ ROUTERS = [
 # menu и feedback, стоявшие тут закомментированными, обработчиков не имеют.
 COMMANDS = [
     BotCommand(command="start", description="Оформить эпизод"),
+    BotCommand(command="ask", description="Задать вопрос ведущим"),
 ]

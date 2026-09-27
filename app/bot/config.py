@@ -100,6 +100,11 @@ class Settings(BaseSettings):
     ADMINS_ID: list[int] = Field(default_factory=list)
     HANDLERS: list[str] = Field(default_factory=list)
     LANGUAGES: list[str] = Field(default_factory=list)
+    # Группы заметок ведущих (/note) и хештеги, по которым бот собирает
+    # вопросы слушателей в чате FORWARD_CHAT_USERNAME. Без «#», JSON-списком.
+    # Заметка без хештега попадает в последнюю группу, /ask без хештега — в первую.
+    NOTE_TAGS: list[str] = Field(default_factory=lambda: ["тема", "вопрос", "комментарий"])
+    LISTENER_TAGS: list[str] = Field(default_factory=lambda: ["вопрос", "тема"])
 
     # FILES
     COVER_RZ_NAME: str | None = None
@@ -126,6 +131,8 @@ class Settings(BaseSettings):
         "ADMINS_ID",
         "HANDLERS",
         "LANGUAGES",
+        "NOTE_TAGS",
+        "LISTENER_TAGS",
         mode="before",
     )
     @classmethod
@@ -223,6 +230,8 @@ ADMINS = settings.ADMINS
 ADMINS_ID = settings.ADMINS_ID
 HANDLERS = settings.HANDLERS
 LANGUAGES = settings.LANGUAGES
+NOTE_TAGS = [tag.lstrip("#").lower() for tag in settings.NOTE_TAGS]
+LISTENER_TAGS = [tag.lstrip("#").lower() for tag in settings.LISTENER_TAGS]
 
 # Podcast
 PODCAST_NAME = settings.PODCAST_NAME

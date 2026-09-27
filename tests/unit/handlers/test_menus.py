@@ -28,13 +28,23 @@ def _admins():
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("locale", ["ru", "en"])
-async def test_every_menu_opens_and_every_button_is_wired(locale):
+async def test_every_menu_opens_and_every_button_is_wired(locale, fake_redis):
     ctx = menus.menus.context(_admin_event(), locale=locale)
 
     report = await crawl(menus.menus, ctx, locales=[locale])
 
     report.raise_for_problems()
-    assert {"admin@0", "bot@0", "audio_main@0", "audio_post@0", "ftp_main@0", "wp@0", "boosty@0"} <= set(report.opened)
+    assert {
+        "admin@0",
+        "bot@0",
+        "audio_main@0",
+        "audio_post@0",
+        "ftp_main@0",
+        "wp@0",
+        "boosty@0",
+        "notes_groups@0",
+        "questions_groups@0",
+    } <= set(report.opened)
 
 
 @pytest.mark.asyncio
