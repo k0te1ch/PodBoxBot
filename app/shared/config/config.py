@@ -50,6 +50,8 @@ class SharedSettings(BaseSettings):
     FTP_LOGIN: str | None = None
     FTP_PASSWORD: str | None = None
     FTP_POSTSHOW_DIR: str = "postshow"
+    FTP_RETRY_ATTEMPTS: int = 3
+    FTP_RETRY_BACKOFF: float = 5.0
 
     # WordPress
     WP_URL: str | None = None
@@ -59,6 +61,9 @@ class SharedSettings(BaseSettings):
     WP_UPLOAD_TOPIC: str = "publisher.wordpress.upload"
     WP_RESULT_TOPIC: str = "publisher.wordpress.result"
     WP_COOKIE_PATH: str = "/app/data/cookie.json"
+    WP_RETRY_ATTEMPTS: int = 3
+    WP_RETRY_BACKOFF: float = 10.0
+    WP_VERIFY: bool = True  # проверять черновик через REST после сохранения
 
     # Boosty
     BOOSTY_BLOG: str | None = None  # slug блога (boosty.to/<slug>)
@@ -70,6 +75,13 @@ class SharedSettings(BaseSettings):
     BOOSTY_ADVERTISER_INFO: str = ""  # маркировка рекламы (обязательное поле, пустое ок)
     BOOSTY_UPLOAD_TOPIC: str = "publisher.boosty.upload"
     BOOSTY_RESULT_TOPIC: str = "publisher.boosty.result"
+    BOOSTY_RETRY_ATTEMPTS: int = 3
+    BOOSTY_RETRY_BACKOFF: float = 10.0
+
+    # Проверка опубликованного поста (WordPress/Boosty): CDN и кеши отдают
+    # пост не сразу, поэтому несколько попыток с паузой.
+    VERIFY_ATTEMPTS: int = 5
+    VERIFY_BACKOFF: float = 10.0
 
     # Metrics
     PUSHGATEWAY_URL: str = "http://localhost:9091"

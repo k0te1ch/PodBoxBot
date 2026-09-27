@@ -34,6 +34,7 @@ class WordPress(WordPressHttpMixin, PodloveMixin):
         self._cookie_path = cookie_path
         self._timezone = pytz.timezone(timezone)
         self._session: requests.Session | None = None
+        self.last_post_id: str | None = None
         # Отдельная сессия под REST (Application Password). Cookie-сессия
         # для form-логина и REST-сессия живут раздельно, потому что WP
         # предпочитает cookie-auth над Basic при наличии обоих — здесь
@@ -287,6 +288,7 @@ class WordPress(WordPressHttpMixin, PodloveMixin):
             return False
 
         self._dump_cookies()
+        self.last_post_id = str(podlove_vue["post_id"])
 
         logger.debug(
             f"Post saved (post_id={podlove_vue['post_id']}); updating Podlove episode_id={podlove_vue['episode_id']}"

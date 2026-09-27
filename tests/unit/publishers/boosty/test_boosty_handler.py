@@ -105,6 +105,51 @@ class TestHandleUpload:
         result = mock_producer.send.call_args[0][1]
         assert result["status"] == "failure"
         assert "boom" in result["error"]
+        assert result["metadata"]["stage"] == "publish"
+        assert client.publish.await_count == main._publisher.retry_attempts
+
+    @pytest.mark.asyncio
+    async def test_upload_retry_reports_each_attempt(self, sample_boosty_event_dict, mock_producer, patched_publisher):
+        main, client = patched_publisher
+        client.upload_audio.side_effect = [ConnectionError("reset"), ("aud-1", 123)]
+
+        await main.handle_upload(sample_boosty_event_dict, mock_producer)
+
+        sent = [c.args[1] for c in mock_producer.send.call_args_list]
+        assert [e["status"] for e in sent] == ["retrying", "success"]
+        assert sent[0]["metadata"]["stage"] == "upload_audio"
+        assert sent[0]["metadata"]["attempt"] == "1"
+
+    @pytest.mark.asyncio
+    async def test_published_post_is_verified(
+        self, sample_boosty_event_dict, mock_producer, patched_publisher, monkeypatch, verify_published_mock
+    ):
+        main, _ = patched_publisher
+        monkeypatch.setattr(main, "BOOSTY_BLOG", "razgovorny")
+
+        await main.handle_upload(sample_boosty_event_dict, mock_producer)
+
+        verify_published_mock.assert_awaited_once_with("https://boosty.to/razgovorny/posts/post-1")
+        result = mock_producer.send.call_args.args[1]
+        assert result["status"] == "success"
+        assert result["metadata"] == {"url": "https://boosty.to/razgovorny/posts/post-1"}
+
+    @pytest.mark.asyncio
+    async def test_unreachable_post_reports_verify_failure(
+        self, sample_boosty_event_dict, mock_producer, patched_publisher, monkeypatch, verify_published_mock
+    ):
+        from sagenza_tgbot_sdk.resilience import NotPublishedError
+
+        main, client = patched_publisher
+        monkeypatch.setattr(main, "BOOSTY_BLOG", "razgovorny")
+        verify_published_mock.side_effect = NotPublishedError("u", "HTTP 404")
+
+        await main.handle_upload(sample_boosty_event_dict, mock_producer)
+
+        client.publish.assert_awaited_once()
+        result = mock_producer.send.call_args.args[1]
+        assert result["status"] == "failure"
+        assert result["metadata"]["stage"] == "verify"
 
     @pytest.mark.asyncio
     async def test_invalid_payload_skipped(self, mock_producer, patched_publisher):

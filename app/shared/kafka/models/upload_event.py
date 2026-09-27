@@ -35,7 +35,7 @@ class UploadEvent(BaseModel):
     def validate_status(cls, v):
         if v is None:
             return v
-        allowed = {"pending", "uploading", "success", "failure"}
+        allowed = {"pending", "uploading", "success", "failure", "retrying"}
         if v not in allowed:
             raise ValueError(f"Invalid status '{v}', must be one of {allowed}")
         return v

@@ -135,17 +135,24 @@ class FtpPublisher(BasePublisher):
     upload_topic = config.UPLOAD_TOPIC
     result_topic = config.RESULT_TOPIC
     group_id = "ftp_group"
+    retry_attempts = config.FTP_RETRY_ATTEMPTS
+    retry_backoff = config.FTP_RETRY_BACKOFF
 
     async def publish(self, event: UploadEvent) -> None:  # type: ignore[override]
-        await upload_to_ftp(
-            path=event.path,
-            file_name=event.file_name,
-            user=event.username,
-            producer=self.producer,
-            result_topic=self.result_topic,
-            chat_id=event.chat_id,
-            message_id=event.message_id,
-            type_episode=event.type_episode,
+        # Повтор заливает файл заново: remote открывается на запись с нуля.
+        await self.call_with_retry(
+            event,
+            "upload",
+            lambda: upload_to_ftp(
+                path=event.path,
+                file_name=event.file_name,
+                user=event.username,
+                producer=self.producer,
+                result_topic=self.result_topic,
+                chat_id=event.chat_id,
+                message_id=event.message_id,
+                type_episode=event.type_episode,
+            ),
         )
 
     def event_key(self, event: UploadEvent) -> str:  # type: ignore[override]

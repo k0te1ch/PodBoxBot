@@ -44,6 +44,9 @@ class BoostyPublisher(BasePublisher):
     result_topic = config.BOOSTY_RESULT_TOPIC
     group_id = "boosty_group"
 
+    retry_attempts = config.BOOSTY_RETRY_ATTEMPTS
+    retry_backoff = config.BOOSTY_RETRY_BACKOFF
+
     supports_paywall = True
     supports_scheduled = False
 
@@ -62,28 +65,44 @@ class BoostyPublisher(BasePublisher):
 
         # ownerId стабилен для блога; берём из конфига, иначе пробуем достать из
         # активного черновика (есть только если он создан в редакторе).
-        container_id = BOOSTY_OWNER_ID or await self.client.get_container_id()
-        audio_id, audio_size = await self.client.upload_audio(event.path, container_id)
-        cover_id = await self.client.upload_image(BOOSTY_COVER_PATH)
-
-        post_id = await self.client.publish(
-            title=event.title,
-            body=event.comment,
-            chapters=event.chapters,
-            audio_id=audio_id,
-            audio_size=audio_size,
-            audio_title=os.path.basename(event.path),
-            cover_id=cover_id,
-            subscription_level_id=BOOSTY_SUBSCRIPTION_LEVEL_ID,
-            price=BOOSTY_PRICE,
-            advertiser_info=BOOSTY_ADVERTISER_INFO,
+        path = event.path
+        container_id = BOOSTY_OWNER_ID or await self.call_with_retry(event, "container", self.client.get_container_id)
+        audio_id, audio_size = await self.call_with_retry(
+            event, "upload_audio", lambda: self.client.upload_audio(path, container_id)
         )
+        cover_id = await self.call_with_retry(
+            event, "upload_image", lambda: self.client.upload_image(BOOSTY_COVER_PATH)
+        )
+
+        post_id = await self.call_with_retry(
+            event,
+            "publish",
+            lambda: self.client.publish(
+                title=event.title,
+                body=event.comment,
+                chapters=event.chapters,
+                audio_id=audio_id,
+                audio_size=audio_size,
+                audio_title=os.path.basename(path),
+                cover_id=cover_id,
+                subscription_level_id=BOOSTY_SUBSCRIPTION_LEVEL_ID,
+                price=BOOSTY_PRICE,
+                advertiser_info=BOOSTY_ADVERTISER_INFO,
+            ),
+        )
+
+        metadata: dict[str, str] = {}
+        if post_id and BOOSTY_BLOG:
+            url = f"https://boosty.to/{BOOSTY_BLOG}/posts/{post_id}"
+            await self.verify(event, url)
+            metadata["url"] = url
 
         result = event.model_copy(
             update={
                 "event_type": "result",
                 "status": "success",
                 "post_id": post_id,
+                "metadata": metadata or None,
             }
         )
         await self.producer.send(self.result_topic, result.model_dump())
