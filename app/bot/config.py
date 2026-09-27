@@ -61,6 +61,9 @@ class Settings(BaseSettings):
     # Платные площадки для послешоу. Кнопка площадки появляется в меню, только
     # когда её publisher настроен и есть доступ к аккаунту.
     BOOSTY_ENABLED: bool = False
+    VK_ENABLED: bool = False
+    PATREON_ENABLED: bool = False
+    SPONSR_ENABLED: bool = False
 
     # DEBUG
     DEBUG: bool = False
@@ -176,6 +179,9 @@ SKIP_UPDATES = settings.SKIP_UPDATES
 FORWARD_CHAT_USERNAME = settings.FORWARD_CHAT_USERNAME
 FORWARD_PIN_SILENT = settings.FORWARD_PIN_SILENT
 BOOSTY_ENABLED = settings.BOOSTY_ENABLED
+VK_ENABLED = settings.VK_ENABLED
+PATREON_ENABLED = settings.PATREON_ENABLED
+SPONSR_ENABLED = settings.SPONSR_ENABLED
 API_ID = settings.TELEGRAM_SERVER_API_ID
 API_HASH = settings.TELEGRAM_SERVER_API_HASH
 

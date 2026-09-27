@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 
 from loguru import logger
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # === ENV FILE DISCOVERY ===
@@ -77,6 +78,36 @@ class SharedSettings(BaseSettings):
     BOOSTY_RESULT_TOPIC: str = "publisher.boosty.result"
     BOOSTY_RETRY_ATTEMPTS: int = 3
     BOOSTY_RETRY_BACKOFF: float = 10.0
+
+    # VK Donut: официальный VK API, пост на стене сообщества только для донов
+    VK_ACCESS_TOKEN: str | None = None  # user-токен админа сообщества (scope wall,docs,offline)
+    VK_GROUP_ID: int | None = None  # id сообщества без минуса
+    VK_API_VERSION: str = "5.199"
+    VK_DONUT_PAID_DURATION: int = -1  # -1 — пост навсегда только для донов, иначе дни до открытия
+    VK_MEDIA: str = "video"  # как прикрепить mp3: video (mp4 с обложкой, плеер) | doc (файл) | none
+    VK_COVER_PATH: str = "/app/static/pscover.jpg"  # кадр для mp4 в режиме video
+    VK_UPLOAD_TOPIC: str = "publisher.vk.upload"
+    VK_RESULT_TOPIC: str = "publisher.vk.result"
+    VK_RETRY_ATTEMPTS: int = 3
+    VK_RETRY_BACKOFF: float = 10.0
+
+    # Patreon: публичный API v2 постов не создаёт, работаем как веб-редактор
+    PATREON_SESSION_FILE: str = "/app/data/patreon_session.json"  # куки session_id + User-Agent
+    PATREON_TIER_IDS: list[str] = Field(
+        default_factory=list
+    )  # id уровней, которым доступен пост; пусто — всем платным патронам
+    PATREON_UPLOAD_TOPIC: str = "publisher.patreon.upload"
+    PATREON_RESULT_TOPIC: str = "publisher.patreon.result"
+    PATREON_RETRY_ATTEMPTS: int = 3
+    PATREON_RETRY_BACKOFF: float = 10.0
+
+    # Sponsr: API нет, работаем как веб-редактор по сессионной куке
+    SPONSR_SESSION_FILE: str = "/app/data/sponsr_session.json"  # кука SESS + User-Agent
+    SPONSR_PROJECT: str | None = None  # slug проекта (sponsr.ru/<slug>)
+    SPONSR_UPLOAD_TOPIC: str = "publisher.sponsr.upload"
+    SPONSR_RESULT_TOPIC: str = "publisher.sponsr.result"
+    SPONSR_RETRY_ATTEMPTS: int = 3
+    SPONSR_RETRY_BACKOFF: float = 10.0
 
     # Проверка опубликованного поста (WordPress/Boosty): CDN и кеши отдают
     # пост не сразу, поэтому несколько попыток с паузой.

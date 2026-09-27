@@ -294,6 +294,81 @@ services:
       - ./secrets/boosty:/app/data
       - files:/app/files
 
+  publisher_vk:
+    logging: *default-logging
+    container_name: podboxbot_publisher_vk
+    build:
+      context: .
+      dockerfile: ./app/publishers/VK/Dockerfile
+      secrets:
+        - sdk_deploy_key
+    restart: always
+    # Площадка выключена, пока нет доступа: сервис поднимается профилем paywalled.
+    profiles: ["paywalled"]
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+      schema-registry:
+        condition: service_healthy
+      pushgateway:
+        condition: service_started
+    networks:
+      - podboxbot_network
+    volumes:
+      - .env:/app/.env
+      - ./secrets/vk:/app/data
+      - files:/app/files
+
+  publisher_patreon:
+    logging: *default-logging
+    container_name: podboxbot_publisher_patreon
+    build:
+      context: .
+      dockerfile: ./app/publishers/Patreon/Dockerfile
+      secrets:
+        - sdk_deploy_key
+    restart: always
+    # Площадка выключена, пока нет доступа: сервис поднимается профилем paywalled.
+    profiles: ["paywalled"]
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+      schema-registry:
+        condition: service_healthy
+      pushgateway:
+        condition: service_started
+    networks:
+      - podboxbot_network
+    volumes:
+      - .env:/app/.env
+      - ./secrets/patreon:/app/data
+      - files:/app/files
+
+  publisher_sponsr:
+    logging: *default-logging
+    container_name: podboxbot_publisher_sponsr
+    build:
+      context: .
+      dockerfile: ./app/publishers/Sponsr/Dockerfile
+      secrets:
+        - sdk_deploy_key
+    restart: always
+    # Площадка выключена, пока нет доступа: сервис поднимается профилем paywalled.
+    profiles: ["paywalled"]
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+      schema-registry:
+        condition: service_healthy
+      pushgateway:
+        condition: service_started
+    networks:
+      - podboxbot_network
+    volumes:
+      - .env:/app/.env
+      - ./secrets/sponsr:/app/data
+      - files:/app/files
+
   # METRICS AND MONITORING
 
   pushgateway:
