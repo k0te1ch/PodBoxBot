@@ -12,8 +12,9 @@ from the default `pytest` run** (`addopts = -m 'not e2e'` in
   - `test_full_pipeline_ftp` — start → choose type → upload MP3 → template → click **FTP menu → FTP upload**.
   - `test_full_pipeline_wordpress` — same flow ending in **WP menu → WP upload**.
 
-The MP3 upload step uses Telethon directly because tgtest's YAML step
-actions don't include file upload as of this writing.
+Everything goes through tgtest (0.2+): the MP3 upload uses `chat.send_file`,
+menu edits are checked with `expect_edit` / `wait_until`, and the account
+language comes from `E2E_LANG` via `TG_LANG_CODE`.
 
 ## One-time setup
 
