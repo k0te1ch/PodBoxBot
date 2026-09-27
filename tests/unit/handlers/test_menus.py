@@ -123,18 +123,24 @@ def _ctx(**data) -> MagicMock:
 
 @pytest.mark.asyncio
 async def test_forward_sends_pins_and_restores_the_menu():
-    bot = MagicMock(send_audio=AsyncMock(return_value=MagicMock(message_id=5)))
+    sent = MagicMock(message_id=5, audio=MagicMock())
+    bot = MagicMock(
+        send_audio=AsyncMock(return_value=sent),
+        pin_chat_message=AsyncMock(),
+        get_chat=AsyncMock(return_value=MagicMock(pinned_message=MagicMock(message_id=5))),
+    )
     ctx = _ctx(bot=bot)
+    ctx.message.answer = AsyncMock()
     with (
         patch.object(audio_handler, "load_template_info", new=AsyncMock(return_value={"info": {"number": "42"}})),
         patch.object(audio_handler, "generate_podcast_text", return_value="text"),
-        patch.object(audio_handler, "pin_message", new=AsyncMock()) as pin,
         patch.object(audio_handler, "FORWARD_CHAT_USERNAME", "@chat"),
+        patch.object(audio_handler, "Message", MagicMock),
     ):
         await audio_handler.forward_to_chat(ctx)
 
-    bot.send_audio.assert_awaited_once_with(chat_id="@chat", audio="audio", caption="text")
-    pin.assert_awaited_once()
+    bot.send_audio.assert_awaited_once_with(chat_id="@chat", audio="audio", caption="text", parse_mode="HTML")
+    bot.pin_chat_message.assert_awaited_once()
     ctx.answer.assert_awaited_once_with(t("forwarded"))
     ctx.show.assert_awaited_once_with(menus.AUDIO_MAIN_MENU)
 

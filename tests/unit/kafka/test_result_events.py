@@ -74,5 +74,5 @@ async def test_retry_message_survives_missing_metadata():
 async def test_failure_message_names_the_stage_when_known(metadata, has_stage):
     bot = MagicMock(edit_message_text=AsyncMock())
     await TelegramUpdater(bot).update_upload_result({**EVENT, "metadata": metadata}, success=False, error="boom")
-    assert ("на шаге `verify`" in _text(bot)) is has_stage
+    assert ("на шаге <code>verify</code>" in _text(bot)) is has_stage
     assert "boom" in _text(bot)

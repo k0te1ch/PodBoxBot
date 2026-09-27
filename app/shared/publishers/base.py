@@ -185,6 +185,19 @@ class BasePublisher(ABC):
         failure = self.build_failure_event(event, error)
         return failure.model_copy(update={"status": "retrying", "metadata": metadata})
 
+    def build_stage_event(self, event, stage: str):
+        """Progress-event «начат шаг ``stage``» для статус-сообщения бота."""
+        return event.model_copy(
+            update={"event_type": "progress", "status": "pending", "error": None, "metadata": {"stage": stage}}
+        )
+
+    async def report_stage(self, event, stage: str) -> None:
+        """Сообщает боту, что начался шаг публикации; сбой отправки не мешает публикации."""
+        try:
+            await self.producer.send(self.result_topic, self.build_stage_event(event, stage).model_dump())
+        except Exception as e:
+            logger.error(f"Failed to emit stage {stage} for {self.name}/{self.event_key(event)}: {e!r}")
+
     async def _report_retry(self, event, stage: str, attempt: int, attempts: int, error: BaseException) -> None:
         key = str(self.event_key(event))
         self.metrics.retry({"target": key, "stage": stage})
@@ -204,7 +217,8 @@ class BasePublisher(ABC):
         attempts: int | None = None,
         backoff: float | None = None,
     ) -> T:
-        """Выполняет ``func`` с повторами; каждая неудачная попытка, кроме
+        """Выполняет ``func`` с повторами. Перед первой попыткой уходит
+        progress-event с ``metadata.stage``; каждая неудачная попытка, кроме
         последней, уходит в result_topic событием ``retrying``.
 
         После последней неудачи поднимает :class:`StepFailedError` — база
@@ -212,6 +226,7 @@ class BasePublisher(ABC):
         """
         total = attempts or self.retry_attempts
         attempt = 0
+        await self.report_stage(event, stage)
 
         async def _once() -> T:
             nonlocal attempt
