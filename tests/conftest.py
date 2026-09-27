@@ -41,11 +41,9 @@ _ENV_DEFAULTS = {
     "FTP_SERVER": "ftp.example.com",
     "FTP_LOGIN": "ftp-user",
     "FTP_PASSWORD": "ftp-pass",
-    # List/dir settings the bot reads to parametrize tests and load keyboards.
+    # List/dir settings the bot reads to parametrize tests.
     # Pinned here so the suite behaves identically with or without a local .env.
     "LANGUAGES": '["ru", "en"]',
-    "KEYBOARDS": '["podcast_handler", "admin"]',
-    "KEYBOARDS_DIR": "keyboards",
     "HANDLERS_DIR": "handlers",
 }
 for _key, _value in _ENV_DEFAULTS.items():

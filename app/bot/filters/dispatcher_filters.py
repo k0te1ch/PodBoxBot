@@ -1,9 +1,7 @@
 from aiogram.enums import ChatType
-from aiogram.types import Message
 
-from config import ADMINS, LANGUAGES
+from config import ADMINS
 from filters.chat_type import ChatTypeFilter
-from services import context
 
 
 async def IsGroup(m) -> bool:
@@ -39,20 +37,3 @@ def IsAdmin(m) -> bool:
     :return: bool
     """
     return m.from_user.username in ADMINS
-
-
-def ContextButton(context_key: str | list, classes: list = LANGUAGES):
-    keys = [context_key] if isinstance(context_key, str) else context_key
-
-    def inner(m) -> bool | None:
-        if not (isinstance(m, Message) and m.text):
-            return None
-        for cls in classes:
-            for key in keys:
-                attr = getattr(context[cls], key)
-                values = attr if isinstance(attr, list) else [attr]
-                if m.text in values:
-                    return True
-        return None
-
-    return inner

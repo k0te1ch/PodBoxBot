@@ -27,10 +27,10 @@ confluent-kafka = {extras = ["avro"], version = "^2.12.0"}
 pydantic = "^2.12.3"
 pydantic-settings = "^2.9.1"
 pytz = "^2026.1.post1"
-# Multi-step dialog engine. Pulled from GitHub until it lands on PyPI,
-# then this switches to a plain version constraint. Pinned to the locked
-# commit so a lock refresh cannot silently pull the incompatible 0.2.x API.
-dialog-engine = { git = "https://github.com/k0te1ch/DialogEngine.git", rev = "be5bf7c9fbd252156a220dc3bfd0e6e8e4b9c521" }
+# Multi-step dialog engine with its aiogram layer (DialogRunner,
+# FSMDialogStorage). Pulled from GitHub until it lands on PyPI; pinned to a
+# release tag so a lock refresh cannot pull an incompatible API.
+dialog-engine = { git = "https://github.com/k0te1ch/DialogEngine.git", tag = "v0.3.0", extras = ["aiogram"] }
 # Shared bot SDK (private repo): Docker builds pass a read token as a
 # BuildKit secret, see app/bot/Dockerfile.
 sagenza-tgbot-sdk = { git = "https://github.com/k0te1ch/sagenza-tgbot-sdk.git", tag = "v0.1.0", extras = ["aiogram"] }
@@ -103,7 +103,7 @@ ignore = [
 [tool.ruff.lint.isort]
 known-first-party = [
     "config", "context", "handlers", "filters", "forms",
-    "utils", "keyboards", "middlewares", "services", "shared",
+    "utils", "middlewares", "services", "shared",
 ]
 
 [tool.ruff.format]

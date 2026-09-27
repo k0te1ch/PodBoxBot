@@ -1,43 +1,29 @@
-import os
+"""Кнопка «Загрузить подкаст на FTP» меню аудио (см. :mod:`handlers.menus`)."""
 
-from aiogram import F, Router
-from aiogram.types import CallbackQuery
 from loguru import logger
 from pydantic import ValidationError
+from sagenza_tgbot_sdk.menus import MenuContext
 
 from config import FILES_PATH
-from filters.dispatcher_filters import IsAdmin, IsPrivate
-from services import keyboards
 from shared.kafka.models.upload_event import UploadEvent
+from utils.menu_context import username as username_of
 from utils.publishing import publish_request
 from utils.template_store import load as load_template_info
-
-router = Router(name=os.path.splitext(os.path.basename(__file__))[0])
-router.message.filter(IsPrivate, IsAdmin)
-
-
-@router.callback_query(F.data == "FTP_menu")
-async def FTP_menu(callback: CallbackQuery, language: str, username: str):
-    """Обработчик меню FTP"""
-    logger.debug(f"[{username}]: Opened FTP_menu")
-
-    await callback.message.edit_reply_markup(reply_markup=keyboards["podcast_handler"][language].FTP_menu)
-    await callback.answer()
-
 
 UPLOAD_TOPIC = "publisher.ftp.upload"
 
 
-@router.callback_query(F.data == "FTP_upload")
-async def upload_FTP(callback: CallbackQuery, username: str):
+async def upload_FTP(ctx: MenuContext):
     """Обработчик загрузки файла на FTP через Kafka"""
+    message = ctx.message
+    username = username_of(ctx)
     logger.debug(f"[{username}]: Начало загрузки на FTP")
 
-    if not callback.message.audio:
-        await callback.answer("Ошибка: нет файла для загрузки", show_alert=True)
+    if not message.audio:
+        await ctx.answer("Ошибка: нет файла для загрузки", alert=True)
         return
 
-    file_name = callback.message.audio.file_name
+    file_name = message.audio.file_name
     file_path = f"{FILES_PATH}/{file_name}"
 
     # Подтягиваем type_episode из sidecar — для будущих платных publisher'ов
@@ -46,7 +32,7 @@ async def upload_FTP(callback: CallbackQuery, username: str):
     stored = await load_template_info(file_name)
     type_episode = stored.get("type_episode") if stored else None
 
-    msg = await callback.message.answer("Отправка аудио на FTP")
+    msg = await message.answer("Отправка аудио на FTP")
 
     try:
         event = UploadEvent(
@@ -66,6 +52,6 @@ async def upload_FTP(callback: CallbackQuery, username: str):
         )
     except ValidationError as e:
         logger.error(f"UploadEvent validation failed: {e.json()}")
-        return await callback.answer("Ошибка валидации данных", show_alert=True)
+        return await ctx.answer("Ошибка валидации данных", alert=True)
 
-    await publish_request(callback, UPLOAD_TOPIC, "upload_event.avsc", event)
+    await publish_request(ctx, UPLOAD_TOPIC, "upload_event.avsc", event)

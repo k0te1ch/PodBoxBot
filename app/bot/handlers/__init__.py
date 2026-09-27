@@ -1,20 +1,15 @@
 from aiogram.types import BotCommand
 
-from .admin_handler import router as admin_handler_router
-from .audio_handler import router as audio_handler_router
-from .boosty_handler import router as boosty_handler_router
 from .bot_handler import router as bot_handler_router
-from .ftp_handler import router as ftp_handler_router
+from .menus import menus as bot_menus
+from .menus import router as menus_router
 from .podcast_handler import router as podcast_handler_router
-from .wordpress_handler import router as wordpress_handler_router
 
+# Кнопки меню (админка, FTP/сайт/Boosty, пересылка) роутит модуль menus SDK —
+# он ставится в main._setup_sdk, здесь только команды и диалог загрузки.
 ROUTERS = [
-    admin_handler_router,
+    menus_router,
     podcast_handler_router,
-    audio_handler_router,
-    ftp_handler_router,
-    wordpress_handler_router,
-    boosty_handler_router,
     bot_handler_router,
 ]
 

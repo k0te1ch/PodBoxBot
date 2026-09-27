@@ -14,21 +14,30 @@ from aiohttp.http import SERVER_SOFTWARE
 from loguru import logger
 from sagenza_tgbot_sdk import SdkSettings, setup_sdk
 from sagenza_tgbot_sdk.health import HealthModule
+from sagenza_tgbot_sdk.host_watch import HostWatchModule, HostWatchSettings
 from sagenza_tgbot_sdk.metrics import MetricsModule, MetricsSettings
 from sagenza_tgbot_sdk.notify import NotifyModule
 from sagenza_tgbot_sdk.status import StatusModule
 
-from handlers import ROUTERS
+from handlers import ROUTERS, bot_menus
 from middlewares.base.user_context_middleware import UserContextMiddleware
 from services import init_services, redis
 from services.none_module import _NoneModule
-from utils.disk_watch import watch_disk
 from utils.error_reporting import register_error_handler
 from utils.release_notes import get_version, send_release_note
 
 MAIN_MODULE_NAME = os.path.basename(__file__)[:-3]
 
-from config import ADMINS_ID, API_TOKEN, DEBUG, KAFKA_SERVER, PARSE_MODE, SCHEMA_REGISTRY_URL
+from config import (
+    ADMINS_ID,
+    API_TOKEN,
+    DEBUG,
+    DISK_ALERT_PERCENT,
+    DISK_CHECK_INTERVAL,
+    KAFKA_SERVER,
+    PARSE_MODE,
+    SCHEMA_REGISTRY_URL,
+)
 from shared.kafka.consumer import KafkaConsumer
 
 logger.debug("Loading settings from config")
@@ -105,8 +114,6 @@ async def on_startup():
         except Exception as e:
             logger.warning(f"send_release_note failed (continuing): {e!r}")
 
-    _disk_task = asyncio.create_task(watch_disk())  # noqa: RUF006
-
     from services import kafka_router
     from services.kafka.handlers import upload_event  # noqa: F401 — регистрирует хендлеры
 
@@ -158,9 +165,17 @@ def _add_middlewares_to_observers(observers: list[TelegramEventObserver], middle
 
 def _setup_sdk(dp: Dispatcher) -> None:
     # Бот держит свой loguru и обработчик ошибок, поэтому из SDK берутся только
-    # метрики, /healthz и /metrics (порт 8080), /status и notify.
+    # метрики, /healthz и /metrics (порт 8080), /status, notify, меню и сторож
+    # диска (предупреждение админам в личку).
     settings = SdkSettings(bot_token=API_TOKEN, admin_ids=frozenset(ADMINS_ID))
-    modules = [MetricsModule(MetricsSettings(bot_name="podboxbot")), HealthModule(), StatusModule()]
+    host_watch = HostWatchSettings(threshold_percent=DISK_ALERT_PERCENT, interval_seconds=DISK_CHECK_INTERVAL)
+    modules = [
+        MetricsModule(MetricsSettings(bot_name="podboxbot")),
+        HealthModule(),
+        StatusModule(),
+        HostWatchModule(host_watch),
+        bot_menus,
+    ]
     # notify без получателя падает на старте: без ADMINS_ID его просто не ставим.
     if ADMINS_ID:
         modules.append(NotifyModule())

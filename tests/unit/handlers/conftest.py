@@ -17,21 +17,6 @@ from middlewares.base.general_middleware import GeneralMiddleware
 _EXCLUDE_OBSERVERS = ["update"]
 
 
-@pytest.fixture(autouse=True, scope="session")
-def _init_keyboards():
-    """Populate the keyboards registry.
-
-    At runtime ``init_services(bot)`` loads the keyboards; the unit tests never
-    call it, so handlers that read ``keyboards["..."]`` would raise. The
-    keyboards themselves don't need a bot, so load them directly here.
-    """
-    from services import keyboards
-    from services.keyboards import _get_keyboards_obj
-
-    keyboards._load(_get_keyboards_obj())
-    yield
-
-
 @pytest.fixture
 def handler_factory() -> Callable[..., MessageHandler]:
     """Фикстура для создания обработчика с заданным состоянием и типом обработчика"""
