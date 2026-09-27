@@ -13,7 +13,7 @@ def _build(lang: str):
     for i in context[lang].bot_commands:
         _bot_commands.add(InlineKeyboardButton(text=i[0], callback_data=i[1]))
     _bot_commands.adjust(4)
-    _bot_commands.add(InlineKeyboardButton(text=context[lang].back, callback_data="back"))
+    _bot_commands.add(InlineKeyboardButton(text=context[lang].back, callback_data="admin_back"))
 
     class _Lang:
         main = _main.as_markup()
