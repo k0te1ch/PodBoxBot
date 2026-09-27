@@ -459,10 +459,14 @@ services:
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin
+      # Доставка алертов в Telegram (configs/grafana/notifications.yaml)
+      - GRAFANA_ALERT_BOT_TOKEN=${TELEGRAM_API_TOKEN}
+      - GRAFANA_ALERT_CHAT_ID=${GRAFANA_ALERT_CHAT_ID:-0}
     volumes:
       - ./configs/grafana/datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
       - ./configs/grafana/dashboards.yaml:/etc/grafana/provisioning/dashboards/dashboards.yaml
       - ./configs/grafana/alerting.yaml:/etc/grafana/provisioning/alerting/alerting.yaml
+      - ./configs/grafana/notifications.yaml:/etc/grafana/provisioning/alerting/notifications.yaml
       - ./configs/grafana/dashbords:/etc/grafana/dashboards
       - grafana_data:/var/lib/grafana
     networks:

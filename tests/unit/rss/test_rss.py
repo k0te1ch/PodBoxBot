@@ -173,6 +173,15 @@ async def test_episode_published_by_bot_is_not_offered(bot, redis):
 
 
 @pytest.mark.asyncio
+async def test_other_shows_are_ignored(bot, redis):
+    watcher = _watcher(bot, redis)
+    await watcher.process([])
+    outcast = Episode(guid="g-outcast", title="Outcast 5", number="5", type_episode=None)
+
+    assert await watcher.process([outcast]) == []
+
+
+@pytest.mark.asyncio
 async def test_poll_notifies_every_admin(bot, redis):
     watcher = _watcher(bot, redis)
     await watcher.process([])
@@ -181,8 +190,9 @@ async def test_poll_notifies_every_admin(bot, redis):
     with patch.object(watcher, "fetch", AsyncMock(return_value=FEED)):
         fresh = await watcher.poll_once()
 
-    assert [e.guid for e in fresh] == [e.guid for e in parse_feed(FEED)]
-    assert bot.send_message.await_count == 4
+    # «Aftershow 42» без mp3 не опознаётся как наш выпуск и пропускается.
+    assert [e.guid for e in fresh] == [feed_item.guid]
+    assert bot.send_message.await_count == 2
     assert await rss.load_episode(redis, feed_item.key) == feed_item
     assert "43" in bot.send_message.await_args_list[0].args[1]
 
