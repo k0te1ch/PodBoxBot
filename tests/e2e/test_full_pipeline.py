@@ -89,10 +89,10 @@ async def test_full_pipeline_ftp(tester, bot_username, sample_mp3, episode_templ
         await _open_submenu(tester, chat, phrase("audio_ftp", full=True), phrase("ftp_upload", full=True))
 
         await chat.click(phrase("ftp_upload", full=True))
-        # popup answer comes back via callback alert; bot also sends "Отправка аудио на FTP"
-        await chat.expect(icontains="отправка аудио на ftp")
-        # The publisher's result comes back through Kafka and edits that message.
-        await _wait_for_text(tester, chat.last, "успешно загружен", timeout=120)
+        # Статус-сообщение правится прогрессом публишера, ловим любой текст
+        # и ждём итога, который приходит через Kafka.
+        status = await chat.expect()
+        await _wait_for_text(tester, status, "успешно загружен", timeout=120)
 
 
 @pytest.mark.e2e
@@ -115,4 +115,8 @@ async def test_full_pipeline_wordpress(tester, bot_username, sample_mp3, episode
         await _open_submenu(tester, chat, phrase("audio_site", full=True), phrase("wp_upload", full=True))
 
         await chat.click(phrase("wp_upload", full=True))
-        await chat.expect(icontains="отправка поста на сайт")
+        # Статус сразу правится шагами публишера, поэтому ловим любой текст,
+        # а затем итог: в e2e-стенде WordPress направлен в никуда, после всех
+        # повторов бот обязан сообщить об ошибке с шагом, а не молчать.
+        status = await chat.expect()
+        await _wait_for_text(tester, status, "Ошибка публикации", timeout=240)
