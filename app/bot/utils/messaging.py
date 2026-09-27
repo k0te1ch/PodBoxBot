@@ -1,4 +1,4 @@
-"""Отправка сообщений в Telegram: рассылка, нарезка под лимит, закреп.
+"""Отправка сообщений в Telegram: рассылка и нарезка под лимит.
 
 Выделено из ``bot_methods``: тот перевалил за 500 строк и держал три
 несвязанные темы сразу.
@@ -6,10 +6,8 @@
 
 import asyncio
 
-from aiogram import Bot, exceptions
+from aiogram import exceptions
 from aiogram.enums import ParseMode
-from aiogram.exceptions import TelegramBadRequest
-from aiogram.types import Message
 from loguru import logger
 
 
@@ -209,28 +207,3 @@ def split_into_messages(header: str, separator: str, items: list[str], max_lengt
         messages.append(current_message.strip())
 
     return messages
-
-
-@logger.catch
-async def pin_message(
-    bot: Bot,
-    username: str,
-    callback_message: Message,
-    chat_id: int | str,
-    message_id: int,
-    disable_notification: bool = False,
-) -> None:
-    try:
-        await bot.pin_chat_message(
-            chat_id=chat_id,
-            message_id=message_id,
-            disable_notification=disable_notification,
-        )
-        logger.info("[{username}]: The message (id={message_id}) in chat {chat_id} is pinned")
-    except TelegramBadRequest as e:
-        if e.message != "Bad Request: not enough rights to manage pinned messages in the chat":
-            raise e
-        logger.warning(f"[{username}]: Недостаточно прав для закрепления сообщения в чате")
-        await callback_message.answer(
-            "Ошибка при закреплении: для закрепления сообщения в чате не достаточно прав бота - повысьте права бота в чате"
-        )
