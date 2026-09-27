@@ -58,6 +58,10 @@ class Settings(BaseSettings):
     # Тихий ли закреп анонса в чате форварда: True — без уведомления подписчикам.
     FORWARD_PIN_SILENT: bool = False
 
+    # Платные площадки для послешоу. Кнопка площадки появляется в меню, только
+    # когда её publisher настроен и есть доступ к аккаунту.
+    BOOSTY_ENABLED: bool = False
+
     # DEBUG
     DEBUG: bool = False
 
@@ -171,6 +175,7 @@ API_TOKEN = settings.TELEGRAM_API_TOKEN
 SKIP_UPDATES = settings.SKIP_UPDATES
 FORWARD_CHAT_USERNAME = settings.FORWARD_CHAT_USERNAME
 FORWARD_PIN_SILENT = settings.FORWARD_PIN_SILENT
+BOOSTY_ENABLED = settings.BOOSTY_ENABLED
 API_ID = settings.TELEGRAM_SERVER_API_ID
 API_HASH = settings.TELEGRAM_SERVER_API_HASH
 

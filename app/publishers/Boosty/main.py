@@ -8,6 +8,9 @@
 
 Boosty — только для aftershow: бот шлёт сюда событие лишь из postshow-меню,
 уровень/цена фиксированы конфигом (BOOSTY_SUBSCRIPTION_LEVEL_ID/BOOSTY_PRICE).
+
+Протухшая авторизация — BoostyAuthError (PermanentError): шаг не повторяется,
+админ сразу получает текст с инструкцией. Живой смоук — SMOKE.md.
 """
 
 from __future__ import annotations
@@ -93,9 +96,16 @@ class BoostyPublisher(BasePublisher):
 
         metadata: dict[str, str] = {}
         if post_id and BOOSTY_BLOG:
-            url = f"https://boosty.to/{BOOSTY_BLOG}/posts/{post_id}"
-            await self.verify(event, url)
-            metadata["url"] = url
+            # Страница поста — SPA и отвечает 200 на любой id, поэтому
+            # проверяем через API: пост должен находиться по id.
+            await self.call_with_retry(
+                event,
+                "verify",
+                lambda: self._check_post(post_id),
+                attempts=self.verify_attempts,
+                backoff=self.verify_backoff,
+            )
+            metadata["url"] = f"https://boosty.to/{BOOSTY_BLOG}/posts/{post_id}"
 
         result = event.model_copy(
             update={
@@ -107,6 +117,11 @@ class BoostyPublisher(BasePublisher):
         )
         await self.producer.send(self.result_topic, result.model_dump())
         logger.success(f"Boosty publish completed for episode {event.number} (post_id={post_id or '?'})")
+
+    async def _check_post(self, post_id: str) -> None:
+        post = await self.client.get_post(post_id)
+        if str(post.get("id") or "") != post_id or post.get("isDeleted"):
+            raise RuntimeError(f"Boosty post {post_id} not found after publish: {post!r}")
 
     def event_key(self, event: BoostyEvent) -> str:  # type: ignore[override]
         return event.number

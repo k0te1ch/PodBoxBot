@@ -26,6 +26,18 @@ def _admins():
         yield
 
 
+PLATFORM_FLAGS = ("BOOSTY_ENABLED",)
+
+
+@pytest.fixture(autouse=True)
+def _platforms_enabled(monkeypatch):
+    """Все платные площадки включены; тесты выключения снимают флаг сами."""
+    import config
+
+    for flag in PLATFORM_FLAGS:
+        monkeypatch.setattr(config, flag, True)
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("locale", ["ru", "en"])
 async def test_every_menu_opens_and_every_button_is_wired(locale, fake_redis):
@@ -66,6 +78,20 @@ async def test_audio_menu_depends_on_episode_type(type_episode, labels):
     markup = await menus.audio_menu_markup(_admin_event(), type_episode)
 
     assert {b.text for row in markup.inline_keyboard for b in row} == {t(key) for key in labels}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("flag", "label"), [("BOOSTY_ENABLED", "audio_boosty")])
+async def test_disabled_platform_is_hidden(monkeypatch, flag, label):
+    import config
+
+    monkeypatch.setattr(config, flag, False)
+
+    markup = await menus.audio_menu_markup(_admin_event(), "aftershow")
+
+    labels = {b.text for row in markup.inline_keyboard for b in row}
+    assert t(label) not in labels
+    assert t("audio_ftp") in labels
 
 
 def test_dangerous_buttons_ask_for_confirmation():
