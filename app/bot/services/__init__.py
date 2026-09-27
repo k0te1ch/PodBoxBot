@@ -1,8 +1,5 @@
 from aiogram import Bot
 from loguru import logger
-from telethon import TelegramClient
-
-from config import API_HASH, API_ID
 
 from .context import I18nContext, _get_context_obj
 from .kafka.router import router as kafka_router
@@ -52,20 +49,14 @@ class _KeyboardsRegistry:
 
 telegram_updater: TelegramUpdater | None = None
 keyboards = _KeyboardsRegistry()
-telethon_client: TelegramClient | None = None
 # kafka_router is imported from .kafka.router as a singleton
-
-
-def _get_telethon_client_obj() -> TelegramClient:
-    return TelegramClient("anon", API_ID, API_HASH, system_version="4.16.30-vxCUSTOM")
 
 
 def init_services(bot: Bot):
     """Централизованная инициализация сервисов"""
-    global telegram_updater, telethon_client
+    global telegram_updater
 
     telegram_updater = TelegramUpdater(bot)
     keyboards._load(_get_keyboards_obj())
-    telethon_client = _get_telethon_client_obj()
 
     logger.debug("Services initialized")
