@@ -361,6 +361,7 @@ services:
     volumes:
       - ./configs/grafana/datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
       - ./configs/grafana/dashboards.yaml:/etc/grafana/provisioning/dashboards/dashboards.yaml
+      - ./configs/grafana/alerting.yaml:/etc/grafana/provisioning/alerting/alerting.yaml
       - ./configs/grafana/dashbords:/etc/grafana/dashboards
       - grafana_data:/var/lib/grafana
     networks:
