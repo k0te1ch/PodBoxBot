@@ -52,7 +52,7 @@ class TestHandleUpload:
         client.upload_image.assert_awaited_once_with("/app/static/boosty_pscover.png")
         client.publish.assert_awaited_once()
 
-        mock_producer.send.assert_called_once()
+        assert [c.args[1]["event_type"] for c in mock_producer.send.call_args_list].count("result") == 1
         result = mock_producer.send.call_args[0][1]
         assert result["event_type"] == "result"
         assert result["status"] == "success"
@@ -115,7 +115,7 @@ class TestHandleUpload:
 
         await main.handle_upload(sample_boosty_event_dict, mock_producer)
 
-        sent = [c.args[1] for c in mock_producer.send.call_args_list]
+        sent = [c.args[1] for c in mock_producer.send.call_args_list if c.args[1]["event_type"] == "result"]
         assert [e["status"] for e in sent] == ["retrying", "success"]
         assert sent[0]["metadata"]["stage"] == "upload_audio"
         assert sent[0]["metadata"]["attempt"] == "1"

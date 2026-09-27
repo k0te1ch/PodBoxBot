@@ -27,6 +27,10 @@ FTP_POSTSHOW_DIR = config.FTP_POSTSHOW_DIR
 # зависела от того, какой алиас доедет до publisher'а.
 _POSTSHOW_ALIASES = frozenset({"aftershow", "postshow"})
 
+# Как часто слать progress-события: чаще Telegram начнёт отвечать flood-лимитом
+# на правки статус-сообщения.
+PROGRESS_INTERVAL = 2.0
+
 
 def _remote_path(file_name: str, type_episode: str | None) -> str:
     """Куда класть файл на SFTP относительно домашнего каталога.
@@ -50,7 +54,7 @@ async def upload_to_ftp(
     message_id: str | None = None,
     type_episode: str | None = None,
 ) -> None:
-    """SFTP-загрузка с эмиссией progress-событий каждые ~5 секунд."""
+    """SFTP-загрузка с progress-событиями не чаще раза в ``PROGRESS_INTERVAL`` секунд."""
     file_size = os.path.getsize(path)
     bytes_uploaded = 0
     chunk_size = 64 * 1024  # 64KB
@@ -88,7 +92,7 @@ async def upload_to_ftp(
                 speed = bytes_uploaded / elapsed if elapsed > 0 else 0.0
                 progress = bytes_uploaded / file_size
 
-                if time.time() - last_sent >= 5:
+                if time.time() - last_sent >= PROGRESS_INTERVAL and bytes_uploaded < file_size:
                     last_sent = time.time()
                     progress_event = UploadEvent(
                         event_type="progress",
@@ -104,9 +108,9 @@ async def upload_to_ftp(
                         message_id=message_id,
                         type_episode=type_episode,
                     )
-                    _task = asyncio.create_task(  # noqa: RUF006
-                        producer.send(result_topic, progress_event.model_dump())
-                    )
+                    # Ждём отправку, а не create_task: иначе запоздавший прогресс
+                    # мог уйти после success и затереть итог в статус-сообщении.
+                    await producer.send(result_topic, progress_event.model_dump())
                     logger.debug(f"Sent {bytes_uploaded}/{file_size}")
 
     duration = time.time() - start_time

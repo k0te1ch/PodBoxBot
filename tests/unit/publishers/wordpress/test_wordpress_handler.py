@@ -28,7 +28,7 @@ class TestHandleUpload:
 
             await handle_upload(sample_wp_event_dict, mock_producer)
 
-            mock_producer.send.assert_called_once()
+            assert [c.args[1]["event_type"] for c in mock_producer.send.call_args_list].count("result") == 1
             call_args = mock_producer.send.call_args
             result = call_args[0][1]
             assert result["event_type"] == "result"
@@ -75,7 +75,7 @@ class TestHandleUpload:
             await handle_upload(sample_wp_event_dict, mock_producer)
 
             attempts = _publisher.retry_attempts
-            sent = [c.args[1] for c in mock_producer.send.call_args_list]
+            sent = [c.args[1] for c in mock_producer.send.call_args_list if c.args[1]["event_type"] == "result"]
             assert [e["status"] for e in sent] == ["retrying"] * (attempts - 1) + ["failure"]
             assert sent[0]["metadata"]["stage"] == "publish"
             assert sent[-1]["metadata"]["attempts"] == str(attempts)

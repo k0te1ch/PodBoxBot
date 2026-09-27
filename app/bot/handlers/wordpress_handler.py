@@ -59,4 +59,4 @@ async def upload_WP(ctx: MenuContext) -> None:
         logger.error(f"Ошибка валидации WordPressEvent: {e.json()}")
         return await ctx.answer("Ошибка валидации данных", alert=True)
 
-    await publish_request(ctx, WP_UPLOAD_TOPIC, "wordpress_event.avsc", event)
+    await publish_request(ctx, WP_UPLOAD_TOPIC, "wordpress_event.avsc", event, status=msg, title="Сайт")

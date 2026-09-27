@@ -1,6 +1,7 @@
 """Tests for the FTP publisher handler."""
 
-from unittest.mock import AsyncMock, patch
+from contextlib import asynccontextmanager
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from app.shared.kafka.models.upload_event import UploadEvent
@@ -37,7 +38,9 @@ class TestHandleUpload:
 
             attempts = _publisher.retry_attempts
             assert mock_ftp.await_count == attempts
-            sent = [call.args[1] for call in mock_producer.send.call_args_list]
+            sent = [
+                call.args[1] for call in mock_producer.send.call_args_list if call.args[1]["event_type"] == "result"
+            ]
             assert [e["status"] for e in sent] == ["retrying"] * (attempts - 1) + ["failure"]
             assert all(e["event_type"] == "result" for e in sent)
             assert sent[0]["metadata"] == {"stage": "upload", "attempt": "1", "attempts": str(attempts)}
@@ -55,7 +58,9 @@ class TestHandleUpload:
             await handle_upload(sample_upload_event_dict, mock_producer)
 
             assert mock_ftp.await_count == 2
-            retry_event = mock_producer.send.call_args_list[0].args[1]
+            retry_event = next(
+                c.args[1] for c in mock_producer.send.call_args_list if c.args[1]["event_type"] == "result"
+            )
             assert retry_event["status"] == "retrying"
             assert retry_event["progress"] is None
             assert "reset" in retry_event["error"]
@@ -121,3 +126,52 @@ class TestUploadEventModel:
         dump = event.model_dump()
         assert isinstance(dump, dict)
         assert dump["path"] == "/app/files/rz-123.mp3"
+
+
+@asynccontextmanager
+async def _cm(value):
+    yield value
+
+
+class TestStageAndProgress:
+    @pytest.mark.asyncio
+    async def test_upload_stage_is_announced_first(self, sample_upload_event_dict):
+        producer = AsyncMock()
+        with patch("app.publishers.FTP.main.upload_to_ftp", new_callable=AsyncMock):
+            from app.publishers.FTP.main import handle_upload
+
+            await handle_upload(sample_upload_event_dict, producer)
+
+        first = producer.send.call_args_list[0].args[1]
+        assert first["event_type"] == "progress"
+        assert first["status"] == "pending"
+        assert first["metadata"] == {"stage": "upload"}
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("type_episode", ["main", "aftershow"])
+    async def test_progress_then_single_success_for_both_episodes(self, tmp_path, type_episode):
+        from app.publishers.FTP import main
+
+        path = tmp_path / "0042_rz.mp3"
+        path.write_bytes(b"x" * (64 * 1024 * 3 + 10))
+        sftp = MagicMock(makedirs=AsyncMock())
+        sftp.open = lambda *_a, **_k: _cm(MagicMock(write=AsyncMock()))
+        conn = MagicMock(start_sftp_client=lambda: _cm(sftp))
+        producer = AsyncMock()
+
+        with (
+            patch.object(main.asyncssh, "connect", lambda *_a, **_k: _cm(conn)),
+            patch.object(main, "PROGRESS_INTERVAL", 0),
+        ):
+            await main.upload_to_ftp(
+                str(path), path.name, "u", producer, "topic", chat_id="1", message_id="2", type_episode=type_episode
+            )
+
+        sent = [c.args[1] for c in producer.send.call_args_list]
+        assert [e["event_type"] for e in sent].count("result") == 1
+        assert sent[-1]["status"] == "success"
+        assert sent[-1]["type_episode"] == type_episode
+        progress = [e for e in sent if e["event_type"] == "progress"]
+        assert progress
+        assert [e["bytes_uploaded"] for e in progress] == sorted(e["bytes_uploaded"] for e in progress)
+        assert all(e["bytes_uploaded"] < e["total_bytes"] for e in progress)

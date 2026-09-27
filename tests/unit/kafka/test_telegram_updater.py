@@ -1,9 +1,12 @@
 """Tests for the TelegramUpdater service."""
 
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from aiogram.exceptions import TelegramBadRequest, TelegramRetryAfter
 from app.bot.services.telegram_updater import TelegramUpdater
+
+IDS = {"chat_id": "123", "message_id": "456"}
 
 
 @pytest.fixture
@@ -141,3 +144,67 @@ class TestUpdateUploadResult:
         event = {"number": "100"}
         await updater.update_upload_result(event, success=True)
         mock_bot.edit_message_text.assert_not_called()
+
+
+def _text(bot) -> str:
+    return bot.edit_message_text.call_args.kwargs["text"]
+
+
+class TestStatusMessage:
+    @pytest.mark.asyncio
+    async def test_stage_start_is_shown(self, updater, mock_bot):
+        event = {**IDS, "number": "42", "status": "pending", "metadata": {"stage": "upload_audio"}}
+        await updater.update_upload_progress(event)
+        assert "загрузка аудио" in _text(mock_bot)
+        assert "42" in _text(mock_bot)
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(("type_episode", "kind"), [("main", "основной эпизод"), ("aftershow", "послешоу")])
+    async def test_both_episodes_get_progress_and_final_status(self, updater, mock_bot, type_episode, kind):
+        event = {**IDS, "file_name": "0042_rz_27092026.mp3", "type_episode": type_episode}
+        await updater.update_upload_progress({**event, "status": "uploading", "progress": 0.42})
+        assert "42.0%" in _text(mock_bot)
+        assert kind in _text(mock_bot)
+
+        await updater.update_upload_result({**event, "status": "success"}, success=True)
+        assert "успешно загружен" in _text(mock_bot)
+        assert kind in _text(mock_bot)
+
+    @pytest.mark.asyncio
+    async def test_late_progress_does_not_overwrite_the_result(self, updater, mock_bot):
+        event = {**IDS, "file_name": "a.mp3"}
+        await updater.update_upload_result(event, success=True)
+        await updater.update_upload_progress({**event, "status": "uploading", "progress": 0.99})
+        mock_bot.edit_message_text.assert_awaited_once()
+        assert "успешно" in _text(mock_bot)
+
+    @pytest.mark.asyncio
+    async def test_file_names_and_errors_are_escaped_html(self, updater, mock_bot):
+        event = {**IDS, "file_name": "0042_rz_<x>.mp3", "metadata": {"stage": "upload"}}
+        await updater.update_upload_result(event, success=False, error="bad `thing` & <tag>")
+        text = _text(mock_bot)
+        assert "0042_rz_&lt;x&gt;.mp3" in text
+        assert "bad `thing` &amp; &lt;tag&gt;" in text
+        assert mock_bot.edit_message_text.call_args.kwargs["parse_mode"] == "HTML"
+
+    @pytest.mark.asyncio
+    async def test_final_status_waits_out_flood_limit(self, updater, mock_bot):
+        flood = TelegramRetryAfter(method=MagicMock(), message="Too Many Requests", retry_after=1)
+        mock_bot.edit_message_text.side_effect = [flood, None]
+        with patch("asyncio.sleep", new=AsyncMock()) as sleep:
+            await updater.update_upload_result({**IDS, "file_name": "a.mp3"}, success=True)
+        sleep.assert_awaited_once_with(1)
+        assert mock_bot.edit_message_text.await_count == 2
+
+    @pytest.mark.asyncio
+    async def test_not_modified_is_quiet(self, updater, mock_bot):
+        mock_bot.edit_message_text.side_effect = TelegramBadRequest(
+            method=MagicMock(), message="Bad Request: message is not modified"
+        )
+        await updater.update_upload_progress({**IDS, "file_name": "a.mp3", "progress": 0.5})
+
+    @pytest.mark.asyncio
+    async def test_success_shows_post_url(self, updater, mock_bot):
+        event = {**IDS, "number": "42", "metadata": {"url": "https://example.com/p/1"}}
+        await updater.update_upload_result(event, success=True)
+        assert "https://example.com/p/1" in _text(mock_bot)

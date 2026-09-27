@@ -32,7 +32,8 @@ async def upload_FTP(ctx: MenuContext):
     stored = await load_template_info(file_name)
     type_episode = stored.get("type_episode") if stored else None
 
-    msg = await message.answer("Отправка аудио на FTP")
+    title = f"FTP, {file_name}"
+    msg = await message.answer(f"⏳ {title}: отправляю запрос на загрузку…")
 
     try:
         event = UploadEvent(
@@ -54,4 +55,4 @@ async def upload_FTP(ctx: MenuContext):
         logger.error(f"UploadEvent validation failed: {e.json()}")
         return await ctx.answer("Ошибка валидации данных", alert=True)
 
-    await publish_request(ctx, UPLOAD_TOPIC, "upload_event.avsc", event)
+    await publish_request(ctx, UPLOAD_TOPIC, "upload_event.avsc", event, status=msg, title=title)
