@@ -21,6 +21,7 @@ from aiogram.types import CallbackQuery, InlineKeyboardMarkup, Message, User
 from loguru import logger
 from sagenza_tgbot_sdk.menus import Button, Menu, MenuContext, Menus, Submenu
 
+import config as bot_config
 from config import LANGUAGES
 from filters.dispatcher_filters import IsAdmin, IsPrivate
 from handlers.admin_handler import restart, send_logs
@@ -85,6 +86,19 @@ def _publish_menu(menu_id: str, key: str, handler) -> Menu:
     return Menu(menu_id, title=AUDIO_TITLE, items=[Button(key, id="upload", handler=handler)])
 
 
+def _platform_visible(flag: str):
+    """``visible_if`` для кнопки платной площадки: админ и площадка включена.
+
+    Флаг читается при каждой отрисовке, а не при сборке меню, — так его
+    видно в тестах и после правки конфига без пересборки меню.
+    """
+
+    def visible(ctx: MenuContext) -> bool:
+        return is_admin(ctx) and bool(getattr(bot_config, flag, False))
+
+    return visible
+
+
 def build_menus() -> BotMenus:
     bot_menu = Menu(
         "bot",
@@ -131,7 +145,7 @@ def build_menus() -> BotMenus:
                 "audio_boosty",
                 _publish_menu("boosty", "boosty_upload", upload_Boosty),
                 id="boosty",
-                visible_if=is_admin,
+                visible_if=_platform_visible("BOOSTY_ENABLED"),
             ),
         ],
     )

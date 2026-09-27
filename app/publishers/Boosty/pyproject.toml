@@ -16,9 +16,6 @@ confluent-kafka = {extras = ["avro"], version = "^2.12.0"}
 pydantic = "^2.12.3"
 pydantic-settings = "^2.9.1"
 sagenza-tgbot-sdk = { git = "https://github.com/k0te1ch/sagenza-tgbot-sdk.git", tag = "v0.1.0" }
-# Pin строго: internal-API Boosty нестабилен, либа hobby-grade
-# (см. .planning/spikes/boosty-sponsr-feasibility.md → Stability risk).
-boosty = "0.0.35"
 
 [build-system]
 requires = ["poetry-core"]

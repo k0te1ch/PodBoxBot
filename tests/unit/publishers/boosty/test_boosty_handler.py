@@ -30,6 +30,7 @@ def patched_publisher(monkeypatch):
     client.upload_audio = AsyncMock(return_value=("aud-1", 123))
     client.upload_image = AsyncMock(return_value="img-1")
     client.publish = AsyncMock(return_value="post-1")
+    client.get_post = AsyncMock(return_value={"id": "post-1"})
     monkeypatch.setattr(main._publisher, "client", client)
     monkeypatch.setattr(main, "BOOSTY_OWNER_ID", None)  # фоллбэк на client.get_container_id
     monkeypatch.setattr(main, "BOOSTY_SUBSCRIPTION_LEVEL_ID", "407063")
@@ -121,28 +122,26 @@ class TestHandleUpload:
         assert sent[0]["metadata"]["attempt"] == "1"
 
     @pytest.mark.asyncio
-    async def test_published_post_is_verified(
-        self, sample_boosty_event_dict, mock_producer, patched_publisher, monkeypatch, verify_published_mock
+    async def test_published_post_is_verified_via_api(
+        self, sample_boosty_event_dict, mock_producer, patched_publisher, monkeypatch
     ):
-        main, _ = patched_publisher
+        main, client = patched_publisher
         monkeypatch.setattr(main, "BOOSTY_BLOG", "razgovorny")
 
         await main.handle_upload(sample_boosty_event_dict, mock_producer)
 
-        verify_published_mock.assert_awaited_once_with("https://boosty.to/razgovorny/posts/post-1")
+        client.get_post.assert_awaited_once_with("post-1")
         result = mock_producer.send.call_args.args[1]
         assert result["status"] == "success"
         assert result["metadata"] == {"url": "https://boosty.to/razgovorny/posts/post-1"}
 
     @pytest.mark.asyncio
-    async def test_unreachable_post_reports_verify_failure(
-        self, sample_boosty_event_dict, mock_producer, patched_publisher, monkeypatch, verify_published_mock
+    async def test_missing_post_reports_verify_failure(
+        self, sample_boosty_event_dict, mock_producer, patched_publisher, monkeypatch
     ):
-        from sagenza_tgbot_sdk.resilience import NotPublishedError
-
         main, client = patched_publisher
         monkeypatch.setattr(main, "BOOSTY_BLOG", "razgovorny")
-        verify_published_mock.side_effect = NotPublishedError("u", "HTTP 404")
+        client.get_post = AsyncMock(return_value={"id": "post-1", "isDeleted": True})
 
         await main.handle_upload(sample_boosty_event_dict, mock_producer)
 
@@ -150,6 +149,20 @@ class TestHandleUpload:
         result = mock_producer.send.call_args.args[1]
         assert result["status"] == "failure"
         assert result["metadata"]["stage"] == "verify"
+
+    @pytest.mark.asyncio
+    async def test_auth_error_is_not_retried(self, sample_boosty_event_dict, mock_producer, patched_publisher):
+        from app.publishers.Boosty.boosty_auth import BoostyAuthError
+
+        main, client = patched_publisher
+        client.upload_audio = AsyncMock(side_effect=BoostyAuthError("refresh_token отклонён"))
+
+        await main.handle_upload(sample_boosty_event_dict, mock_producer)
+
+        client.upload_audio.assert_awaited_once()
+        result = mock_producer.send.call_args.args[1]
+        assert result["status"] == "failure"
+        assert "boosty_auth.json" in result["error"]
 
     @pytest.mark.asyncio
     async def test_invalid_payload_skipped(self, mock_producer, patched_publisher):

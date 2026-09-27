@@ -12,6 +12,8 @@ publisher-сервисы (FTP, WordPress, Boosty) забирают и выпол
 
 Boosty — платная площадка: туда уходит только aftershow (послешоу), пост
 публикуется на платном уровне подписки (см. `BasePublisher.is_paywalled`).
+Кнопка появляется в боте при `BOOSTY_ENABLED=true`; как получить токены и
+прогнать живой смоук — `app/publishers/Boosty/SMOKE.md`.
 FTP и WordPress — для основного эпизода. Patreon заложен в `BasePublisher`
 тем же способом, но сервиса под него ещё нет.
 
