@@ -84,7 +84,7 @@ class Settings(BaseSettings):
 
     ENABLE_APSCHEDULER: bool = False
 
-    # Порог заполненности диска (%) и период проверки (сек) для utils.disk_watch
+    # Порог заполненности диска (%) и период проверки (сек) для host_watch SDK
     DISK_ALERT_PERCENT: float = 85.0
     DISK_CHECK_INTERVAL: int = 3600
 
