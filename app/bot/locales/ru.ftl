@@ -19,7 +19,7 @@ episode_aftershow = Эпизод послешоу
 admin_panel_opened = Админ панель
 admin_panel_open = Админ панель
 admin_panel_close = Админ панель закрыта
-admin_panel_main = [["Бот", "botPanel"]]
+admin_panel_main = [["Бот", "bot_panel"]]
 bot_commands = [["Выключить бота", "shutdown_bot"], ["Прислать лог-файлы", "send_logs"]]
 
 ask_template = {
