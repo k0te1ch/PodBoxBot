@@ -8,17 +8,8 @@ from sagenza_tgbot_sdk.menus import MenuContext
 
 from config import LOGS_ZIP_NAME
 from services.i18n import t
-from utils.bot_methods import get_zip_logs, restart_bot, shutdown_bot
+from utils.bot_methods import get_zip_logs, restart_bot
 from utils.menu_context import username as username_of
-
-
-async def shutdown(ctx: MenuContext):
-    """Handle the bot shutdown command"""
-    username = username_of(ctx)
-    logger.warning(f"User {username} is shutting down the bot")
-
-    await ctx.answer(t("bot_shutting_down", ctx.locale), alert=True)
-    shutdown_bot()
 
 
 async def restart(ctx: MenuContext):

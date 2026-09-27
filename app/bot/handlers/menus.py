@@ -23,7 +23,7 @@ from sagenza_tgbot_sdk.menus import Button, Menu, MenuContext, Menus, Submenu
 
 from config import LANGUAGES
 from filters.dispatcher_filters import IsAdmin, IsPrivate
-from handlers.admin_handler import restart, send_logs, shutdown
+from handlers.admin_handler import restart, send_logs
 from handlers.audio_handler import forward_to_chat
 from handlers.boosty_handler import upload_Boosty
 from handlers.collector_handler import collection_submenus
@@ -91,7 +91,6 @@ def build_menus() -> BotMenus:
         title="bot_panel",
         columns=2,
         items=[
-            Button("bot_shutdown", id="shutdown", handler=shutdown, confirm=True),
             Button("bot_restart", id="restart", handler=restart, confirm=True),
             Button("bot_logs", id="logs", handler=send_logs, row=True),
         ],

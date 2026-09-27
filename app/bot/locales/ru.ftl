@@ -73,10 +73,8 @@ forward_failed = Ошибка при пересылке, попробуйте п
 admin_panel = Админ панель
 admin_bot = Бот
 bot_panel = Управление ботом
-bot_shutdown = Выключить бота
 bot_restart = Перезапустить бота
 bot_logs = Прислать лог-файлы
-bot_shutting_down = Бот выключается
 bot_restarting = Бот перезапускается
 logs_failed = Ошибка: не удалось собрать логи
 
