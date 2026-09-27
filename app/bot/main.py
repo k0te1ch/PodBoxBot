@@ -12,6 +12,11 @@ from aiohttp import ClientSession
 from aiohttp.hdrs import USER_AGENT
 from aiohttp.http import SERVER_SOFTWARE
 from loguru import logger
+from sagenza_tgbot_sdk import SdkSettings, setup_sdk
+from sagenza_tgbot_sdk.health import HealthModule
+from sagenza_tgbot_sdk.metrics import MetricsModule, MetricsSettings
+from sagenza_tgbot_sdk.notify import NotifyModule
+from sagenza_tgbot_sdk.status import StatusModule
 
 from handlers import ROUTERS
 from middlewares.base.user_context_middleware import UserContextMiddleware
@@ -23,7 +28,7 @@ from utils.release_notes import get_version, send_release_note
 
 MAIN_MODULE_NAME = os.path.basename(__file__)[:-3]
 
-from config import API_TOKEN, DEBUG, KAFKA_SERVER, PARSE_MODE, SCHEMA_REGISTRY_URL
+from config import ADMINS_ID, API_TOKEN, DEBUG, KAFKA_SERVER, PARSE_MODE, SCHEMA_REGISTRY_URL
 from shared.kafka.consumer import KafkaConsumer
 
 logger.debug("Loading settings from config")
@@ -151,6 +156,17 @@ def _add_middlewares_to_observers(observers: list[TelegramEventObserver], middle
             observer.middleware(middleware)
 
 
+def _setup_sdk(dp: Dispatcher) -> None:
+    # Бот держит свой loguru и обработчик ошибок, поэтому из SDK берутся только
+    # метрики, /healthz и /metrics (порт 8080), /status и notify.
+    settings = SdkSettings(bot_token=API_TOKEN, admin_ids=frozenset(ADMINS_ID))
+    modules = [MetricsModule(MetricsSettings(bot_name="podboxbot")), HealthModule(), StatusModule()]
+    # notify без получателя падает на старте: без ADMINS_ID его просто не ставим.
+    if ADMINS_ID:
+        modules.append(NotifyModule())
+    setup_sdk(dp, settings, modules=modules)
+
+
 def _get_dp_obj(bot, redis):
     logger.debug("Dispatcher configurate:")
     if not isinstance(redis, _NoneModule):
@@ -162,6 +178,7 @@ def _get_dp_obj(bot, redis):
     dp = Dispatcher(storage=storage)
     _add_middlewares_to_observers([dp.message, dp.callback_query], [UserContextMiddleware()])
     register_error_handler(dp)
+    _setup_sdk(dp)
     dp.include_routers(*ROUTERS)
 
     dp.startup.register(on_startup)

@@ -1894,6 +1894,23 @@ pyyaml = ">=5.1"
 virtualenv = ">=20.10.0"
 
 [[package]]
+name = "prometheus-client"
+version = "0.26.0"
+description = "Python client for the Prometheus monitoring system."
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "prometheus_client-0.26.0-py3-none-any.whl", hash = "sha256:fa93d06737aa02bacd05794768508bb97d2fbee28cb3bca04eaae92f0ca953d6"},
+    {file = "prometheus_client-0.26.0.tar.gz", hash = "sha256:04a91bcf94e2cf74a44a1a874d651a2e853ed354b6e822f3b7487751465d5c2b"},
+]
+
+[package.extras]
+aiohttp = ["aiohttp"]
+django = ["django"]
+twisted = ["twisted"]
+
+[[package]]
 name = "propcache"
 version = "0.4.1"
 description = "Accelerated property cache"
@@ -2549,6 +2566,33 @@ files = [
 ]
 
 [[package]]
+name = "sagenza-tgbot-sdk"
+version = "0.1.0"
+description = "Shared SDK for the Sagenza family of aiogram 3 Telegram bots."
+optional = false
+python-versions = ">=3.12,<4.0"
+groups = ["main"]
+files = []
+develop = false
+
+[package.dependencies]
+aiogram = {version = ">=3.20,<4.0", optional = true}
+aiohttp = ">=3.9,<4.0"
+loguru = ">=0.7,<1.0"
+prometheus-client = {version = ">=0.21,<1.0", optional = true}
+pydantic = {version = ">=2.7,<3.0", optional = true}
+pydantic-settings = {version = ">=2.5,<3.0", optional = true}
+
+[package.extras]
+aiogram = ["aiogram (>=3.20,<4.0)", "prometheus-client (>=0.21,<1.0)", "pydantic (>=2.7,<3.0)", "pydantic-settings (>=2.5,<3.0)"]
+
+[package.source]
+type = "git"
+url = "https://github.com/k0te1ch/sagenza-tgbot-sdk.git"
+reference = "v0.1.0"
+resolved_reference = "9623b2160031da2c81820d847b39a355f9dfcc46"
+
+[[package]]
 name = "sqlalchemy"
 version = "2.0.48"
 description = "Database Abstraction Library"
@@ -2971,4 +3015,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.15"
-content-hash = "e039daab1df5d4273af3565a6aef5ded005edd6b21f69edc63e364891e32b9e9"
+content-hash = "040aee930e7f848b40d92ca550af52d41d1c9ad60deed58d821886f4afca4809"

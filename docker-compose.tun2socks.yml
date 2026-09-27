@@ -75,6 +75,8 @@ services:
       # stage’и подряд, включая `test`, где poetry install --with dev
       # тянет aiogram-tests из git и падает на poetry/dulwich-баге.
       target: final
+      secrets:
+        - sdk_deploy_key
     environment:
       TG_SERVER: "http://api:8081"
       # REDIS_URL не передаём — бот собирает его сам в config.py из
@@ -91,6 +93,14 @@ services:
         condition: service_healthy
     networks:
       - podboxbot_network
+      - monitoring
+    # /healthz и /metrics из sagenza-tgbot-sdk (HealthModule, порт 8080)
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
     volumes:
       - telegram-bot-api-data:/var/lib/telegram-bot-api
       - .env:/app/.env
@@ -448,6 +458,11 @@ networks:
     driver: bridge
   monitoring:
     driver: bridge
+
+secrets:
+  # Read-only deploy-ключ sagenza-tgbot-sdk, для сборки образа бота.
+  sdk_deploy_key:
+    file: ./secrets/sdk_deploy_key
 
 volumes:
   redisdata:

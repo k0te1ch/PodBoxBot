@@ -48,8 +48,16 @@ jobs:
         # --only main,testing mirrors the Dockerfile (main) plus what the suite
         # needs (pytest, pytest-cov). The dev group holds ruff and pre-commit,
         # which have their own pinned install in the lint job.
+        # sagenza-tgbot-sdk is private: SDK_DEPLOY_KEY is its read-only deploy key.
+        env:
+          SDK_DEPLOY_KEY: ${{ secrets.SDK_DEPLOY_KEY }}
         run: |
+          install -m 600 /dev/null ~/sdk_deploy_key
+          printf '%s\n' "$SDK_DEPLOY_KEY" > ~/sdk_deploy_key
+          export GIT_SSH_COMMAND="ssh -i $HOME/sdk_deploy_key -o StrictHostKeyChecking=accept-new"
+          git config --global url."git@github.com:k0te1ch/sagenza-tgbot-sdk".insteadOf "https://github.com/k0te1ch/sagenza-tgbot-sdk"
           poetry config virtualenvs.create false
+          poetry config system-git-client true
           poetry install --only main,testing --no-root
       - name: Run tests
         # Publisher microservice tests need each service's own deps (asyncssh,
