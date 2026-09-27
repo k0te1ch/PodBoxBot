@@ -37,6 +37,9 @@ from filters.dispatcher_filters import IsAdmin, IsPrivate
 from forms.upload_file import DIALOG_ID, MP3, TEMPLATE, TYPE_EPISODE, upload_file_runner
 from handlers.menus import audio_menu_markup
 from services.i18n import t
+from services.none_module import _NoneModule
+from services.redis import redis
+from services.rss import mark_published
 from utils.ftp_methods import get_last_post_id
 from utils.mp3_methods import audio_tag, read_duration_and_artist
 from utils.podcast_methods import generate_file_name
@@ -242,6 +245,7 @@ async def publish_episode(msg: Message, turn: DialogTurn, language: str, usernam
     duration, performer = read_duration_and_artist(file)
 
     await save_template_info(new_file_name, info, type_episode)
+    await mark_published(None if isinstance(redis, _NoneModule) else redis, info["number"])
 
     await msg.reply_audio(
         CustomFSInputFile(file, new_file_name, progress_callback=progress_callback),

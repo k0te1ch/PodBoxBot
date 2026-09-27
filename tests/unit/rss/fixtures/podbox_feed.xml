@@ -1,0 +1,295 @@
+<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"
+	xmlns:atom="http://www.w3.org/2005/Atom"
+	xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:psc="http://podlove.org/simple-chapters" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:fh="http://purl.org/syndication/history/1.0" xmlns:podcast="https://podcastindex.org/namespace/1.0" >
+
+<channel>
+	<title>Разговорный жанр</title>
+	<link>https://podbox.ru</link>
+	<description><![CDATA[Лучший разговорный подкаст. Но это не точно.]]></description>
+	<lastBuildDate>Sat, 26 Sep 2026 20:13:17 +0000</lastBuildDate>
+	
+<image><url>https://www.podbox.ru/wp-content/uploads/2021/06/Cover.png</url><title>Разговорный жанр</title><link>https://podbox.ru</link></image>
+<atom:link rel="self" type="application/rss+xml" title="Разговорный жанр (Разговорный жанр)" href="https://podbox.ru/feed/podcast/" />
+	<atom:link rel="alternate" type="application/rss+xml" title="Разговорный жанр (Весь PODBOX.RU)" href="https://podbox.ru/feed/all/" />
+	<atom:link rel="next" href="https://podbox.ru/feed/podcast/?paged=2" />
+	<atom:link rel="first" href="https://podbox.ru/feed/podcast/" />
+	<atom:link rel="last" href="https://podbox.ru/feed/podcast/?paged=19" />
+	<language>ru-RU</language>
+<atom:contributor><atom:name>Михаил</atom:name></atom:contributor>
+
+<atom:contributor><atom:name>Сергей</atom:name></atom:contributor>
+
+<podcast:person img="https://podbox.ru/wp-content/uploads/2018/08/2018-08-12-12.19.31.jpg">Михаил</podcast:person>
+
+<podcast:person img="https://podbox.ru/wp-content/uploads/2018/08/2018-08-12-23.17.20.jpg">Сергей</podcast:person>
+<generator>Podlove Podcast Publisher v4.5.7</generator>
+	<podcast:guid>5beafac6-fe47-48e1-9f7f-744955278e8d</podcast:guid>
+	<copyright></copyright>
+	<itunes:author>PODBOX.RU</itunes:author>
+	<itunes:type>episodic</itunes:type>
+	<itunes:summary><![CDATA[Каждую неделю мы собираемся в студии и начинаем творить магию разговорного жанра: шутим, смеёмся, обсуждаем новости и рассказываем истории. Максимально свободный формат. Делаем лучший разговорный подкаст, но это не точно.
+
+Ведущие подкаста: Михаил (t.me/otovrn) и Сергей (t.me/Beetleguice).
+
+Корректор текста — Даша (vk.com/dasha_end_kasha).
+
+Архив подкаста на сайте → podbox.ru
+Почта → mail@podbox.ru]]></itunes:summary>
+<itunes:category text="Society &amp; Culture"><itunes:category text="Personal Journals"></itunes:category></itunes:category>
+<itunes:category text="News" />
+<itunes:category text="Comedy" />
+
+	
+	<itunes:owner>
+		<itunes:name>PODBOX Team</itunes:name>
+		<itunes:email>mail@podbox.ru</itunes:email>
+	</itunes:owner>
+	<itunes:image href="https://www.podbox.ru/wp-content/uploads/2021/06/Cover.png"/>
+	<itunes:subtitle>Лучший разговорный подкаст. Но это не точно.</itunes:subtitle>
+	<itunes:block>no</itunes:block>
+	<itunes:explicit>false</itunes:explicit>
+	
+	<podcast:license url="http://creativecommons.org/licenses/by/3.0/">Разговорный жанр</podcast:license>
+
+	
+	<item>
+        <title>767. Послаблений не будет</title>
+		<link>https://podbox.ru/podcasts/razgovornyj-zhanr-767/</link>
+		<pubDate>Fri, 25 Sep 2026 21:00:03 +0000</pubDate>
+		<guid isPermaLink="false">9db3862d-1d07-42f4-820a-dedfad1a0dd0</guid>
+    	<description><![CDATA[Во вступлении рассказали о прошедшем за последнее время. В темах обсудили вопрос фиксации знаний, поговорили про подключение ИИ к решению проблем с играми, а ещё поразмышляли об изменениях в регулировании провайдеров интернета.]]></description>
+		<atom:link rel="http://podlove.org/deep-link" href="https://podbox.ru/podcasts/razgovornyj-zhanr-767/#" />
+		
+<enclosure url="https://podbox.ru/podlove/file/2920/s/feed/c/podcast/0767_rz_26092026.mp3" length="73571371" type="audio/mpeg"/>
+
+		<itunes:duration>01:16:33</itunes:duration>
+		<itunes:author>PODBOX.RU</itunes:author>
+		<itunes:subtitle></itunes:subtitle>
+		<itunes:title>767. Послаблений не будет</itunes:title>
+		<itunes:episode>767</itunes:episode>
+		<itunes:episodeType>full</itunes:episodeType>
+		<itunes:summary><![CDATA[Во вступлении рассказали о прошедшем за последнее время. В темах обсудили вопрос фиксации знаний, поговорили про подключение ИИ к решению проблем с играми, а ещё поразмышляли об изменениях в регулировании провайдеров интернета.]]></itunes:summary>
+		<itunes:image href="https://www.podbox.ru/wp-content/uploads/2021/06/Cover.png"/>
+		<content:encoded><![CDATA[<p><span style="font-size: large;">Послаблений не будет</span><code><br />
+</code><br />
+<b><i>Описание:</i></b><br />
+<code>Во вступлении рассказали о прошедшем за последнее время. В темах обсудили вопрос фиксации знаний, поговорили про подключение ИИ к решению проблем с играми, а ещё поразмышляли об изменениях в регулировании провайдеров интернета.<br />
+</code><br />
+<span id="more-9821"></span><b><i>Таймлайн:</i></b><br />
+<presto-timestamp time="7">00:00:07</presto-timestamp> — Вступление и что нового за неделю<br />
+<presto-timestamp time="1841">00:30:41</presto-timestamp> — Зафиксировать знания<br />
+<presto-timestamp time="2498">00:41:38</presto-timestamp> — ИИ помогает с играми<br />
+<presto-timestamp time="3660">01:01:00</presto-timestamp> — Послаблений не будет<br />
+<presto-timestamp time="4534">01:15:34</presto-timestamp> — Озвучили наших патронов и анонсировали послешоу</p>
+<p><code><br />
+</code>Всё это вы услышите в 767-м эпизоде подкаста «Разговорный жанр».<br />
+<br><b><i>Слушай, где удобно:</i></b><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f3a7.png" alt="🎧" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://itunes.apple.com/ru/podcast/разговорный-жанр/id1261963011?mt=2" target="_blank" rel="noopener noreferrer">iTunes</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f3a7.png" alt="🎧" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://podcasts.google.com/?feed=aHR0cDovL3BvZGJveC5ydS9mZWVkL2FsbC8" target="_blank" rel="noopener noreferrer">Google Podcasts</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f3a7.png" alt="🎧" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://music.yandex.ru/album/6880287" target="_blank" rel="noopener noreferrer">Яндекс.Музыка</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f3a7.png" alt="🎧" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://vk.com/podcasts-10915269" target="_blank" rel="noopener noreferrer">Плей-лист подкаста в VK</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f3a7.png" alt="🎧" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://soundstream.media/playlist/razgovornyy-zhanr" target="_blank" rel="noopener noreferrer">SOUNDSTREAM</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f3a7.png" alt="🎧" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://castbox.fm/channel/Разговорный-жанр-id1496234" target="_blank" rel="noopener noreferrer">Castbox</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f3a7.png" alt="🎧" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://podbox.pod.fan/episodes" target="_blank" rel="noopener noreferrer">Pod.Fan</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f3a7.png" alt="🎧" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="http://pca.st/itunes/1261963011" target="_blank" rel="noopener noreferrer">Pocket Casts</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f3a7.png" alt="🎧" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://overcast.fm/itunes1261963011" target="_blank" rel="noopener noreferrer">Overcast</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f3a7.png" alt="🎧" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://castro.fm/podcast/9a447895-2984-4a24-aac4-7b6a569fe446" target="_blank" rel="noopener noreferrer">Castro</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f3a7.png" alt="🎧" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="http://podbox.ru/feed/podcast/" target="_blank" rel="noopener noreferrer">RSS</a><code>
+</code><br><br>
+<b><i>Социальные сети, почта:</i></b><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f468-200d-1f4bb.png" alt="👨‍💻" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://t.me/podzhanr" target="_blank" rel="noopener noreferrer">Телеграм-чат</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f468-200d-1f4bb.png" alt="👨‍💻" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://vk.com/zhanr" target="_blank" rel="noopener noreferrer">Сообщество во Вконтакте</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f468-200d-1f4bb.png" alt="👨‍💻" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://www.youtube.com/@podzhanr" target="_blank" rel="noopener noreferrer">YouTube-канал</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f468-200d-1f4bb.png" alt="👨‍💻" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://vkvideo.ru/@zhanr" target="_blank" rel="noopener noreferrer">ВКвидео-канал</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f468-200d-1f4bb.png" alt="👨‍💻" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://rutube.ru/channel/49626530/" target="_blank" rel="noopener noreferrer">RuTube-канал</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f468-200d-1f4bb.png" alt="👨‍💻" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="mailto:mail@podbox.ru" target="_blank" rel="noopener noreferrer">Почта mail@podbox.ru</a><code>    
+</code><br><br>
+<b><i>Если нравится наш подкаст, то поддержи нас:</i></b>
+<br><i>Подписка на послешоу подкаста</i>
+<br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f4b0.png" alt="💰" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://boosty.to/podbox" target="_blank" rel="noopener noreferrer">Boosty</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f4b0.png" alt="💰" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://sponsr.ru/podbox/" target="_blank" rel="noopener noreferrer">Sponsr.ru</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f4b0.png" alt="💰" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://vk.com/donut/zhanr" target="_blank" rel="noopener noreferrer">VK Donut</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f4b0.png" alt="💰" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://www.patreon.com/podbox" target="_blank" rel="noopener noreferrer">Patreon (для слушателей не из России)</a><br>
+<br>
+<i>Единоразовый донат на развитие подкаста</i>
+<br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f4b0.png" alt="💰" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://www.donationalerts.com/r/podbox" target="_blank" rel="noopener noreferrer">DonationAlerts</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f4b0.png" alt="💰" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://yoomoney.ru/to/41001228442379" target="_blank" rel="noopener noreferrer">ЮMoney</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f4b0.png" alt="💰" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://donate.stream/podbox" target="_blank" rel="noopener noreferrer">Donate.Stream</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f4b0.png" alt="💰" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://pay.cloudtips.ru/p/50a35b52" target="_blank" rel="noopener noreferrer">CloudTips</a><br><br />
+<span style="font-size: small;">Дата записи: 24 сентября 2026</span></p>
+]]></content:encoded><psc:chapters xmlns:psc="http://podlove.org/simple-chapters" version="1.2">
+  <psc:chapter start="00:00:07.000" title="&#x412;&#x441;&#x442;&#x443;&#x43F;&#x43B;&#x435;&#x43D;&#x438;&#x435; &#x438; &#x447;&#x442;&#x43E; &#x43D;&#x43E;&#x432;&#x43E;&#x433;&#x43E; &#x437;&#x430; &#x43D;&#x435;&#x434;&#x435;&#x43B;&#x44E;"/>
+  <psc:chapter start="00:30:41.000" title="&#x417;&#x430;&#x444;&#x438;&#x43A;&#x441;&#x438;&#x440;&#x43E;&#x432;&#x430;&#x442;&#x44C; &#x437;&#x43D;&#x430;&#x43D;&#x438;&#x44F;"/>
+  <psc:chapter start="00:41:38.000" title="&#x418;&#x418; &#x43F;&#x43E;&#x43C;&#x43E;&#x433;&#x430;&#x435;&#x442; &#x441; &#x438;&#x433;&#x440;&#x430;&#x43C;&#x438;"/>
+  <psc:chapter start="01:01:00.000" title="&#x41F;&#x43E;&#x441;&#x43B;&#x430;&#x431;&#x43B;&#x435;&#x43D;&#x438;&#x439; &#x43D;&#x435; &#x431;&#x443;&#x434;&#x435;&#x442;"/>
+  <psc:chapter start="01:15:34.000" title="&#x41E;&#x437;&#x432;&#x443;&#x447;&#x438;&#x43B;&#x438; &#x43D;&#x430;&#x448;&#x438;&#x445; &#x43F;&#x430;&#x442;&#x440;&#x43E;&#x43D;&#x43E;&#x432; &#x438; &#x430;&#x43D;&#x43E;&#x43D;&#x441;&#x438;&#x440;&#x43E;&#x432;&#x430;&#x43B;&#x438; &#x43F;&#x43E;&#x441;&#x43B;&#x435;&#x448;&#x43E;&#x443;"/>
+</psc:chapters>
+<podcast:chapters url="https://podbox.ru/podcasts/razgovornyj-zhanr-767/?chapters_format=pijson" type="application/json+chapters"/>
+		<itunes:season>16</itunes:season>
+<atom:contributor><atom:name>Михаил</atom:name></atom:contributor>
+
+<atom:contributor><atom:name>Сергей</atom:name></atom:contributor>
+
+<podcast:person img="https://podbox.ru/wp-content/uploads/2018/08/2018-08-12-12.19.31.jpg">Михаил</podcast:person>
+
+<podcast:person img="https://podbox.ru/wp-content/uploads/2018/08/2018-08-12-23.17.20.jpg">Сергей</podcast:person>
+	</item>
+	
+	<item>
+        <title>766. Когда сложно достать</title>
+		<link>https://podbox.ru/podcasts/razgovornyj-zhanr-766/</link>
+		<pubDate>Mon, 14 Sep 2026 21:00:25 +0000</pubDate>
+		<guid isPermaLink="false">c89116e0-b82c-4207-b9db-49c1f60f8a69</guid>
+    	<description><![CDATA[Провели совместные выходные в гостях у Михаила, во вступлении рассказываем как это было. Привык к какой-то вещи, а она потерялась или потратилась, а новую такую же купить не просто. Можно ли будет жить вечно самому или только для других людей?]]></description>
+		<atom:link rel="http://podlove.org/deep-link" href="https://podbox.ru/podcasts/razgovornyj-zhanr-766/#" />
+		
+<enclosure url="https://podbox.ru/podlove/file/2919/s/feed/c/podcast/0766_rz_15092026.mp3" length="81654525" type="audio/mpeg"/>
+
+		<itunes:duration>01:24:58</itunes:duration>
+		<itunes:author>PODBOX.RU</itunes:author>
+		<itunes:subtitle></itunes:subtitle>
+		<itunes:title>766. Когда сложно достать</itunes:title>
+		<itunes:episode>766</itunes:episode>
+		<itunes:episodeType>full</itunes:episodeType>
+		<itunes:summary><![CDATA[Провели совместные выходные в гостях у Михаила, во вступлении рассказываем как это было. Привык к какой-то вещи, а она потерялась или потратилась, а новую такую же купить не просто. Можно ли будет жить вечно самому или только для других людей?]]></itunes:summary>
+		<itunes:image href="https://www.podbox.ru/wp-content/uploads/2021/06/Cover.png"/>
+		<content:encoded><![CDATA[<p><span style="font-size: large;">Когда сложно достать</span><code><br />
+</code><br />
+<b><i>Описание:</i></b><br />
+<code>Провели совместные выходные в гостях у Михаила, во вступлении рассказываем как это было. Привык к какой-то вещи, а она потерялась или потратилась, а новую такую же купить не просто. Можно ли будет жить вечно самому или только для других людей?<br />
+</code><br />
+<span id="more-9812"></span><b><i>Таймлайн:</i></b><br />
+<presto-timestamp time="7">00:00:07</presto-timestamp> — Вступление и что нового за неделю<br />
+<presto-timestamp time="1333">00:22:13</presto-timestamp> — Когда сложно достать<br />
+<presto-timestamp time="2989">00:49:49</presto-timestamp> — Перенос сознания<br />
+<presto-timestamp time="5063">01:24:23</presto-timestamp> — Озвучили наших патронов и анонсировали послешоу</p>
+<p><code><br />
+</code>Всё это вы услышите в 766-м эпизоде подкаста «Разговорный жанр».<br />
+<br><b><i>Слушай, где удобно:</i></b><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f3a7.png" alt="🎧" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://itunes.apple.com/ru/podcast/разговорный-жанр/id1261963011?mt=2" target="_blank" rel="noopener noreferrer">iTunes</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f3a7.png" alt="🎧" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://podcasts.google.com/?feed=aHR0cDovL3BvZGJveC5ydS9mZWVkL2FsbC8" target="_blank" rel="noopener noreferrer">Google Podcasts</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f3a7.png" alt="🎧" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://music.yandex.ru/album/6880287" target="_blank" rel="noopener noreferrer">Яндекс.Музыка</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f3a7.png" alt="🎧" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://vk.com/podcasts-10915269" target="_blank" rel="noopener noreferrer">Плей-лист подкаста в VK</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f3a7.png" alt="🎧" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://soundstream.media/playlist/razgovornyy-zhanr" target="_blank" rel="noopener noreferrer">SOUNDSTREAM</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f3a7.png" alt="🎧" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://castbox.fm/channel/Разговорный-жанр-id1496234" target="_blank" rel="noopener noreferrer">Castbox</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f3a7.png" alt="🎧" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://podbox.pod.fan/episodes" target="_blank" rel="noopener noreferrer">Pod.Fan</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f3a7.png" alt="🎧" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="http://pca.st/itunes/1261963011" target="_blank" rel="noopener noreferrer">Pocket Casts</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f3a7.png" alt="🎧" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://overcast.fm/itunes1261963011" target="_blank" rel="noopener noreferrer">Overcast</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f3a7.png" alt="🎧" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://castro.fm/podcast/9a447895-2984-4a24-aac4-7b6a569fe446" target="_blank" rel="noopener noreferrer">Castro</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f3a7.png" alt="🎧" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="http://podbox.ru/feed/podcast/" target="_blank" rel="noopener noreferrer">RSS</a><code>
+</code><br><br>
+<b><i>Социальные сети, почта:</i></b><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f468-200d-1f4bb.png" alt="👨‍💻" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://t.me/podzhanr" target="_blank" rel="noopener noreferrer">Телеграм-чат</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f468-200d-1f4bb.png" alt="👨‍💻" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://vk.com/zhanr" target="_blank" rel="noopener noreferrer">Сообщество во Вконтакте</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f468-200d-1f4bb.png" alt="👨‍💻" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://www.youtube.com/@podzhanr" target="_blank" rel="noopener noreferrer">YouTube-канал</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f468-200d-1f4bb.png" alt="👨‍💻" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://vkvideo.ru/@zhanr" target="_blank" rel="noopener noreferrer">ВКвидео-канал</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f468-200d-1f4bb.png" alt="👨‍💻" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://rutube.ru/channel/49626530/" target="_blank" rel="noopener noreferrer">RuTube-канал</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f468-200d-1f4bb.png" alt="👨‍💻" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="mailto:mail@podbox.ru" target="_blank" rel="noopener noreferrer">Почта mail@podbox.ru</a><code>    
+</code><br><br>
+<b><i>Если нравится наш подкаст, то поддержи нас:</i></b>
+<br><i>Подписка на послешоу подкаста</i>
+<br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f4b0.png" alt="💰" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://boosty.to/podbox" target="_blank" rel="noopener noreferrer">Boosty</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f4b0.png" alt="💰" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://sponsr.ru/podbox/" target="_blank" rel="noopener noreferrer">Sponsr.ru</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f4b0.png" alt="💰" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://vk.com/donut/zhanr" target="_blank" rel="noopener noreferrer">VK Donut</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f4b0.png" alt="💰" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://www.patreon.com/podbox" target="_blank" rel="noopener noreferrer">Patreon (для слушателей не из России)</a><br>
+<br>
+<i>Единоразовый донат на развитие подкаста</i>
+<br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f4b0.png" alt="💰" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://www.donationalerts.com/r/podbox" target="_blank" rel="noopener noreferrer">DonationAlerts</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f4b0.png" alt="💰" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://yoomoney.ru/to/41001228442379" target="_blank" rel="noopener noreferrer">ЮMoney</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f4b0.png" alt="💰" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://donate.stream/podbox" target="_blank" rel="noopener noreferrer">Donate.Stream</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f4b0.png" alt="💰" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://pay.cloudtips.ru/p/50a35b52" target="_blank" rel="noopener noreferrer">CloudTips</a><br><br />
+<span style="font-size: small;">Дата записи: 14 сентября 2026</span></p>
+]]></content:encoded><psc:chapters xmlns:psc="http://podlove.org/simple-chapters" version="1.2">
+  <psc:chapter start="00:00:07.000" title="&#x412;&#x441;&#x442;&#x443;&#x43F;&#x43B;&#x435;&#x43D;&#x438;&#x435; &#x438; &#x447;&#x442;&#x43E; &#x43D;&#x43E;&#x432;&#x43E;&#x433;&#x43E; &#x437;&#x430; &#x43D;&#x435;&#x434;&#x435;&#x43B;&#x44E;"/>
+  <psc:chapter start="00:22:13.000" title="&#x41A;&#x43E;&#x433;&#x434;&#x430; &#x441;&#x43B;&#x43E;&#x436;&#x43D;&#x43E; &#x434;&#x43E;&#x441;&#x442;&#x430;&#x442;&#x44C;"/>
+  <psc:chapter start="00:49:49.000" title="&#x41F;&#x435;&#x440;&#x435;&#x43D;&#x43E;&#x441; &#x441;&#x43E;&#x437;&#x43D;&#x430;&#x43D;&#x438;&#x44F;"/>
+  <psc:chapter start="01:24:23.000" title="&#x41E;&#x437;&#x432;&#x443;&#x447;&#x438;&#x43B;&#x438; &#x43D;&#x430;&#x448;&#x438;&#x445; &#x43F;&#x430;&#x442;&#x440;&#x43E;&#x43D;&#x43E;&#x432; &#x438; &#x430;&#x43D;&#x43E;&#x43D;&#x441;&#x438;&#x440;&#x43E;&#x432;&#x430;&#x43B;&#x438; &#x43F;&#x43E;&#x441;&#x43B;&#x435;&#x448;&#x43E;&#x443;"/>
+</psc:chapters>
+<podcast:chapters url="https://podbox.ru/podcasts/razgovornyj-zhanr-766/?chapters_format=pijson" type="application/json+chapters"/>
+		<itunes:season>16</itunes:season>
+<atom:contributor><atom:name>Михаил</atom:name></atom:contributor>
+
+<atom:contributor><atom:name>Сергей</atom:name></atom:contributor>
+
+<podcast:person img="https://podbox.ru/wp-content/uploads/2018/08/2018-08-12-12.19.31.jpg">Михаил</podcast:person>
+
+<podcast:person img="https://podbox.ru/wp-content/uploads/2018/08/2018-08-12-23.17.20.jpg">Сергей</podcast:person>
+	</item>
+	
+	<item>
+        <title>Outcast — 5. Адекватная стоимость в жилищном вопросе</title>
+		<link>https://podbox.ru/outcast/outcast-5/</link>
+		<pubDate>Sun, 13 Sep 2026 17:21:20 +0000</pubDate>
+		<guid isPermaLink="false">9e51861b-d297-47c4-9f44-b62b42151d56</guid>
+    	<description><![CDATA[Квартирный вопрос испортил москвичей, а подкастеры-немосквичи собрались на природе и под треск костра поговорили про адекватную стоимость и про несоответствие ожиданий и реальности.]]></description>
+		<atom:link rel="http://podlove.org/deep-link" href="https://podbox.ru/outcast/outcast-5/#" />
+		
+<enclosure url="https://podbox.ru/podlove/file/2918/s/feed/c/podcast/outcast_11092026.mp3" length="49471312" type="audio/mpeg"/>
+
+		<itunes:duration>00:51:29</itunes:duration>
+		<itunes:author>PODBOX.RU</itunes:author>
+		<itunes:subtitle></itunes:subtitle>
+		<itunes:title>Outcast — 5. Адекватная стоимость в жилищном вопросе</itunes:title>
+		<itunes:episode>5</itunes:episode>
+		<itunes:episodeType>full</itunes:episodeType>
+		<itunes:summary><![CDATA[Квартирный вопрос испортил москвичей, а подкастеры-немосквичи собрались на природе и под треск костра поговорили про адекватную стоимость и про несоответствие ожиданий и реальности.]]></itunes:summary>
+		<itunes:image href="https://www.podbox.ru/wp-content/uploads/2021/06/Cover.png"/>
+		<content:encoded><![CDATA[<p><span style="font-size: large;">Адекватная стоимость в жилищном вопросе</span><code><br />
+</code><br />
+<b><i>Описание:</i></b><br />
+<code>Квартирный вопрос испортил москвичей, а подкастеры-немосквичи собрались на природе и под треск костра поговорили про адекватную стоимость и про несоответствие ожиданий и реальности.<br />
+</code><br />
+<span id="more-9806"></span><br />
+<br><b><i>Слушай, где удобно:</i></b><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f3a7.png" alt="🎧" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://itunes.apple.com/ru/podcast/разговорный-жанр/id1261963011?mt=2" target="_blank" rel="noopener noreferrer">iTunes</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f3a7.png" alt="🎧" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://podcasts.google.com/?feed=aHR0cDovL3BvZGJveC5ydS9mZWVkL2FsbC8" target="_blank" rel="noopener noreferrer">Google Podcasts</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f3a7.png" alt="🎧" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://music.yandex.ru/album/6880287" target="_blank" rel="noopener noreferrer">Яндекс.Музыка</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f3a7.png" alt="🎧" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://vk.com/podcasts-10915269" target="_blank" rel="noopener noreferrer">Плей-лист подкаста в VK</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f3a7.png" alt="🎧" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://soundstream.media/playlist/razgovornyy-zhanr" target="_blank" rel="noopener noreferrer">SOUNDSTREAM</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f3a7.png" alt="🎧" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://castbox.fm/channel/Разговорный-жанр-id1496234" target="_blank" rel="noopener noreferrer">Castbox</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f3a7.png" alt="🎧" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://podbox.pod.fan/episodes" target="_blank" rel="noopener noreferrer">Pod.Fan</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f3a7.png" alt="🎧" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="http://pca.st/itunes/1261963011" target="_blank" rel="noopener noreferrer">Pocket Casts</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f3a7.png" alt="🎧" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://overcast.fm/itunes1261963011" target="_blank" rel="noopener noreferrer">Overcast</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f3a7.png" alt="🎧" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://castro.fm/podcast/9a447895-2984-4a24-aac4-7b6a569fe446" target="_blank" rel="noopener noreferrer">Castro</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f3a7.png" alt="🎧" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="http://podbox.ru/feed/podcast/" target="_blank" rel="noopener noreferrer">RSS</a><code>
+</code><br><br>
+<b><i>Социальные сети, почта:</i></b><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f468-200d-1f4bb.png" alt="👨‍💻" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://t.me/podzhanr" target="_blank" rel="noopener noreferrer">Телеграм-чат</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f468-200d-1f4bb.png" alt="👨‍💻" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://vk.com/zhanr" target="_blank" rel="noopener noreferrer">Сообщество во Вконтакте</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f468-200d-1f4bb.png" alt="👨‍💻" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://www.youtube.com/@podzhanr" target="_blank" rel="noopener noreferrer">YouTube-канал</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f468-200d-1f4bb.png" alt="👨‍💻" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://vkvideo.ru/@zhanr" target="_blank" rel="noopener noreferrer">ВКвидео-канал</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f468-200d-1f4bb.png" alt="👨‍💻" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://rutube.ru/channel/49626530/" target="_blank" rel="noopener noreferrer">RuTube-канал</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f468-200d-1f4bb.png" alt="👨‍💻" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="mailto:mail@podbox.ru" target="_blank" rel="noopener noreferrer">Почта mail@podbox.ru</a><code>    
+</code><br><br>
+<b><i>Если нравится наш подкаст, то поддержи нас:</i></b>
+<br><i>Подписка на послешоу подкаста</i>
+<br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f4b0.png" alt="💰" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://boosty.to/podbox" target="_blank" rel="noopener noreferrer">Boosty</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f4b0.png" alt="💰" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://sponsr.ru/podbox/" target="_blank" rel="noopener noreferrer">Sponsr.ru</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f4b0.png" alt="💰" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://vk.com/donut/zhanr" target="_blank" rel="noopener noreferrer">VK Donut</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f4b0.png" alt="💰" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://www.patreon.com/podbox" target="_blank" rel="noopener noreferrer">Patreon (для слушателей не из России)</a><br>
+<br>
+<i>Единоразовый донат на развитие подкаста</i>
+<br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f4b0.png" alt="💰" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://www.donationalerts.com/r/podbox" target="_blank" rel="noopener noreferrer">DonationAlerts</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f4b0.png" alt="💰" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://yoomoney.ru/to/41001228442379" target="_blank" rel="noopener noreferrer">ЮMoney</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f4b0.png" alt="💰" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://donate.stream/podbox" target="_blank" rel="noopener noreferrer">Donate.Stream</a><br>
+<img src="https://s.w.org/images/core/emoji/17.0.2/72x72/1f4b0.png" alt="💰" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <a href="https://pay.cloudtips.ru/p/50a35b52" target="_blank" rel="noopener noreferrer">CloudTips</a><br><br />
+<span style="font-size: small;">Дата записи: 11 сентября 2026</span></p>
+]]></content:encoded>
+<podcast:chapters url="https://podbox.ru/outcast/outcast-5/?chapters_format=pijson" type="application/json+chapters"/>
+		<itunes:season>16</itunes:season>
+<atom:contributor><atom:name>Михаил</atom:name></atom:contributor>
+
+<atom:contributor><atom:name>Сергей</atom:name></atom:contributor>
+
+<podcast:person img="https://podbox.ru/wp-content/uploads/2018/08/2018-08-12-12.19.31.jpg">Михаил</podcast:person>
+
+<podcast:person img="https://podbox.ru/wp-content/uploads/2018/08/2018-08-12-23.17.20.jpg">Сергей</podcast:person>
+	</item>
+</channel>
+</rss>

@@ -26,6 +26,7 @@ from handlers.admin_handler import restart, send_logs, shutdown
 from handlers.audio_handler import forward_to_chat
 from handlers.boosty_handler import upload_Boosty
 from handlers.ftp_handler import upload_FTP
+from handlers.service_handler import open_from_menu as open_service_message
 from handlers.wordpress_handler import upload_WP
 from services.i18n import DEFAULT_LOCALE, translator
 from utils.menu_context import is_admin
@@ -96,7 +97,10 @@ def build_menus() -> BotMenus:
     admin_menu = Menu(
         ADMIN_MENU,
         title="admin_panel",
-        items=[Submenu("admin_bot", bot_menu, id="bot", visible_if=is_admin)],
+        items=[
+            Submenu("admin_bot", bot_menu, id="bot", visible_if=is_admin),
+            Button("admin_service", id="service", handler=open_service_message, visible_if=is_admin),
+        ],
     )
     audio_main = Menu(
         AUDIO_MAIN_MENU,

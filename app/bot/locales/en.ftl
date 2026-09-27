@@ -79,3 +79,29 @@ bot_logs = Send log files
 bot_shutting_down = Bot is shutting down
 bot_restarting = Bot is restarting
 logs_failed = Error: could not collect the logs
+
+## Service messages
+
+admin_service = Service message
+service_ask_text = Send the message text; after confirmation it goes to { $chat }
+service_confirm = Send this message to { $chat }?
+service_sent = Sent to { $chat }
+service_failed = Could not send the message, try again later
+de-button-confirm = ✅ Send
+
+## New episode in RSS
+
+rss_new_episode = Episode { $number } is out: { $title }. Publish it?
+rss_no_mp3 = The feed has no mp3 of our episode; upload the file with /start for FTP, site and Boosty
+rss_to_chat = To chat
+rss_prepare = To platforms (FTP, site, Boosty)
+rss_skip = Skip
+rss_chat_post = New episode is out: { $title }
+    { $link }
+rss_done_chat = announcement sent to the chat
+rss_done_prepare = mp3 downloaded, pick a platform in the menu under the file
+rss_done_skip = skipped
+rss_cannot_prepare = no mp3 or episode number, upload the file with /start
+rss_choice = { $user }: { $result }
+rss_expired = This notification is outdated
+rss_feed_down = RSS feed failed { $count } times in a row: { $url }
