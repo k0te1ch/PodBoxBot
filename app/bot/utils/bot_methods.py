@@ -6,7 +6,6 @@
 
 import os
 import signal
-import sys
 import zipfile
 from pathlib import Path
 
@@ -16,15 +15,12 @@ from config import FILES_PATH, LOGS_PATH
 
 
 # region Bot methods
-def shutdown_bot():
-    os.kill(os.getpid(), signal.SIGINT)
-
-
 def restart_bot():
-    # Процесс просто выходит — назад его поднимает restart-политика
-    # оркестратора (в docker-compose у бота `restart: always`).
-    # exit() — это хелпер из site, доступный не во всяком интерпретаторе.
-    sys.exit()
+    # SIGINT запускает штатное завершение polling'а, а назад процесс поднимает
+    # restart-политика оркестратора (в docker-compose у бота `restart: always`).
+    # Отдельной кнопки «выключить» поэтому нет: под `restart: always` она
+    # всё равно перезапускала бы бота.
+    os.kill(os.getpid(), signal.SIGINT)
 
 
 # region Logs methods

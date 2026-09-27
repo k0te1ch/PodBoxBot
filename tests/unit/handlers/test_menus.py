@@ -75,7 +75,7 @@ def test_dangerous_buttons_ask_for_confirmation():
         for item in menu.items
         if isinstance(item, Button) and item.confirm
     }
-    assert confirm == {"shutdown", "restart", "forward"}
+    assert confirm == {"restart", "forward"}
 
 
 def _pressed_under(message: MagicMock) -> MenuContext:
@@ -168,20 +168,13 @@ async def test_forward_without_template_info_reports_it():
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    ("handler", "action", "text"),
-    [
-        (admin_handler.shutdown, "shutdown_bot", "bot_shutting_down"),
-        (admin_handler.restart, "restart_bot", "bot_restarting"),
-    ],
-)
-async def test_bot_process_buttons(handler, action, text):
+async def test_restart_button():
     ctx = _ctx()
-    with patch.object(admin_handler, action) as act:
-        await handler(ctx)
+    with patch.object(admin_handler, "restart_bot") as act:
+        await admin_handler.restart(ctx)
 
     act.assert_called_once()
-    ctx.answer.assert_awaited_once_with(t(text), alert=True)
+    ctx.answer.assert_awaited_once_with(t("bot_restarting"), alert=True)
 
 
 @pytest.mark.asyncio

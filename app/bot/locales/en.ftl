@@ -73,10 +73,8 @@ forward_failed = Forwarding failed, try again later
 admin_panel = Admin panel
 admin_bot = Bot
 bot_panel = Bot management
-bot_shutdown = Turn off the bot
 bot_restart = Restart the bot
 bot_logs = Send log files
-bot_shutting_down = Bot is shutting down
 bot_restarting = Bot is restarting
 logs_failed = Error: could not collect the logs
 
