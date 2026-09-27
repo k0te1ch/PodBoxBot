@@ -5,6 +5,7 @@
 :mod:`wp_http`.
 """
 
+import html
 import json
 import re
 
@@ -37,6 +38,44 @@ class PodloveMixin:
             logger.error(f"REST {method} {path} returned HTTP {r.status_code}; body[:500]={r.text[:500]!r}")
             raise RuntimeError(f"REST {method} {path} returned HTTP {r.status_code}")
         return r
+
+    def find_draft(self, post_title: str) -> tuple[int, int] | None:
+        """``(post_id, episode_id)`` черновика с заголовком ``post_title`` или None.
+
+        Нужен для идемпотентности: повтор после частичного успеха (пост
+        сохранён, а Podlove REST упал) должен дописать тот же черновик, а не
+        заводить второй. Список Podlove отдаёт только ``id`` и ``title``,
+        ``post_id`` берём из карточки эпизода. Любая ошибка поиска не мешает
+        публикации — тогда создаём новый пост, как раньше.
+        """
+        if self._app_auth is None:
+            return None
+        try:
+            listing = self._rest_request("GET", "/podlove/v2/episodes?status=draft").json()
+            for item in listing.get("results", []):
+                if html.unescape(str(item.get("title", ""))).strip() != post_title:
+                    continue
+                episode_id = int(item["id"])
+                episode = self._rest_request("GET", f"/podlove/v2/episodes/{episode_id}").json()
+                return int(episode["post_id"]), episode_id
+        except (RuntimeError, ValueError, KeyError, TypeError, AttributeError) as e:
+            logger.warning(f"Draft lookup for {post_title!r} failed, creating a new post: {e!r}")
+        return None
+
+    def podcast_rest_path(self, post_id: str) -> str:
+        """REST-путь поста типа ``podcast`` для проверки черновика.
+
+        Podlove регистрирует тип с ``rest_base='episodes'`` (не ``podcast``),
+        а фильтр ``podlove_post_type_args`` может его поменять — поэтому база
+        читается из ``wp/v2/types/podcast``, при сбое берётся ``episodes``.
+        """
+        rest_base = "episodes"
+        if self._app_auth is not None:
+            try:
+                rest_base = self._rest_request("GET", "/wp/v2/types/podcast").json().get("rest_base") or rest_base
+            except (RuntimeError, ValueError, AttributeError) as e:
+                logger.warning(f"Could not resolve podcast rest_base, using {rest_base!r}: {e!r}")
+        return f"/wp/v2/{rest_base}/{post_id}"
 
     @staticmethod
     def _extract_podlove_vue(html: str) -> dict | None:

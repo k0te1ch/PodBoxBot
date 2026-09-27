@@ -89,6 +89,7 @@ class TestHandleUpload:
             wp_instance = MagicMock()
             wp_instance.upload_post.return_value = True
             wp_instance.last_post_id = "777"
+            wp_instance.podcast_rest_path.return_value = "/wp/v2/episodes/777"
             wp_instance.__enter__ = MagicMock(return_value=wp_instance)
             wp_instance.__exit__ = MagicMock(return_value=False)
             MockWP.return_value = wp_instance
@@ -99,7 +100,7 @@ class TestHandleUpload:
 
             verify_published_mock.assert_awaited_once()
             url = verify_published_mock.await_args.args[0]
-            assert url.endswith("/wp-json/wp/v2/podcast/777?context=edit")
+            assert url.endswith("/wp-json/wp/v2/episodes/777?context=edit")
             result = mock_producer.send.call_args.args[1]
             assert result["status"] == "success"
             assert result["metadata"] == {"post_id": "777", "url": url}

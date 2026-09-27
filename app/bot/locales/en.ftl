@@ -4,6 +4,7 @@
 
 error_occurred = An error occurred! Please try again
 invalid_input = Invalid input!
+invalid_recording_date = Could not read the recording date. Use DD.MM.YYYY, e.g. 26.07.2026, no later than today.
 download_failed = ❌ MP3 was not uploaded. Check the file and try again.
 
 ## Episode upload (DialogEngine dialog)

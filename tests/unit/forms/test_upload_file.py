@@ -65,6 +65,20 @@ async def test_bad_template_keeps_the_step_with_translated_error():
     assert upload_file_engine.resolve_error(exc.value, session) == t("invalid_input", "en")
 
 
+@pytest.mark.asyncio
+async def test_bad_recording_date_gets_its_own_error():
+    session = _session(lang="en")
+    await upload_file_engine.async_submit(session, "main")
+    await upload_file_engine.async_submit(session, [MP3_FILE])
+    with pytest.raises(ValidationError) as exc:
+        await upload_file_engine.async_submit(
+            session, "Number: 1\nRecording Date: 31.31.2026\nTitle: Header\nComment: Comment"
+        )
+
+    assert upload_file_engine.current_step(session).id == TEMPLATE
+    assert upload_file_engine.resolve_error(exc.value, session) == t("invalid_recording_date", "en")
+
+
 @pytest.mark.parametrize("lang", ["ru", "en"])
 def test_texts_come_from_locales(lang):
     context = {"lang": lang, "first_name": "Ann", "number": "43"}
