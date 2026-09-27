@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.7.0](https://github.com/k0te1ch/PodBoxBot/compare/v0.6.0...v0.7.0) (2026-09-27)
+
+
+### Features
+
+* **bot:** run dialogs on DialogEngine 0.3 and menus on the SDK ([#73](https://github.com/k0te1ch/PodBoxBot/issues/73)) ([97e258f](https://github.com/k0te1ch/PodBoxBot/commit/97e258fcfd9bc2843cd6c9e53f2beb485b01336e))
+* **publishers:** retry external calls and verify published posts ([#72](https://github.com/k0te1ch/PodBoxBot/issues/72)) ([4736563](https://github.com/k0te1ch/PodBoxBot/commit/4736563318abb22222958befc7c44ad67bcaf740))
+
 ## [0.6.0](https://github.com/k0te1ch/PodBoxBot/compare/v0.5.1...v0.6.0) (2026-09-27)
 
 
