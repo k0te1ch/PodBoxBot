@@ -48,7 +48,7 @@ pytest-cov = "^7.0.0"
 optional = true
 
 [tool.poetry.group.e2e.dependencies]
-tgtest = {git = "https://github.com/k0te1ch/tgtest"}
+tgtest = "^0.2.0"
 
 
 [tool.poetry.group.dev.dependencies]

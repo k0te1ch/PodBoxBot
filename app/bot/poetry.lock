@@ -2718,26 +2718,23 @@ cryptg = ["cryptg"]
 
 [[package]]
 name = "tgtest"
-version = "0.1.0"
+version = "0.2.0"
 description = "End-to-end testing platform for Telegram bots (Telethon-driven, YAML + pytest)."
 optional = false
-python-versions = ">=3.12,<4.0"
+python-versions = "<4.0,>=3.12"
 groups = ["e2e"]
-files = []
-develop = false
+files = [
+    {file = "tgtest-0.2.0-py3-none-any.whl", hash = "sha256:711d2c39c37f9037d77c6729bac40756505dc2fbd17ca104c0677506537a66be"},
+    {file = "tgtest-0.2.0.tar.gz", hash = "sha256:da7209f6342f867408f3d34ed33344042b86d50a55b3b9bc658801fc93d3102d"},
+]
 
 [package.dependencies]
+pydantic = ">=2.0"
 pydantic-settings = ">=2.5"
 python-dotenv = ">=1.0"
 python-socks = {version = ">=2.4", extras = ["asyncio"]}
 pyyaml = ">=6.0"
 telethon = ">=1.36,<2.0"
-
-[package.source]
-type = "git"
-url = "https://github.com/k0te1ch/tgtest"
-reference = "HEAD"
-resolved_reference = "42952e3b2518316b7d7651cac6382575c1a03fa6"
 
 [[package]]
 name = "toml"
@@ -3018,4 +3015,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.15"
-content-hash = "6147c849de714481e545123c34661ac8fa7568dfa3ca569dc57674b5cb52acd8"
+content-hash = "45a61edafad7f53769401dec15df787f49f4bd37d34fccbff02885066660f0ae"
