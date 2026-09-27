@@ -1,30 +1,6 @@
 import ftplib
 
-from loguru import logger
-
 from config import FTP_POSTSHOW_DIR
-from shared.kafka.models.upload_event import UploadEvent
-from shared.kafka.producer import KafkaProducer
-
-# Kafka topics and config
-UPLOAD_TOPIC = "publisher.ftp.upload"
-RESULT_TOPIC = "publisher.ftp.result"
-KAFKA_SERVER = "kafka:9092"
-SCHEMA_REGISTRY_URL = "http://schema-registry:8081"
-VALUE_SCHEMA_PATH = "shared/kafka/schemas/upload_event.avsc"
-
-
-async def send_upload_request(producer: KafkaProducer, path: str, file_name: str, user: str = "system"):
-    """Отправляет событие UploadEvent в Kafka"""
-    event = UploadEvent(
-        event_type="request",
-        file_name=file_name,
-        path=path,
-        username=user,
-    )
-
-    logger.info(f"[Kafka] Sending upload request for {event.file_name}")
-    await producer.send(UPLOAD_TOPIC, event.model_dump())
 
 
 async def get_last_post_ID(typePodcast: str, server: str, login: str, password: str) -> str:
