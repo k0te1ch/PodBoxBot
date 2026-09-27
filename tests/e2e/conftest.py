@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 from dotenv import load_dotenv
+from sagenza_tgbot_sdk.menus import parse_ftl
 from tgtest import client as tgtest_client
 
 pytest_plugins = ["tgtest.pytest_plugin"]
@@ -62,14 +63,10 @@ def phrase():
 
     Бот отвечает на языке из настроек Telegram-аккаунта, поэтому тексты
     берутся из его же .ftl, а не хардкодятся. Из значения выкидываются
-    HTML-теги и {подстановки}, остаётся самый длинный цельный кусок.
+    HTML-теги и { $подстановки }, остаётся самый длинный цельный кусок.
     """
-    entries = {}
-    for line in (LOCALES_DIR / f"{_LANG}.ftl").read_text(encoding="utf-8").splitlines():
-        key, sep, value = line.partition(" = ")
-        if sep and key.isidentifier():
-            # Как services/context.py: «\n» в однострочном значении — перенос.
-            entries[key] = value.strip().replace("\\n", "\n")
+    # Тот же разбор .ftl, что у FtlTranslator бота (sagenza-tgbot-sdk).
+    entries = parse_ftl((LOCALES_DIR / f"{_LANG}.ftl").read_text(encoding="utf-8"))
 
     def get(key: str, *, full: bool = False) -> str:
         value = entries[key]
