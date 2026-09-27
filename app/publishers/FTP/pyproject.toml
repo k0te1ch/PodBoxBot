@@ -19,6 +19,7 @@ asyncssh = "^2.23.0"
 aiofiles = "^25.1.0"
 pydantic = "^2.12.3"
 pydantic-settings = "^2.9.1"
+sagenza-tgbot-sdk = { git = "https://github.com/k0te1ch/sagenza-tgbot-sdk.git", tag = "v0.1.0" }
 
 
 [build-system]
