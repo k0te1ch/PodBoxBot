@@ -50,7 +50,7 @@ class Settings(BaseSettings):
 
     # RSS подкаста: новый эпизод → вопрос админам «Выложить?». Пустой адрес
     # выключает слежение; без Redis оно не запускается (см. services/rss.py).
-    RSS_FEED_URL: str | None = None
+    RSS_FEED_URL: str | None = "https://podbox.ru/feed/podcast/"
     RSS_POLL_INTERVAL: int = 600
     # Сколько неудачных опросов подряд до предупреждения админам.
     RSS_FAILURE_ALERT: int = 6

@@ -45,8 +45,11 @@ EPISODE_TTL = 30 * 24 * 3600
 FETCH_TIMEOUT = aiohttp.ClientTimeout(total=30)
 
 ITUNES_NS = "{http://www.itunes.com/dtds/podcast-1.0.dtd}"
-AFTERSHOW_RE = re.compile(r"послешоу|aftershow|postshow", re.IGNORECASE)
-NUMBER_RE = re.compile(r"\d+")
+# Имя mp3 на сайте то же, что даёт generate_file_name: 0767_rz_26092026.mp3,
+# 0123_postshow_….mp3. Оно надёжнее названия: в ленте есть и другие шоу
+# (outcast_11092026.mp3 с itunes:episode 5), их номер к нашим отношения не имеет.
+FILE_NAME_RE = re.compile(r"(?:^|/)(\d+)_(rz|postshow)_[^/]*\.mp3$", re.IGNORECASE)
+FILE_TYPES = {"rz": "main", "postshow": "aftershow"}
 TAG_RE = re.compile(r"<[^>]+>")
 
 ACTION_CHAT = "chat"
@@ -62,7 +65,8 @@ class Episode:
     description: str = ""
     enclosure_url: str | None = None
     number: str | None = None
-    type_episode: str = "main"
+    type_episode: str | None = None
+    """``main`` / ``aftershow`` по имени mp3; None — не наш выпуск, на площадки не предлагаем."""
 
     @property
     def key(self) -> str:
@@ -77,12 +81,13 @@ def _plain(value: str) -> str:
     return html.unescape(TAG_RE.sub("", value)).strip()
 
 
-def _number(item: ElementTree.Element, title: str) -> str | None:
+def _identify(item: ElementTree.Element, enclosure_url: str | None) -> tuple[str | None, str | None]:
+    """Номер и тип эпизода: из имени mp3, иначе только номер из itunes:episode."""
+    match = FILE_NAME_RE.search(enclosure_url or "")
+    if match:
+        return str(int(match.group(1))), FILE_TYPES[match.group(2).lower()]
     explicit = _text(item, f"{ITUNES_NS}episode")
-    if explicit.isdigit():
-        return explicit
-    match = NUMBER_RE.search(title)
-    return match.group() if match else None
+    return (explicit if explicit.isdigit() else None), None
 
 
 def parse_feed(xml: bytes) -> list[Episode]:
@@ -96,6 +101,8 @@ def parse_feed(xml: bytes) -> list[Episode]:
         if not guid:
             continue
         enclosure = item.find("enclosure")
+        enclosure_url = enclosure.get("url") if enclosure is not None else None
+        number, type_episode = _identify(item, enclosure_url)
         description = _text(item, f"{ITUNES_NS}summary") or _text(item, "description")
         episodes.append(
             Episode(
@@ -103,9 +110,9 @@ def parse_feed(xml: bytes) -> list[Episode]:
                 title=title,
                 link=link,
                 description=_plain(description),
-                enclosure_url=enclosure.get("url") if enclosure is not None else None,
-                number=_number(item, title),
-                type_episode="aftershow" if AFTERSHOW_RE.search(title) else "main",
+                enclosure_url=enclosure_url,
+                number=number,
+                type_episode=type_episode,
             )
         )
     return episodes
@@ -131,9 +138,9 @@ async def load_episode(redis: Redis, key: str) -> Episode | None:
 
 
 def notification_markup(episode: Episode, locale: str) -> InlineKeyboardMarkup:
-    """Кнопки уведомления; «На площадки» есть, только если в ленте есть mp3."""
+    """Кнопки уведомления; «На площадки» — только для нашего выпуска с mp3."""
     rows = [[InlineKeyboardButton(text=t("rss_to_chat", locale), callback_data=f"rss:{ACTION_CHAT}:{episode.key}")]]
-    if episode.enclosure_url:
+    if episode.enclosure_url and episode.type_episode:
         rows.append(
             [InlineKeyboardButton(text=t("rss_prepare", locale), callback_data=f"rss:{ACTION_PREPARE}:{episode.key}")]
         )
@@ -143,7 +150,7 @@ def notification_markup(episode: Episode, locale: str) -> InlineKeyboardMarkup:
 
 def notification_text(episode: Episode, locale: str) -> str:
     text = t("rss_new_episode", locale, number=episode.number or "?", title=episode.title)
-    if not episode.enclosure_url:
+    if not (episode.enclosure_url and episode.type_episode):
         text += "\n\n" + t("rss_no_mp3", locale)
     return text
 
@@ -206,7 +213,7 @@ class RssWatcher:
             if await self.redis.sismember(SEEN_KEY, episode.guid):
                 continue
             await self.redis.sadd(SEEN_KEY, episode.guid)
-            if episode.number and episode.number in published:
+            if episode.type_episode and episode.number in published:
                 logger.info(f"rss: episode {episode.number} was published by the bot, skipping")
                 continue
             fresh.append(episode)

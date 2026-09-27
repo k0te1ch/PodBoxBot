@@ -92,7 +92,7 @@ de-button-confirm = ✅ Send
 ## New episode in RSS
 
 rss_new_episode = Episode { $number } is out: { $title }. Publish it?
-rss_no_mp3 = The feed has no mp3; upload the file with /start for FTP, site and Boosty
+rss_no_mp3 = The feed has no mp3 of our episode; upload the file with /start for FTP, site and Boosty
 rss_to_chat = To chat
 rss_prepare = To platforms (FTP, site, Boosty)
 rss_skip = Skip

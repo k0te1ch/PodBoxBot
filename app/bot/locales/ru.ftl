@@ -92,7 +92,7 @@ de-button-confirm = ✅ Отправить
 ## Новый эпизод в RSS
 
 rss_new_episode = Вышел эпизод { $number }: { $title }. Выложить?
-rss_no_mp3 = В ленте нет mp3 — для FTP, сайта и Boosty загрузи файл через /start
+rss_no_mp3 = В ленте нет mp3 нашего выпуска — для FTP, сайта и Boosty загрузи файл через /start
 rss_to_chat = В чат
 rss_prepare = На площадки (FTP, сайт, Boosty)
 rss_skip = Не надо

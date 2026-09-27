@@ -56,7 +56,7 @@ async def _to_chat(bot: Bot, episode: Episode, locale: str) -> str:
 
 
 async def _prepare(callback: CallbackQuery, bot: Bot, episode: Episode, locale: str) -> str:
-    if not episode.enclosure_url or not episode.number:
+    if not (episode.enclosure_url and episode.number and episode.type_episode):
         return t("rss_cannot_prepare", locale)
     file_name = generate_file_name(episode.number, episode.type_episode)
     target = FILES_PATH / file_name

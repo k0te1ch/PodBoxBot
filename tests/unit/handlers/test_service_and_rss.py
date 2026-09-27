@@ -120,6 +120,7 @@ EPISODE = Episode(
     description="About",
     enclosure_url="https://example.com/43.mp3",
     number="43",
+    type_episode="main",
 )
 
 
