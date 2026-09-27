@@ -48,6 +48,13 @@ class Settings(BaseSettings):
     # (app/shared/config) — бот ищет последний эпизод там, куда публишер льёт.
     FTP_POSTSHOW_DIR: str = "postshow"
 
+    # RSS подкаста: новый эпизод → вопрос админам «Выложить?». Пустой адрес
+    # выключает слежение; без Redis оно не запускается (см. services/rss.py).
+    RSS_FEED_URL: str | None = None
+    RSS_POLL_INTERVAL: int = 600
+    # Сколько неудачных опросов подряд до предупреждения админам.
+    RSS_FAILURE_ALERT: int = 6
+
     # Тихий ли закреп анонса в чате форварда: True — без уведомления подписчикам.
     FORWARD_PIN_SILENT: bool = False
 
@@ -165,6 +172,11 @@ FTP_SERVER = settings.FTP_SERVER
 FTP_LOGIN = settings.FTP_LOGIN
 FTP_PASSWORD = settings.FTP_PASSWORD
 FTP_POSTSHOW_DIR = settings.FTP_POSTSHOW_DIR
+
+# RSS
+RSS_FEED_URL = settings.RSS_FEED_URL
+RSS_POLL_INTERVAL = settings.RSS_POLL_INTERVAL
+RSS_FAILURE_ALERT = settings.RSS_FAILURE_ALERT
 
 # Debug/Logger
 DEBUG = settings.DEBUG

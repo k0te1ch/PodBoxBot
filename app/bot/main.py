@@ -23,6 +23,7 @@ from handlers import ROUTERS, bot_menus
 from middlewares.base.user_context_middleware import UserContextMiddleware
 from services import init_services, redis
 from services.none_module import _NoneModule
+from services.rss import RssWatcher
 from utils.error_reporting import register_error_handler
 from utils.release_notes import get_version, send_release_note
 
@@ -36,6 +37,9 @@ from config import (
     DISK_CHECK_INTERVAL,
     KAFKA_SERVER,
     PARSE_MODE,
+    RSS_FAILURE_ALERT,
+    RSS_FEED_URL,
+    RSS_POLL_INTERVAL,
     SCHEMA_REGISTRY_URL,
 )
 from shared.kafka.consumer import KafkaConsumer
@@ -157,6 +161,20 @@ async def _supervise_consumer(consumer: "KafkaConsumer", handler, restart_delay:
         await asyncio.sleep(restart_delay)
 
 
+async def start_rss_watcher(bot: Bot) -> None:
+    """Запускает слежение за RSS, если задан адрес ленты и есть Redis."""
+    if not RSS_FEED_URL:
+        return
+    if isinstance(redis, _NoneModule):
+        logger.warning("RSS_FEED_URL is set but Redis is not configured: RSS watcher disabled")
+        return
+    watcher = RssWatcher(bot, redis, RSS_FEED_URL, ADMINS_ID, RSS_POLL_INTERVAL, RSS_FAILURE_ALERT)
+    _rss_tasks.add(asyncio.create_task(watcher.run()))
+
+
+_rss_tasks: set[asyncio.Task] = set()
+
+
 def _add_middlewares_to_observers(observers: list[TelegramEventObserver], middlewares: list[BaseMiddleware]) -> None:
     for observer in observers:
         for middleware in middlewares:
@@ -197,6 +215,7 @@ def _get_dp_obj(bot, redis):
     dp.include_routers(*ROUTERS)
 
     dp.startup.register(on_startup)
+    dp.startup.register(start_rss_watcher)
 
     logger.debug("Dispatcher is configured")
     return dp

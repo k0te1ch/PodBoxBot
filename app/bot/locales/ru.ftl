@@ -79,3 +79,29 @@ bot_logs = Прислать лог-файлы
 bot_shutting_down = Бот выключается
 bot_restarting = Бот перезапускается
 logs_failed = Ошибка: не удалось собрать логи
+
+## Сервисные сообщения
+
+admin_service = Сервисное сообщение
+service_ask_text = Напиши текст сообщения — после подтверждения он уйдёт в { $chat }
+service_confirm = Отправить это сообщение в { $chat }?
+service_sent = Отправили в { $chat }
+service_failed = Не удалось отправить сообщение, попробуйте позже
+de-button-confirm = ✅ Отправить
+
+## Новый эпизод в RSS
+
+rss_new_episode = Вышел эпизод { $number }: { $title }. Выложить?
+rss_no_mp3 = В ленте нет mp3 — для FTP, сайта и Boosty загрузи файл через /start
+rss_to_chat = В чат
+rss_prepare = На площадки (FTP, сайт, Boosty)
+rss_skip = Не надо
+rss_chat_post = Вышел новый эпизод: { $title }
+    { $link }
+rss_done_chat = анонс отправлен в чат
+rss_done_prepare = mp3 скачан, выбери площадку в меню под файлом
+rss_done_skip = не выкладываем
+rss_cannot_prepare = нет mp3 или номера эпизода, загрузи файл через /start
+rss_choice = { $user }: { $result }
+rss_expired = Уведомление устарело
+rss_feed_down = RSS не читается уже { $count } раз подряд: { $url }
