@@ -8,14 +8,6 @@ from aiogram_tests.types.dataset import MESSAGE
 
 from middlewares.base.general_middleware import GeneralMiddleware
 
-# aiogram-testing registers ``dp_middlewares`` on every dispatcher observer,
-# including the root ``update`` observer whose event is an ``Update``. The bot's
-# message/callback middlewares (e.g. GeneralMiddleware) expect a ``Message`` /
-# ``CallbackQuery`` and read ``event.from_user``. Keep them off the ``update``
-# observer so they only run where the event type matches, mirroring how the bot
-# registers them at runtime.
-_EXCLUDE_OBSERVERS = ["update"]
-
 
 @pytest.fixture
 def handler_factory() -> Callable[..., MessageHandler]:
@@ -35,14 +27,12 @@ def handler_factory() -> Callable[..., MessageHandler]:
                 handler_func,
                 command,
                 dp_middlewares=dp_middlewares,
-                exclude_observer_methods=_EXCLUDE_OBSERVERS,
                 state=state,
                 state_data=state_data,
             )
         return MessageHandler(
             handler_func,
             dp_middlewares=dp_middlewares,
-            exclude_observer_methods=_EXCLUDE_OBSERVERS,
             state=state,
             state_data=state_data,
         )
@@ -65,7 +55,6 @@ def callback_handler_factory() -> Callable[..., CallbackQueryHandler]:
         return CallbackQueryHandler(
             handler_func,
             dp_middlewares=dp_middlewares,
-            exclude_observer_methods=_EXCLUDE_OBSERVERS,
             state=state,
             state_data=state_data,
         )
