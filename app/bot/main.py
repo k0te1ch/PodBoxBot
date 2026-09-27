@@ -131,6 +131,9 @@ async def on_startup():
         ("publisher.ftp.result", "publisher.ftp.result.group"),
         ("publisher.wordpress.result", "publisher.wordpress.result.group"),
         ("publisher.boosty.result", "publisher.boosty.result.group"),
+        ("publisher.vk.result", "publisher.vk.result.group"),
+        ("publisher.patreon.result", "publisher.patreon.result.group"),
+        ("publisher.sponsr.result", "publisher.sponsr.result.group"),
     ]
     for topic, group_id in result_topics:
         consumer = KafkaConsumer(

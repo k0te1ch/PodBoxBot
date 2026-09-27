@@ -61,10 +61,17 @@ de-alert-expired = The dialog has expired, start again: /start
 audio_ftp = FTP
 audio_site = Website
 audio_boosty = Boosty
+audio_vk = VK Donut
+audio_patreon = Patreon
+audio_sponsr = Sponsr
 audio_forward = Forward to chat
 ftp_upload = Upload the podcast to FTP
 wp_upload = Upload the podcast to the website
 boosty_upload = Publish the aftershow on Boosty
+vk_upload = Publish the aftershow for VK Donut
+patreon_upload = Publish the aftershow on Patreon
+sponsr_upload = Publish the aftershow on Sponsr
+paywalled_publishing = ⏳ Publishing the aftershow on { $platform }...
 forwarded = Forwarded to the chat!
 forward_failed = Forwarding failed, try again later
 

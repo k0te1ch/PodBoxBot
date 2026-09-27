@@ -14,8 +14,18 @@ Boosty — платная площадка: туда уходит только a
 публикуется на платном уровне подписки (см. `BasePublisher.is_paywalled`).
 Кнопка появляется в боте при `BOOSTY_ENABLED=true`; как получить токены и
 прогнать живой смоук — `app/publishers/Boosty/SMOKE.md`.
-FTP и WordPress — для основного эпизода. Patreon заложен в `BasePublisher`
-тем же способом, но сервиса под него ещё нет.
+FTP и WordPress — для основного эпизода.
+
+Послешоу под замком публикуется ещё на трёх площадках, у каждой свой сервис
+(профиль compose `paywalled`) и флаг `<ПЛОЩАДКА>_ENABLED` в боте:
+
+| Площадка | Как работает | Состояние |
+| --- | --- | --- |
+| VK Donut | официальный VK API: `wall.post` с `donut_paid_duration`, звук видеозаписью или документом | готов, ждёт токен сообщества |
+| Patreon | API v2 постов не создаёт — запросы веб-редактора по куке `session_id` | собран, не сверен с живым аккаунтом |
+| Sponsr | API нет — веб-редактор по куке `SESS`; запросы публикации снимаются из HAR | сессия готова, публикация ждёт HAR |
+
+Что нужно для каждой — в `app/publishers/<Площадка>/SMOKE.md`.
 
 ## Что внутри
 
@@ -26,7 +36,10 @@ app/
 │   ├── FTP/              # ftp upload эпизода на хостинг
 │   ├── WordPress/        # WP post-new form + Podlove REST API (Application Password)
 │   │                     #   для метаданных и chapters
-│   └── Boosty/           # пост на платном уровне (mp3 + обложка-тизер), internal API — aftershow
+│   ├── Boosty/           # пост на платном уровне (mp3 + обложка-тизер), internal API — aftershow
+│   ├── VK/               # пост VK Donut, официальный API — aftershow
+│   ├── Patreon/          # пост для патронов, запросы веб-редактора — aftershow
+│   └── Sponsr/           # пост для подписчиков, запросы веб-редактора — aftershow
 ├── kafka/                # kafka-init: создаёт топики из topics.yaml при старте кластера
 ├── schema-watcher/       # регистрирует Avro-схемы в Schema Registry
 └── shared/

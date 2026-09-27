@@ -61,10 +61,17 @@ de-alert-expired = Диалог устарел, начни заново: /start
 audio_ftp = FTP
 audio_site = Сайт
 audio_boosty = Boosty
+audio_vk = VK Donut
+audio_patreon = Patreon
+audio_sponsr = Sponsr
 audio_forward = Переслать в чат
 ftp_upload = Загрузить подкаст на FTP
 wp_upload = Загрузить подкаст на сайт
 boosty_upload = Опубликовать aftershow на Boosty
+vk_upload = Опубликовать aftershow для донов VK
+patreon_upload = Опубликовать aftershow на Patreon
+sponsr_upload = Опубликовать aftershow на Sponsr
+paywalled_publishing = ⏳ Публикация aftershow на { $platform }...
 forwarded = Переслали в чат!
 forward_failed = Ошибка при пересылке, попробуйте позже
 

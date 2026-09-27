@@ -26,7 +26,7 @@ def _admins():
         yield
 
 
-PLATFORM_FLAGS = ("BOOSTY_ENABLED",)
+PLATFORM_FLAGS = ("BOOSTY_ENABLED", "VK_ENABLED", "PATREON_ENABLED", "SPONSR_ENABLED")
 
 
 @pytest.fixture(autouse=True)
@@ -56,6 +56,9 @@ async def test_every_menu_opens_and_every_button_is_wired(locale, fake_redis):
         "boosty@0",
         "notes_groups@0",
         "questions_groups@0",
+        "vk@0",
+        "patreon@0",
+        "sponsr@0",
     } <= set(report.opened)
 
 
@@ -72,7 +75,10 @@ async def test_menus_are_hidden_from_non_admins():
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("type_episode", "labels"),
-    [("main", {"audio_ftp", "audio_site", "audio_forward"}), ("aftershow", {"audio_ftp", "audio_boosty"})],
+    [
+        ("main", {"audio_ftp", "audio_site", "audio_forward"}),
+        ("aftershow", {"audio_ftp", "audio_boosty", "audio_vk", "audio_patreon", "audio_sponsr"}),
+    ],
 )
 async def test_audio_menu_depends_on_episode_type(type_episode, labels):
     markup = await menus.audio_menu_markup(_admin_event(), type_episode)
@@ -81,7 +87,15 @@ async def test_audio_menu_depends_on_episode_type(type_episode, labels):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(("flag", "label"), [("BOOSTY_ENABLED", "audio_boosty")])
+@pytest.mark.parametrize(
+    ("flag", "label"),
+    [
+        ("BOOSTY_ENABLED", "audio_boosty"),
+        ("VK_ENABLED", "audio_vk"),
+        ("PATREON_ENABLED", "audio_patreon"),
+        ("SPONSR_ENABLED", "audio_sponsr"),
+    ],
+)
 async def test_disabled_platform_is_hidden(monkeypatch, flag, label):
     import config
 

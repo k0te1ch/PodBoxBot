@@ -8,6 +8,7 @@ database.sqlite
 **/files/*.json
 boosty_auth.json
 **/boosty_auth.json
+*.har
 
 # Bind-mounted runtime secrets (auth.json, cookie.pkl, ...) — keep dir
 # structure via .gitkeep, never commit the secret files themselves.
