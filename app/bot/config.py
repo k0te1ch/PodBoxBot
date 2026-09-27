@@ -85,6 +85,10 @@ class Settings(BaseSettings):
 
     ENABLE_APSCHEDULER: bool = False
 
+    # Порог заполненности диска (%) и период проверки (сек) для utils.disk_watch
+    DISK_ALERT_PERCENT: float = 85.0
+    DISK_CHECK_INTERVAL: int = 3600
+
     # JSON fields
     ADMINS: list[str] = Field(default_factory=list)
     ADMINS_ID: list[int] = Field(default_factory=list)
@@ -202,6 +206,8 @@ MODELS_DIR = settings.MODELS_DIR
 DEVELOPER = settings.DEVELOPER
 
 ENABLE_APSCHEDULER = settings.ENABLE_APSCHEDULER
+DISK_ALERT_PERCENT = settings.DISK_ALERT_PERCENT
+DISK_CHECK_INTERVAL = settings.DISK_CHECK_INTERVAL
 
 ADMINS = settings.ADMINS
 ADMINS_ID = settings.ADMINS_ID
@@ -248,6 +254,10 @@ KEYBOARDS_PATH = SRC_PATH / KEYBOARDS_DIR if KEYBOARDS_DIR else SRC_PATH / "keyb
 # -------------------------------------------------------------------
 
 
+# Без retention loguru только ротирует: файлы копятся бесконечно и забивают диск.
+LOG_RETENTION = "14 days"
+
+
 def set_up_logger(log_level: str, logs_path: Path):
     logger.remove()
     logger.add(
@@ -261,6 +271,8 @@ def set_up_logger(log_level: str, logs_path: Path):
     logger.add(
         logs_path / "file_{time:YYYY-MM-DD_HH-mm-ss}.log",
         rotation="5 MB",
+        retention=LOG_RETENTION,
+        compression="gz",
         format="{time:YYYY-MM-DD HH:mm:ss} | {level}::{module}::{function}::{line} | {message}",
         level="TRACE",
         backtrace=True,
