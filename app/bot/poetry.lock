@@ -44,18 +44,18 @@ signature = ["cryptography (>=46.0.0)"]
 
 [[package]]
 name = "aiogram-testing"
-version = "1.1.0"
+version = "1.3.0"
 description = "A library for testing your bots on aiogram"
 optional = false
 python-versions = "<3.15,>=3.12"
 groups = ["testing"]
 files = [
-    {file = "aiogram_testing-1.1.0-py3-none-any.whl", hash = "sha256:46b56d08a7f0890ecb5e846b63f18a607c956d6c3a3a3b5fd173c2c2db5e5780"},
-    {file = "aiogram_testing-1.1.0.tar.gz", hash = "sha256:37f8d83177cb783b9b438f5d88d8004767cab4805dd0fa5b07df2ffe145883fa"},
+    {file = "aiogram_testing-1.3.0-py3-none-any.whl", hash = "sha256:d7a3cb88beb2f281b3ea6f3641ab0ab587d6fbcb5c063780ff063d7d1cfedc90"},
+    {file = "aiogram_testing-1.3.0.tar.gz", hash = "sha256:a9f345f3114a3b64ee0e61abde758820b33b2ea441e091730fbca3f5ca452711"},
 ]
 
 [package.dependencies]
-aiogram = ">=3.28,<4.0"
+aiogram = ">=3.23,<4"
 
 [[package]]
 name = "aiohappyeyeballs"
@@ -3018,4 +3018,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.15"
-content-hash = "d96447c0dc0562e1cea1e7adb56b04aabf29f85a01465bda946f4a26e6e23e5f"
+content-hash = "6147c849de714481e545123c34661ac8fa7568dfa3ca569dc57674b5cb52acd8"
