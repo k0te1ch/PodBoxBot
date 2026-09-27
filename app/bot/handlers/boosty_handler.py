@@ -1,46 +1,35 @@
-import os
+"""Кнопка «Опубликовать aftershow на Boosty» меню аудио (см. :mod:`handlers.menus`)."""
 
-from aiogram import F, Router
-from aiogram.types import CallbackQuery
 from loguru import logger
 from pydantic import ValidationError
+from sagenza_tgbot_sdk.menus import MenuContext
 
 from config import FILES_PATH
-from filters.dispatcher_filters import IsAdmin, IsPrivate
-from services import context, keyboards
+from services.i18n import t
 from shared.kafka.models.boosty_event import BoostyEvent
+from utils.menu_context import username as username_of
 from utils.publishing import publish_request
 from utils.template_store import load as load_template_info
-
-router = Router(name=os.path.splitext(os.path.basename(__file__))[0])
-router.message.filter(IsPrivate, IsAdmin)
 
 BOOSTY_UPLOAD_TOPIC = "publisher.boosty.upload"
 
 
-@router.callback_query(F.data == "Boosty_menu")
-async def Boosty_menu(callback: CallbackQuery, language: str, username: str) -> None:
-    logger.bind(username=username).debug("Открыто меню Boosty")
-
-    await callback.message.edit_reply_markup(reply_markup=keyboards["podcast_handler"][language].Boosty_menu)
-    await callback.answer()
-
-
-@router.callback_query(F.data == "Boosty_upload")
-async def upload_Boosty(callback: CallbackQuery, language: str, username: str) -> None:
+async def upload_Boosty(ctx: MenuContext) -> None:
+    message = ctx.message
+    username = username_of(ctx)
     logger.bind(username=username).debug("Начата публикация aftershow на Boosty")
 
-    file_name = callback.message.audio.file_name
+    file_name = message.audio.file_name
     stored = await load_template_info(file_name)
     if stored is None:
         logger.bind(username=username).warning(f"template info not found for {file_name}")
-        return await callback.answer(context[language].invalid_input, show_alert=True)
+        return await ctx.answer(t("invalid_input", ctx.locale), alert=True)
 
     info = stored["info"]
     file_path = f"{FILES_PATH}/{file_name}"
 
     # Отправляем сообщение-статус
-    msg = await callback.message.answer("⏳ Публикация aftershow на Boosty...")
+    msg = await message.answer("⏳ Публикация aftershow на Boosty...")
 
     try:
         # Boosty — только для aftershow: пост уходит на платный уровень + цену
@@ -63,6 +52,6 @@ async def upload_Boosty(callback: CallbackQuery, language: str, username: str) -
         )
     except ValidationError as e:
         logger.error(f"Ошибка валидации BoostyEvent: {e.json()}")
-        return await callback.answer("Ошибка валидации данных", show_alert=True)
+        return await ctx.answer("Ошибка валидации данных", alert=True)
 
-    await publish_request(callback, BOOSTY_UPLOAD_TOPIC, "boosty_event.avsc", event)
+    await publish_request(ctx, BOOSTY_UPLOAD_TOPIC, "boosty_event.avsc", event)

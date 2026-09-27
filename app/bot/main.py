@@ -18,7 +18,7 @@ from sagenza_tgbot_sdk.metrics import MetricsModule, MetricsSettings
 from sagenza_tgbot_sdk.notify import NotifyModule
 from sagenza_tgbot_sdk.status import StatusModule
 
-from handlers import ROUTERS
+from handlers import ROUTERS, bot_menus
 from middlewares.base.user_context_middleware import UserContextMiddleware
 from services import init_services, redis
 from services.none_module import _NoneModule
@@ -28,7 +28,14 @@ from utils.release_notes import get_version, send_release_note
 
 MAIN_MODULE_NAME = os.path.basename(__file__)[:-3]
 
-from config import ADMINS_ID, API_TOKEN, DEBUG, KAFKA_SERVER, PARSE_MODE, SCHEMA_REGISTRY_URL
+from config import (
+    ADMINS_ID,
+    API_TOKEN,
+    DEBUG,
+    KAFKA_SERVER,
+    PARSE_MODE,
+    SCHEMA_REGISTRY_URL,
+)
 from shared.kafka.consumer import KafkaConsumer
 
 logger.debug("Loading settings from config")
@@ -158,9 +165,14 @@ def _add_middlewares_to_observers(observers: list[TelegramEventObserver], middle
 
 def _setup_sdk(dp: Dispatcher) -> None:
     # Бот держит свой loguru и обработчик ошибок, поэтому из SDK берутся только
-    # метрики, /healthz и /metrics (порт 8080), /status и notify.
+    # метрики, /healthz и /metrics (порт 8080), /status, notify и меню.
     settings = SdkSettings(bot_token=API_TOKEN, admin_ids=frozenset(ADMINS_ID))
-    modules = [MetricsModule(MetricsSettings(bot_name="podboxbot")), HealthModule(), StatusModule()]
+    modules = [
+        MetricsModule(MetricsSettings(bot_name="podboxbot")),
+        HealthModule(),
+        StatusModule(),
+        bot_menus,
+    ]
     # notify без получателя падает на старте: без ADMINS_ID его просто не ставим.
     if ADMINS_ID:
         modules.append(NotifyModule())

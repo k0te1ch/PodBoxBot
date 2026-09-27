@@ -78,7 +78,6 @@ class Settings(BaseSettings):
     REDIS_DB: int = 0
 
     # DIRECTORIES / FILES
-    KEYBOARDS_DIR: str | None = None
     HANDLERS_DIR: str | None = None
     MODELS_DIR: str | None = None
     DEVELOPER: int | None = None
@@ -93,7 +92,6 @@ class Settings(BaseSettings):
     ADMINS: list[str] = Field(default_factory=list)
     ADMINS_ID: list[int] = Field(default_factory=list)
     HANDLERS: list[str] = Field(default_factory=list)
-    KEYBOARDS: list[str] = Field(default_factory=list)
     LANGUAGES: list[str] = Field(default_factory=list)
 
     # FILES
@@ -120,7 +118,6 @@ class Settings(BaseSettings):
         "ADMINS",
         "ADMINS_ID",
         "HANDLERS",
-        "KEYBOARDS",
         "LANGUAGES",
         mode="before",
     )
@@ -200,7 +197,6 @@ if _REDIS_URL is None and settings.REDIS_PASSWORD:
 REDIS_URL = _REDIS_URL
 
 # Directories
-KEYBOARDS_DIR = settings.KEYBOARDS_DIR
 HANDLERS_DIR = settings.HANDLERS_DIR
 MODELS_DIR = settings.MODELS_DIR
 DEVELOPER = settings.DEVELOPER
@@ -214,7 +210,6 @@ SCHEMA_REGISTRY_URL = settings.SCHEMA_REGISTRY_URL
 ADMINS = settings.ADMINS
 ADMINS_ID = settings.ADMINS_ID
 HANDLERS = settings.HANDLERS
-KEYBOARDS = settings.KEYBOARDS
 LANGUAGES = settings.LANGUAGES
 
 # Podcast
@@ -248,7 +243,6 @@ def _cover_path(name: str) -> Path:
 
 COVER_RZ_PATH = _cover_path(COVER_RZ_NAME or "cover.jpg")
 COVER_PS_PATH = _cover_path(COVER_PS_NAME or "pscover.jpg")
-KEYBOARDS_PATH = SRC_PATH / KEYBOARDS_DIR if KEYBOARDS_DIR else SRC_PATH / "keyboards"
 
 
 # -------------------------------------------------------------------

@@ -1,42 +1,80 @@
-cancel = Отмена
-back = Назад
+# Тексты бота. Формат — простые сообщения Fluent, их читает FtlTranslator
+# из sagenza-tgbot-sdk: `ключ = значение`, продолжение значения — строки с
+# отступом, подстановки — { $имя }.
+
 error_occurred = Произошла ошибка! Пожалуйста, попробуйте снова
 invalid_input = Ошибка при вводе!
 download_failed = ❌ MP3 не загружен. Проверь файл и попробуй ещё раз.
 
-ask_typeEpisode = Привет <b>{msg.from_user.first_name}</b>, что мы добавляем?
-ask_mp3 = Загружаем <u><b>{type_episode_text}</b></u>. Ожидаю MP3 файл
+## Загрузка эпизода (диалог DialogEngine)
+
+ask_typeEpisode = Привет <b>{ $first_name }</b>, что мы добавляем?
+ask_mp3 = Загружаем <u><b>{ $type_episode }</b></u>. Ожидаю MP3 файл
 got_mp3 = Вижу MP3, начинаю загрузку
 done_mp3 = Вот твой готовый файл!
 set_tags = Проставляем теги
 downloaded = MP3 загружено! Теперь пришли описание эпизода в соответствии с шаблоном ниже, ничего не меняя, кроме значений полей:
-done_tag = Теги проставлены.\nЗагрузка началась, подождите около 2-5 минут
+done_tag =
+    Теги проставлены.
+    Загрузка началась, подождите около 2-5 минут
 canceled = Отменено
 
 main_episode = Основной эпизод
 episode_aftershow = Эпизод послешоу
 
-admin_panel_opened = Админ панель
-admin_panel_open = Админ панель
-admin_panel_close = Админ панель закрыта
-admin_panel_main = [["Бот", "bot_panel"]]
-bot_commands = [["Выключить бота", "shutdown_bot"], ["Прислать лог-файлы", "send_logs"]]
+ask_template_main =
+    <pre language="text">Number: { $number }
+    Recording Date: 26.07.2026
+    Title: Название эпизода
+    Comment: Описание эпизода
+    Tags: Окно, жесть, спина
+    Chapters: |
+    00:00:07 - Вступление и что нового за неделю
+    00:28:53 - Название темы 1
+    01:40:56 - Название темы 2
+    02:17:25 - Озвучили наших патронов и анонсировали послешоу</pre>
+ask_template_aftershow =
+    <pre language="text">Number: { $number }
+    Recording Date: 26.07.2026
+    Title: Послешоу. Название эпизода
+    Comment: Описание эпизода</pre>
 
-ask_template = {
-    .main = |
-        <pre language="text">Number: 600
-        Recording Date: 26.07.2026
-        Title: Название эпизода
-        Comment: Описание эпизода
-        Tags: Окно, жесть, спина
-        Chapters: |
-        00:00:07 - Вступление и что нового за неделю
-        00:28:53 - Название темы 1
-        01:40:56 - Название темы 2
-        02:17:25 - Озвучили наших патронов и анонсировали послешоу</pre>
-    .aftershow = |
-        <pre language="text">Number: 600
-        Recording Date: 26.07.2026
-        Title: Послешоу. Название эпизода
-        Comment: Описание эпизода</pre>
-}
+# Служебные тексты DialogEngine: ключ `de.x.y` ищется как `de-x-y`.
+# Подстановки в них — в фигурных скобках без $, их заполняет сам движок.
+de-button-back = ⬅️ Назад
+de-button-cancel = Отмена
+de-button-keep = Оставить
+de-button-keep_value = Оставить: {value}
+de-error-media-mime = Нужен MP3 (допустимые типы: {allowed})
+de-error-media-extension = Нужен файл с расширением {allowed}
+de-error-media-size = Файл больше {max_mb} МБ
+de-error-file-expected = Жду MP3 файл
+de-error-media-unexpected = Здесь нужен текст, а не файл
+de-error-button_required = Выбери вариант кнопкой
+de-alert-no_session = Диалог уже закончился, начни заново: /start
+de-alert-stale_button = Кнопка устарела
+de-alert-expired = Диалог устарел, начни заново: /start
+
+## Меню аудио
+
+audio_ftp = FTP
+audio_site = Сайт
+audio_boosty = Boosty
+audio_forward = Переслать в чат
+ftp_upload = Загрузить подкаст на FTP
+wp_upload = Загрузить подкаст на сайт
+boosty_upload = Опубликовать aftershow на Boosty
+forwarded = Переслали в чат!
+forward_failed = Ошибка при пересылке, попробуйте позже
+
+## Админ-панель
+
+admin_panel = Админ панель
+admin_bot = Бот
+bot_panel = Управление ботом
+bot_shutdown = Выключить бота
+bot_restart = Перезапустить бота
+bot_logs = Прислать лог-файлы
+bot_shutting_down = Бот выключается
+bot_restarting = Бот перезапускается
+logs_failed = Ошибка: не удалось собрать логи
