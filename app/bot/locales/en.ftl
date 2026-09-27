@@ -105,3 +105,21 @@ rss_cannot_prepare = no mp3 or episode number, upload the file with /start
 rss_choice = { $user }: { $result }
 rss_expired = This notification is outdated
 rss_feed_down = RSS feed failed { $count } times in a row: { $url }
+
+## Host notes and listener questions
+
+admin_notes = Host notes
+admin_questions = Listener questions
+notes_groups = Host notes by group. Add one: /note #topic text
+questions_groups = Listener questions and topics by hashtag
+notes_entries = Notes in group
+questions_entries = Questions in group
+notes_usage = Write the note after the command: /note #topic text. Groups: { $tags }
+questions_usage = Write your question after the command: /ask text. You may add a hashtag: { $tags }
+collector_saved = Saved to #{ $tag }
+collector_used = ✅ Used
+collector_delete = 🗑 Delete
+collector_marked_used = Marked as used
+collector_deleted = Deleted
+collector_missing = The entry is already gone
+collector_open_message = Open message

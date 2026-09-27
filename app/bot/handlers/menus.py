@@ -3,7 +3,8 @@
 Кнопка несёт свой хендлер, callback_data и «Назад» генерирует SDK, а при
 старте ``Menus.setup`` валит бота, если какая-то кнопка ведёт в никуда.
 
-* Админ-панель (``/admin``): Бот → выключить / перезапустить / логи.
+* Админ-панель (``/admin``): Бот → выключить / перезапустить / логи;
+  заметки ведущих и вопросы слушателей (:mod:`handlers.collector_handler`).
 * Меню аудио висит под готовым MP3: FTP, сайт, Boosty, пересылка в чат.
   Основной эпизод и послешоу — разные корни, чтобы «Назад» из FTP вёл
   в своё меню.
@@ -25,6 +26,7 @@ from filters.dispatcher_filters import IsAdmin, IsPrivate
 from handlers.admin_handler import restart, send_logs, shutdown
 from handlers.audio_handler import forward_to_chat
 from handlers.boosty_handler import upload_Boosty
+from handlers.collector_handler import collection_submenus
 from handlers.ftp_handler import upload_FTP
 from handlers.service_handler import open_from_menu as open_service_message
 from handlers.wordpress_handler import upload_WP
@@ -100,6 +102,7 @@ def build_menus() -> BotMenus:
         items=[
             Submenu("admin_bot", bot_menu, id="bot", visible_if=is_admin),
             Button("admin_service", id="service", handler=open_service_message, visible_if=is_admin),
+            *collection_submenus(is_admin),
         ],
     )
     audio_main = Menu(
