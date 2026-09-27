@@ -93,7 +93,8 @@ def audio_tag(info: dict, type: str) -> None:
     audio_file.tag.publisher = PODCAST_NAME
     audio_file.tag.genre = PODCAST_GENRE
     audio_file.tag.release_date = year
-    audio_file.tag.recording_date = year
+    # Полная дата записи из шаблона точнее года, если она указана.
+    audio_file.tag.recording_date = info.get("recording_date") or year
 
     if type == "main":
         set_chapters(audio_file, info.get("chapters", []))

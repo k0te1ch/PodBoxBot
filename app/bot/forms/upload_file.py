@@ -21,7 +21,7 @@ from dialog_engine import DialogEngine, StepContext, ValidationError
 from dialog_engine.integrations.aiogram import DialogRunner, KeyboardLayout
 
 from services.i18n import t
-from utils.validators import validate_template
+from utils.validators import invalid_recording_date, validate_template
 
 # ID шагов нужны хендлерам, поэтому они именованные константы.
 TYPE_EPISODE = "type_episode"
@@ -39,6 +39,8 @@ SESSION_TTL = timedelta(hours=6)
 
 async def check_template(value: str, ctx: StepContext) -> dict[str, Any]:
     """Валидатор шага шаблона: разобранные поля эпизода или ошибка на шаге."""
+    if invalid_recording_date(value) is not None:
+        raise ValidationError("invalid_recording_date", ctx.step.id)
     info = validate_template(value)
     if info is None:
         raise ValidationError("invalid_input", ctx.step.id)

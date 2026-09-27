@@ -1,6 +1,6 @@
 import pytest
 
-from utils.validators import validate_template
+from utils.validators import invalid_recording_date, validate_template
 
 
 @pytest.mark.parametrize(
@@ -79,12 +79,18 @@ def test_template_without_recording_date_has_no_key():
     assert "recording_date" not in result
 
 
-def test_template_with_unparseable_recording_date_is_ignored():
-    # Некорректная дата не роняет шаблон — просто отбрасывается
-    result = validate_template("Number: 1\nRecording Date: не дата\nTitle: Header\nComment: Comment")
-    assert result is not None
-    assert "recording_date" not in result
-    assert result["title"] == "1. Header"
+@pytest.mark.parametrize("raw", ["не дата", "31.02.2026", "01.01.2999"])
+def test_template_with_bad_recording_date_is_rejected(raw):
+    # Дата указана, но не распознана или из будущего — шаблон не принимается,
+    # иначе в пост молча уйдёт сегодняшняя дата вместо задуманной.
+    template = f"Number: 1\nRecording Date: {raw}\nTitle: Header\nComment: Comment"
+    assert validate_template(template) is None
+    assert invalid_recording_date(template) == raw
+
+
+def test_valid_recording_date_is_not_reported():
+    assert invalid_recording_date("Number: 1\nRecording Date: 05.06.2026\nTitle: H\nComment: C") is None
+    assert invalid_recording_date("Number: 1\nTitle: H\nComment: C") is None
 
 
 @pytest.mark.parametrize(
