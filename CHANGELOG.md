@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.8.0](https://github.com/k0te1ch/PodBoxBot/compare/v0.7.0...v0.8.0) (2026-09-27)
+
+
+### Features
+
+* **boosty:** refresh tokens reliably and explain auth failures ([#83](https://github.com/k0te1ch/PodBoxBot/issues/83)) ([e0d234f](https://github.com/k0te1ch/PodBoxBot/commit/e0d234f0c61e5a05e1a43455614f932b96497124))
+* **bot:** collect host notes and listener questions by hashtag ([#80](https://github.com/k0te1ch/PodBoxBot/issues/80)) ([9183396](https://github.com/k0te1ch/PodBoxBot/commit/9183396b0721572667d7a2574c4d74585acc1fd1))
+* **bot:** rss episode notifications and service messages ([#79](https://github.com/k0te1ch/PodBoxBot/issues/79)) ([19750f8](https://github.com/k0te1ch/PodBoxBot/commit/19750f83ac485ea952893c43b30bb099082f11b8)), closes [#474](https://github.com/k0te1ch/PodBoxBot/issues/474)
+* **monitoring:** extend grafana dashboard and add alert rules ([#82](https://github.com/k0te1ch/PodBoxBot/issues/82)) ([13dea32](https://github.com/k0te1ch/PodBoxBot/commit/13dea3258abac41670d2450f16b3a18c99424395))
+* **monitoring:** send grafana alerts to telegram and skip other shows in rss ([#86](https://github.com/k0te1ch/PodBoxBot/issues/86)) ([67cd830](https://github.com/k0te1ch/PodBoxBot/commit/67cd830a1c346da2ed5a641f38145cfc2b3284d3))
+* **publishers:** publish aftershows to VK Donut, Patreon and Sponsr ([#84](https://github.com/k0te1ch/PodBoxBot/issues/84)) ([ed2541c](https://github.com/k0te1ch/PodBoxBot/commit/ed2541cb36e68a9e34006a9651a1a0277f72649b))
+
+
+### Bug Fixes
+
+* **bot:** report every publishing step and check forwarded posts ([#81](https://github.com/k0te1ch/PodBoxBot/issues/81)) ([2756764](https://github.com/k0te1ch/PodBoxBot/commit/275676499913d7e67262f1c276b03355e8d42ed9))
+* **wordpress:** make draft publishing idempotent and verify the right endpoint ([#78](https://github.com/k0te1ch/PodBoxBot/issues/78)) ([625f68e](https://github.com/k0te1ch/PodBoxBot/commit/625f68ee3c1c5611182215e007d6955686d1d3f0))
+
 ## [0.7.0](https://github.com/k0te1ch/PodBoxBot/compare/v0.6.0...v0.7.0) (2026-09-27)
 
 
