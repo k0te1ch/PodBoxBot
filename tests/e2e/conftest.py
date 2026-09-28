@@ -3,6 +3,7 @@ import re
 from pathlib import Path
 
 import pytest
+import pytest_asyncio
 from dotenv import load_dotenv
 from sagenza_tgbot_sdk.menus import parse_ftl
 
@@ -39,7 +40,7 @@ def bot_username() -> str:
     return name if name.startswith("@") else f"@{name}"
 
 
-@pytest.fixture(autouse=True)
+@pytest_asyncio.fixture(autouse=True)
 async def _bot_speaks_e2e_lang(tester, bot_username):
     """Пропуск, если бот видит аккаунт на другом языке: фразы из .ftl не совпадут."""
     markers = {
