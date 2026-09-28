@@ -6,5 +6,6 @@ steps:
       contains: "что мы добавляем"
       buttons: ["Основной эпизод", "Эпизод послешоу"]
   - click: "Основной эпизод"
-  - expect:
+  # the dialog edits the same message
+  - wait_until:
       icontains: "ожидаю mp3"

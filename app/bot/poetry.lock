@@ -2699,14 +2699,14 @@ sqlcipher = ["sqlcipher3_binary"]
 
 [[package]]
 name = "telethon"
-version = "1.42.0"
+version = "1.45.0"
 description = "Full-featured Telegram client library for Python 3"
 optional = false
 python-versions = ">=3.5"
 groups = ["e2e"]
 files = [
-    {file = "telethon-1.42.0-py3-none-any.whl", hash = "sha256:cf361c94586bcacd6d0fc8959a2bce509d1bb37007fe6476a80c4fb4a2decc29"},
-    {file = "telethon-1.42.0.tar.gz", hash = "sha256:032e95511261d5ead719f75494c6c85ece2ce71816b54f3c65d6ccc371d6994d"},
+    {file = "telethon-1.45.0-py3-none-any.whl", hash = "sha256:339e24c83aedc9f12cbe389264627edc49779e4289c535aa90aafc4ce62f7972"},
+    {file = "telethon-1.45.0.tar.gz", hash = "sha256:4cb7ae269b8ab9dad9fc490b859f0bc2f885121e990f5b20407b1faa0db2a1d9"},
 ]
 
 [package.dependencies]
@@ -2718,26 +2718,26 @@ cryptg = ["cryptg"]
 
 [[package]]
 name = "tgtest"
-version = "0.1.0"
+version = "0.3.0"
 description = "End-to-end testing platform for Telegram bots (Telethon-driven, YAML + pytest)."
 optional = false
-python-versions = ">=3.12,<4.0"
+python-versions = "<4.0,>=3.12"
 groups = ["e2e"]
-files = []
-develop = false
+files = [
+    {file = "tgtest-0.3.0-py3-none-any.whl", hash = "sha256:765f86474c183dbb1be3d22b8911db6039c5f42c28b5fe254c3a51aec8da2e28"},
+    {file = "tgtest-0.3.0.tar.gz", hash = "sha256:173aea01c210480e7f2e37f9deff86c39d0efc1954ae9567bc50e967639dc636"},
+]
 
 [package.dependencies]
+pydantic = ">=2.0"
 pydantic-settings = ">=2.5"
 python-dotenv = ">=1.0"
 python-socks = {version = ">=2.4", extras = ["asyncio"]}
 pyyaml = ">=6.0"
-telethon = ">=1.36,<2.0"
+telethon = ">=1.43,<2.0"
 
-[package.source]
-type = "git"
-url = "https://github.com/k0te1ch/tgtest"
-reference = "HEAD"
-resolved_reference = "42952e3b2518316b7d7651cac6382575c1a03fa6"
+[package.extras]
+browser = ["playwright (>=1.40)"]
 
 [[package]]
 name = "toml"
@@ -3018,4 +3018,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.15"
-content-hash = "6147c849de714481e545123c34661ac8fa7568dfa3ca569dc57674b5cb52acd8"
+content-hash = "9e4eac0a8d0dc2dbd1ed0de320901aacbeb8fdf25331d383cb5ddb1cf76b3155"

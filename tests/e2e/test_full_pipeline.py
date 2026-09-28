@@ -4,59 +4,23 @@ FTP/WordPress publish (no chat forwarding).
 Buttons are clicked by their text from locales/*.ftl: callback data of the
 dialog (DialogEngine) and of the menus (sagenza-tgbot-sdk) is generated.
 
-The YAML-supported steps go through tgtest's fixtures. The MP3 upload step
-is not in tgtest's documented YAML actions, so we drop into Telethon
-directly — on tgtest's own connected client: a second client on the same
-SQLite session file fails with "database is locked".
+Menus edit the same message (often the keyboard before answering the
+callback): expect_edit and wait_until re-read it, so an edit that landed
+before the check is still seen.
 """
 
-import asyncio
 from pathlib import Path
 
 import pytest
 
 
 async def _upload_audio_and_wait_template_prompt(tester, bot_username: str, mp3_path: Path, got_mp3: str) -> str:
-    client = tester._client  # tgtest exposes no public accessor for its client
-    async with client.conversation(bot_username, timeout=120) as conv:
-        await conv.send_file(str(mp3_path), voice_note=False, attributes=None, force_document=False)
-        got = await conv.get_response()
-        assert got_mp3.lower() in got.message.lower(), f"unexpected: {got.message!r}"
+    async with tester.conversation(bot_username, timeout=120) as chat:
+        await chat.send_file(str(mp3_path))
+        await chat.expect(icontains=got_mp3)
         # the bot edits got_mp3 -> downloaded, then sends ask_template separately
-        template_prompt = await conv.get_response()
+        template_prompt = await chat.get_reply()
         return template_prompt.message
-
-
-async def _open_submenu(tester, chat, text: str, expect_text: str) -> None:
-    """Нажать кнопку меню, которая меняет клавиатуру того же сообщения.
-
-    tgtest's expect_edit races here: the bot edits the markup before answering
-    the callback, so the edit event lands before get_edit starts waiting.
-    Re-read the message instead and check the new buttons directly.
-    """
-    await chat.click(text)
-    msg = chat.last
-    buttons: list[str] = []
-    for _ in range(20):
-        msg = await tester._client.get_messages(msg.chat_id, ids=msg.id)
-        buttons = [b.text for row in (msg.buttons or []) for b in row]
-        if expect_text in buttons:
-            chat.last = msg
-            return
-        await asyncio.sleep(0.5)
-    raise AssertionError(f"{text}: keyboard never showed {expect_text!r}, got {buttons!r}")
-
-
-async def _wait_for_text(tester, msg, fragment: str, timeout: float) -> None:
-    """Дождаться, пока бот отредактирует сообщение до текста с fragment."""
-    text = ""
-    for _ in range(int(timeout / 0.5)):
-        msg = await tester._client.get_messages(msg.chat_id, ids=msg.id)
-        text = msg.text or ""
-        if fragment in text:
-            return
-        await asyncio.sleep(0.5)
-    raise AssertionError(f"message never contained {fragment!r}, last text: {text!r}")
 
 
 @pytest.mark.e2e
@@ -71,9 +35,8 @@ async def test_full_pipeline_ftp(tester, bot_username, sample_mp3, episode_templ
 
         # Кнопки диалога inline: выбор типа правит то же сообщение.
         await chat.click(phrase("main_episode", full=True))
-        await _wait_for_text(tester, chat.last, phrase("ask_mp3"), timeout=20)
+        await chat.wait_until(contains=phrase("ask_mp3"), timeout=20)
 
-    # MP3 upload step — Telethon directly, tgtest doesn't expose file upload.
     await _upload_audio_and_wait_template_prompt(tester, bot_username, sample_mp3, phrase("got_mp3"))
 
     async with tester.conversation(bot_username) as chat:
@@ -86,13 +49,14 @@ async def test_full_pipeline_ftp(tester, bot_username, sample_mp3, episode_templ
             buttons=[phrase("audio_ftp", full=True), phrase("audio_site", full=True)],
         )
 
-        await _open_submenu(tester, chat, phrase("audio_ftp", full=True), phrase("ftp_upload", full=True))
+        await chat.click(phrase("audio_ftp", full=True))
+        await chat.expect_edit(buttons=[phrase("ftp_upload", full=True)], timeout=10)
 
         await chat.click(phrase("ftp_upload", full=True))
         # Статус-сообщение правится прогрессом публишера, ловим любой текст
         # и ждём итога, который приходит через Kafka.
         status = await chat.expect()
-        await _wait_for_text(tester, status, "успешно загружен", timeout=120)
+        await chat.wait_for_text("успешно загружен", timeout=120, message=status)
 
 
 @pytest.mark.e2e
@@ -102,7 +66,7 @@ async def test_full_pipeline_wordpress(tester, bot_username, sample_mp3, episode
         await chat.command("start")
         await chat.expect(contains=phrase("ask_typeEpisode"))
         await chat.click(phrase("main_episode", full=True))
-        await _wait_for_text(tester, chat.last, phrase("ask_mp3"), timeout=20)
+        await chat.wait_until(contains=phrase("ask_mp3"), timeout=20)
 
     await _upload_audio_and_wait_template_prompt(tester, bot_username, sample_mp3, phrase("got_mp3"))
 
@@ -112,11 +76,12 @@ async def test_full_pipeline_wordpress(tester, bot_username, sample_mp3, episode
         await chat.expect(icontains=phrase("done_tag").split("\n")[0])
         await chat.expect(contains=phrase("done_mp3"))
 
-        await _open_submenu(tester, chat, phrase("audio_site", full=True), phrase("wp_upload", full=True))
+        await chat.click(phrase("audio_site", full=True))
+        await chat.expect_edit(buttons=[phrase("wp_upload", full=True)], timeout=10)
 
         await chat.click(phrase("wp_upload", full=True))
         # Статус сразу правится шагами публишера, поэтому ловим любой текст,
         # а затем итог: в e2e-стенде WordPress направлен в никуда, после всех
         # повторов бот обязан сообщить об ошибке с шагом, а не молчать.
         status = await chat.expect()
-        await _wait_for_text(tester, status, "Ошибка публикации", timeout=240)
+        await chat.wait_for_text("ошибка публикации", timeout=240, message=status)
