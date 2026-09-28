@@ -55,7 +55,6 @@ async def test_every_menu_opens_and_every_button_is_wired(locale, fake_redis):
         "wp@0",
         "boosty@0",
         "notes_groups@0",
-        "questions_groups@0",
         "vk@0",
         "patreon@0",
         "sponsr@0",
