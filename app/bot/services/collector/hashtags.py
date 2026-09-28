@@ -34,13 +34,3 @@ def strip_hashtags(text: str | None, tags: Iterable[str]) -> str:
         return "" if normalize_tag(match.group(1)) in drop else match.group(0)
 
     return re.sub(r"[ \t]{2,}", " ", _HASHTAG.sub(_replace, text or "")).strip()
-
-
-def message_link(chat_username: str | None, chat_id: int, message_id: int) -> str | None:
-    """Ссылка на сообщение: публичный чат — по username, супергруппа — через /c/."""
-    if chat_username:
-        return f"https://t.me/{chat_username.lstrip('@')}/{message_id}"
-    internal = str(chat_id).removeprefix("-100")
-    if internal != str(chat_id):
-        return f"https://t.me/c/{internal}/{message_id}"
-    return None

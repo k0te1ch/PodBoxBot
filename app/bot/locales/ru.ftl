@@ -111,16 +111,12 @@ rss_choice = { $user }: { $result }
 rss_expired = Уведомление устарело
 rss_feed_down = RSS не читается уже { $count } раз подряд: { $url }
 
-## Заметки ведущих и вопросы слушателей
+## Заметки ведущих
 
 admin_notes = Заметки ведущих
-admin_questions = Вопросы слушателей
 notes_groups = Заметки ведущих по группам. Добавить: /note #тема текст
-questions_groups = Вопросы и темы слушателей по хештегам
 notes_entries = Заметки группы
-questions_entries = Вопросы группы
 notes_usage = Напиши заметку после команды: /note #тема текст. Группы: { $tags }
-questions_usage = Напиши вопрос после команды: /ask текст. Можно указать хештег: { $tags }
 collector_saved = Сохранено в #{ $tag }
 collector_used = ✅ Использовано
 collector_delete = 🗑 Удалить
