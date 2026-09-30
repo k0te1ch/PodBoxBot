@@ -56,3 +56,19 @@ async def test_mixed_zero_padding():
 
     with patch("utils.ftp_methods.ftplib.FTP_TLS", ftp_tls):
         assert await get_last_post_id("main", "srv", "user", "pass") == "0999"
+
+
+@pytest.mark.asyncio
+async def test_other_shows_postshows_and_non_mp3_do_not_affect_the_number():
+    files = [
+        "756_rz_ep.mp3",
+        "9999_postshow_x.mp3",
+        "Outcast_05.mp3",
+        "e2e-test-dir",
+        "900_rz_ep.txt",
+        "rz_1000_x.mp3",
+    ]
+    ftp_tls, _ = _ftp_returning(files)
+
+    with patch("utils.ftp_methods.ftplib.FTP_TLS", ftp_tls):
+        assert await get_last_post_id("main", "srv", "user", "pass") == "756"
