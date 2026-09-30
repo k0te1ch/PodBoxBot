@@ -133,7 +133,7 @@ async def test_handler_publishes_and_reports_url(event_dict, publisher):
     result = producer.send.await_args.args[1]
     assert result["status"] == "success"
     assert result["post_id"] == "77"
-    assert result["metadata"] == {"url": "https://vk.com/wall-123_77"}
+    assert result["metadata"] == {"platform": "vk", "action": "published", "url": "https://vk.com/wall-123_77"}
 
 
 @pytest.mark.asyncio
