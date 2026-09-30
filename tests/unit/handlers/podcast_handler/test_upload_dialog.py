@@ -18,6 +18,7 @@ from dialog_engine.integrations.aiogram import DialogTurn
 from forms.upload_file import MP3, TEMPLATE, TYPE_EPISODE, upload_file_engine
 from handlers import podcast_handler
 from services.i18n import t
+from utils.ftp_methods import EpisodeNumberError
 
 CHAT_ID = 100
 STEP_MESSAGE_ID = 7
@@ -184,6 +185,28 @@ async def test_failed_download_cancels_the_dialog(state, bot, mp3_message):
 
     mp3_message.reply.return_value.edit_text.assert_awaited_once_with(t("download_failed"))
     assert await _session(state) is None
+
+
+@pytest.mark.asyncio
+async def test_ftp_failure_on_episode_number_is_reported_and_closes_the_dialog(state, bot, mp3_message):
+    await _choose(state, bot)
+    bot.edit_message_reply_markup.reset_mock()
+    failure = EpisodeNumberError("error_perm: 530 <Login incorrect>")
+
+    with (
+        patch.object(podcast_handler, "clear_old_mp3_files", new=AsyncMock()),
+        patch.object(podcast_handler, "_download_mp3", new=AsyncMock(return_value=True)),
+        patch.object(podcast_handler, "get_last_post_id", new=AsyncMock(side_effect=failure)),
+    ):
+        await podcast_handler.get_MP3(mp3_message, state, bot, "ru", "admin")
+
+    # Раньше исключение уходило в общий обработчик: админ не получал ответа,
+    # а диалог висел на шаге MP3.
+    mp3_message.reply.return_value.edit_text.assert_awaited_once_with(
+        t("episode_number_failed", error="error_perm: 530 &lt;Login incorrect&gt;")
+    )
+    assert await _session(state) is None
+    bot.edit_message_reply_markup.assert_awaited_once()
 
 
 async def _on_template_step(state, bot, mp3_message):

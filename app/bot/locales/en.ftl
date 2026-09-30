@@ -6,6 +6,9 @@ error_occurred = An error occurred! Please try again
 invalid_input = Invalid input!
 invalid_recording_date = Could not read the recording date. Use DD.MM.YYYY, e.g. 26.07.2026, no later than today.
 download_failed = ❌ MP3 was not uploaded. Check the file and try again.
+episode_number_failed = ❌ Could not get the episode number: FTP did not respond.
+    <code>{ $error }</code>
+    Upload cancelled, start again with /start.
 
 ## Episode upload (DialogEngine dialog)
 
