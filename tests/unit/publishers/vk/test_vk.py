@@ -76,7 +76,14 @@ async def test_video_upload_converts_and_saves(tmp_path, monkeypatch):
             assert form["group_id"] == "123"
             assert form["wallpost"] == "0"
             return httpx.Response(
-                200, json={"response": {"upload_url": "https://vu.vk.com/up", "video_id": 5, "owner_id": -123}}
+                200,
+                json={
+                    "response": {
+                        "upload_url": "https://vu.vk.com/up",
+                        "video_id": 5,
+                        "owner_id": -123,
+                    }
+                },
             )
         assert b'name="video_file"' in request.content
         return httpx.Response(200, json={"video_hash": "h"})
@@ -100,6 +107,28 @@ async def test_errors_are_classified(code, exc):
 def test_missing_token_is_auth_error():
     with pytest.raises(VkAuthError, match="VK_ACCESS_TOKEN"):
         VkClient(None, 1, "5.199").check_config()
+
+
+@pytest.mark.asyncio
+async def test_token_provider_supplies_fresh_token_each_call():
+    tokens = iter(["fresh1", "fresh2"])
+    seen = []
+
+    async def provider():
+        return next(tokens)
+
+    def handler(request):
+        seen.append(dict(httpx.QueryParams(request.content.decode()))["access_token"])
+        return httpx.Response(200, json={"response": {"post_id": 1}})
+
+    http = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    client = VkClient(None, 123, "5.199", http=http, token_provider=provider)
+
+    # без статичного токена check_config проходит благодаря провайдеру
+    client.check_config()
+    await client.post("t", [], -1)
+    await client.post("t", [], -1)
+    assert seen == ["fresh1", "fresh2"]
 
 
 @pytest.fixture
@@ -133,7 +162,11 @@ async def test_handler_publishes_and_reports_url(event_dict, publisher):
     result = producer.send.await_args.args[1]
     assert result["status"] == "success"
     assert result["post_id"] == "77"
-    assert result["metadata"] == {"platform": "vk", "action": "published", "url": "https://vk.com/wall-123_77"}
+    assert result["metadata"] == {
+        "platform": "vk",
+        "action": "published",
+        "url": "https://vk.com/wall-123_77",
+    }
 
 
 @pytest.mark.asyncio

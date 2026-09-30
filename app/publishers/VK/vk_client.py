@@ -16,16 +16,23 @@
 * Замок ставит ``wall.post`` с ``donut_paid_duration``: -1 — навсегда только
   для донов, N — пост откроется всем через N дней.
 
-Токен — пользовательский токен админа сообщества с правами
-``wall,video,docs,offline`` (с offline он не истекает, пока не сменят пароль
-или не отзовут доступ). Ошибки авторизации и прав — :class:`VkAuthError`
-(PermanentError), повторять их бессмысленно.
+Ключ берётся двумя способами (``VK_AUTH_MODE``):
+
+* ``token`` (по умолчанию) — статичный ``VK_ACCESS_TOKEN`` из ``.env``: как было
+  раньше, поведение по умолчанию не меняется;
+* ``vkid`` — пара токенов VK ID (см. :mod:`vk_auth`), которая обновляется сама
+  и живёт практически бессрочно без ручного входа каждый час.
+
+В обоих случаях звук уходит официальными методами (video.save/docs.save), а
+замок ставит ``wall.post`` с ``donut_paid_duration``. Ошибки авторизации и прав —
+:class:`VkAuthError` (PermanentError), повторять их бессмысленно.
 """
 
 from __future__ import annotations
 
 import asyncio
 import tempfile
+from collections.abc import Awaitable, Callable
 from pathlib import Path
 
 import httpx
@@ -117,22 +124,31 @@ class VkClient:
         group_id: int | None,
         version: str,
         http: httpx.AsyncClient | None = None,
+        token_provider: Callable[[], Awaitable[str]] | None = None,
     ) -> None:
         self.token = token
         self.group_id = group_id
         self.version = version
         self.http = http or httpx.AsyncClient(timeout=_TIMEOUT)
+        # token_provider (режим VK ID) возвращает свежий access_token, обновляя
+        # его при необходимости; без него берётся статичный self.token.
+        self.token_provider = token_provider
 
     def check_config(self) -> None:
-        if not self.token:
+        if not self.token_provider and not self.token:
             raise VkAuthError("config", 5, "VK_ACCESS_TOKEN не задан")
         if not self.group_id:
             raise VkPermanentError("config", 100, "VK_GROUP_ID не задан")
 
+    async def _access_token(self) -> str:
+        if self.token_provider:
+            return await self.token_provider()
+        return self.token or ""
+
     async def call(self, method: str, **params) -> dict | list:
         self.check_config()
         data = {k: v for k, v in params.items() if v is not None}
-        data.update(access_token=self.token, v=self.version)
+        data.update(access_token=await self._access_token(), v=self.version)
         resp = await self.http.post(f"{API_URL}/{method}", data=data)
         resp.raise_for_status()
         body = resp.json()
