@@ -7,6 +7,7 @@
     {"name": "username", "type": "string"},
     {"name": "status", "type": ["null", "string"], "default": null, "doc": "pending | success | failure"},
     {"name": "error", "type": ["null", "string"], "default": null},
+    {"name": "metadata", "type": ["null", {"type": "map", "values": "string"}], "default": null, "doc": "Подробности попытки: stage, attempt, attempts, url"},
     {"name": "chat_id", "type": ["null", "string"], "default": null},
     {"name": "message_id", "type": ["null", "string"], "default": null},
     {"name": "number", "type": "string", "doc": "Номер эпизода"},

@@ -6,6 +6,8 @@ import pytest
 
 from utils import error_reporting
 
+TOKEN = "123456:SECRET-token"
+
 
 def _make_event(exc, *, username="alice", user_id=42):
     user = MagicMock()
@@ -23,7 +25,7 @@ def _make_event(exc, *, username="alice", user_id=42):
 @pytest.mark.asyncio
 async def test_notify_developer_sends_message(monkeypatch):
     monkeypatch.setattr(error_reporting, "DEVELOPER", 999)
-    bot = MagicMock()
+    bot = MagicMock(token=TOKEN)
     bot.send_message = AsyncMock()
 
     try:
@@ -41,7 +43,7 @@ async def test_notify_developer_sends_message(monkeypatch):
 @pytest.mark.asyncio
 async def test_notify_developer_truncates_long_traceback(monkeypatch):
     monkeypatch.setattr(error_reporting, "DEVELOPER", 1)
-    bot = MagicMock()
+    bot = MagicMock(token=TOKEN)
     bot.send_message = AsyncMock()
 
     try:
@@ -59,7 +61,7 @@ async def test_notify_developer_truncates_long_traceback(monkeypatch):
 async def test_notify_developer_swallows_send_failure(monkeypatch):
     """Сбой доставки не должен пробрасываться поверх исходной ошибки."""
     monkeypatch.setattr(error_reporting, "DEVELOPER", 1)
-    bot = MagicMock()
+    bot = MagicMock(token=TOKEN)
     bot.send_message = AsyncMock(side_effect=RuntimeError("telegram down"))
 
     try:
@@ -90,9 +92,26 @@ async def test_error_handler_skips_when_developer_unset(monkeypatch):
 
     error_reporting.register_error_handler(dp)
 
-    bot = MagicMock()
+    bot = MagicMock(token=TOKEN)
     bot.send_message = AsyncMock()
     result = await captured["fn"](_make_event(ValueError("x")), bot)
 
     assert result is True
     bot.send_message.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_notify_developer_hides_token_and_escapes_html(monkeypatch):
+    monkeypatch.setattr(error_reporting, "DEVELOPER", 999)
+    bot = MagicMock(token=TOKEN)
+    bot.send_message = AsyncMock()
+
+    try:
+        raise ConnectionError(f"Can not write request body for http://api:8081/bot{TOKEN}/sendAudio <x>")
+    except ConnectionError as e:
+        await error_reporting._notify_developer(bot, _make_event(e))
+
+    _, text = bot.send_message.call_args.args
+    assert TOKEN not in text
+    assert "&lt;BOT_TOKEN&gt;/sendAudio" in text
+    assert "&lt;x&gt;" in text

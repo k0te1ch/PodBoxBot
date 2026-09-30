@@ -10,6 +10,21 @@ from podlove import PodloveMixin
 from requests.auth import HTTPBasicAuth
 from wp_http import WordPressHttpMixin
 
+_MONTHS = (
+    "января",
+    "февраля",
+    "марта",
+    "апреля",
+    "мая",
+    "июня",
+    "июля",
+    "августа",
+    "сентября",
+    "октября",
+    "ноября",
+    "декабря",
+)
+
 
 class WordPress(WordPressHttpMixin, PodloveMixin):
     """WordPress client for uploading posts via wp-admin form submission.
@@ -34,6 +49,7 @@ class WordPress(WordPressHttpMixin, PodloveMixin):
         self._cookie_path = cookie_path
         self._timezone = pytz.timezone(timezone)
         self._session: requests.Session | None = None
+        self.last_post_id: str | None = None
         # Отдельная сессия под REST (Application Password). Cookie-сессия
         # для form-логина и REST-сессия живут раздельно, потому что WP
         # предпочитает cookie-auth над Basic при наличии обоих — здесь
@@ -166,65 +182,41 @@ class WordPress(WordPressHttpMixin, PodloveMixin):
         if self._rest_session:
             self._rest_session.close()
 
-    def upload_post(self, info: dict) -> bool:
-        """Upload a podcast post to WordPress. Returns True on success."""
-        logger.debug("Starting post upload process")
-        post_new_url = f"{self._wp_url}/wp-admin/post-new.php?post_type=podcast"
-        response = self._get_with_retry(post_new_url)
+    @staticmethod
+    def post_title(number: str) -> str:
+        return f"Разговорный жанр — {number}"
 
-        if not response.ok:
-            logger.error(
-                f"wp-admin post-new page returned HTTP {response.status_code}; body[:500]={response.text[:500]!r}"
-            )
-            raise RuntimeError(f"WordPress returned HTTP {response.status_code} for post-new page")
-
-        logger.debug(f"Retrieved post content from WordPress (status={response.status_code})")
-
-        html_dom = etree.HTML(response.content, etree.HTMLParser())
-        podcastID = info["number"]
-        name = info["title"]
-        summary = info["comment"]
-        chapters = ""
-        for time_str, chapterName in info["chapters"]:
-            chapters += f"[skipto time={time_str}]{time_str}[/skipto] — {chapterName}\n"
-
-        # Дата записи: если задана при оформлении (ISO YYYY-MM-DD) — берём её,
-        # иначе фолбэк на текущую дату (как было раньше).
+    @staticmethod
+    def _format_recording_date(info: dict, now: datetime) -> str:
+        """Дата записи для тела поста: ``recording_date`` из шаблона (ISO), иначе ``now``."""
+        when = now
         recording_iso = info.get("recording_date")
-        time = datetime.now(self._timezone)
         if recording_iso:
             try:
-                time = datetime.strptime(recording_iso, "%Y-%m-%d")
+                when = datetime.strptime(recording_iso, "%Y-%m-%d")
             except ValueError as e:
                 logger.warning(f"Invalid recording_date {recording_iso!r} ({e}); falling back to today")
+        return f"{when.day} {_MONTHS[when.month - 1]} {when.year}"
 
-        months = (
-            "января",
-            "февраля",
-            "марта",
-            "апреля",
-            "мая",
-            "июня",
-            "июля",
-            "августа",
-            "сентября",
-            "октября",
-            "ноября",
-            "декабря",
+    def _build_form(self, info: dict) -> dict[str, str]:
+        number = info["number"]
+        chapters = "".join(
+            f"[skipto time={time_str}]{time_str}[/skipto] — {chapter}\n"
+            for time_str, chapter in info.get("chapters") or []
         )
-        timeStr = f"{time.day} {months[time.month - 1]} {time.year}"
-
-        form = {
-            "post_title": f"Разговорный жанр — {podcastID}",
-            "content": f"""<span style="font-size: large;">{name.replace(podcastID + ". ", "")}</span>
+        # Шаблон без Chapters: без пустого заголовка «Таймлайн».
+        timeline = f"<b><i>Таймлайн:</i></b>\n{chapters}" if chapters else ""
+        date_str = self._format_recording_date(info, datetime.now(self._timezone))
+        return {
+            "post_title": self.post_title(number),
+            "content": f"""<span style="font-size: large;">{info["title"].replace(number + ". ", "")}</span>
 <b><i>Описание:</i></b>
-{summary}
-<!--more--><b><i>Таймлайн:</i></b>
-{chapters}
-Всё это вы услышите в {podcastID}-м эпизоде подкаста «Разговорный жанр».
+{info["comment"]}
+<!--more-->{timeline}
+Всё это вы услышите в {number}-м эпизоде подкаста «Разговорный жанр».
 [podlove-template template="subscriptions"]
-<span style="font-size: small;">Дата записи: {timeStr}</span>""",
-            "post_name": f"Разговорный жанр — {podcastID}",
+<span style="font-size: small;">Дата записи: {date_str}</span>""",
+            "post_name": self.post_title(number),
             "post_category[]": "3",
             "newcategory": "Название новой рубрики",
             "newcategory_parent": "-1",
@@ -241,38 +233,59 @@ class WordPress(WordPressHttpMixin, PodloveMixin):
             "episode_contributor[0][3][comment]": "",
             "referredby": f"{self._wp_url}/wp-admin/profile.php",
             "_wp_original_http_referer": f"{self._wp_url}/wp-admin/profile.php",
-            "tax_input[post_tag]": ",".join(info["tags"]),
+            "tax_input[post_tag]": ",".join(info.get("tags") or []),
             "newtag[post_tag]": "",
             "_thumbnail_id": "6038",
         }
-        form_element = html_dom.find('.//form[@name="post"]')
-        if form_element is None:
+
+    def _fetch_editor_page(self, url: str):
+        """GET страницы редактора; при отсутствии формы — один перелогин и повтор."""
+        for attempt in (1, 2):
+            response = self._get_with_retry(url)
+            if not response.ok:
+                logger.error(f"{url} returned HTTP {response.status_code}; body[:500]={response.text[:500]!r}")
+                raise RuntimeError(f"WordPress returned HTTP {response.status_code} for {url}")
+            form_element = etree.HTML(response.content, etree.HTMLParser()).find('.//form[@name="post"]')
+            if form_element is not None:
+                return response, form_element
+            if attempt == 2:
+                logger.error(f"Post form still not found after re-login; body[:500]={response.text[:500]!r}")
+                raise RuntimeError("Failed to find WordPress post form after re-login")
             logger.warning(f"Post form not found on first try — re-logging in; body[:500]={response.text[:500]!r}")
             if not self._login():
                 raise RuntimeError("Re-login to WordPress failed")
-            response = self._get_with_retry(post_new_url)
-            if not response.ok:
-                logger.error(
-                    f"wp-admin post-new page returned HTTP {response.status_code} after re-login; "
-                    f"body[:500]={response.text[:500]!r}"
-                )
-                raise RuntimeError(f"WordPress returned HTTP {response.status_code} for post-new page after re-login")
-            html_dom = etree.HTML(response.content, etree.HTMLParser())
-            form_element = html_dom.find('.//form[@name="post"]')
-            if form_element is None:
-                logger.error(f"Post form still not found after re-login; body[:500]={response.text[:500]!r}")
-                raise RuntimeError("Failed to find WordPress post form after re-login")
+        raise AssertionError("unreachable")
+
+    def upload_post(self, info: dict) -> bool:
+        """Создаёт черновик эпизода (или обновляет уже созданный) и заполняет Podlove.
+
+        Идемпотентно: если черновик с таким заголовком уже есть (повтор после
+        частичного успеха), форма отправляется поверх него, а не создаёт
+        второй пост.
+        """
+        logger.debug("Starting post upload process")
+        form = self._build_form(info)
+        existing = self.find_draft(form["post_title"])
+        if existing:
+            post_id, episode_id = existing
+            logger.info(f"Reusing existing draft post_id={post_id} episode_id={episode_id}")
+            page_url = f"{self._wp_url}/wp-admin/post.php?post={post_id}&action=edit"
+        else:
+            page_url = f"{self._wp_url}/wp-admin/post-new.php?post_type=podcast"
+        response, form_element = self._fetch_editor_page(page_url)
 
         for field in form_element.xpath('.//input[@type="hidden"]'):
-            field = field.attrib
-            if field["name"] not in form:
-                form[field["name"]] = field["value"]
+            name = field.get("name")
+            if name and name not in form:
+                form[name] = field.get("value", "")
 
-        podlove_vue = self._extract_podlove_vue(response.text)
-        if podlove_vue is None:
-            logger.error(f"Could not extract podlove_vue from post-new page; body[:500]={response.text[:500]!r}")
-            raise RuntimeError("podlove_vue (post_id/episode_id) not found in post-new page")
-        logger.debug(f"Podlove reserved post_id={podlove_vue['post_id']}, episode_id={podlove_vue['episode_id']}")
+        if not existing:
+            podlove_vue = self._extract_podlove_vue(response.text)
+            if podlove_vue is None:
+                logger.error(f"Could not extract podlove_vue from post-new page; body[:500]={response.text[:500]!r}")
+                raise RuntimeError("podlove_vue (post_id/episode_id) not found in post-new page")
+            post_id, episode_id = podlove_vue["post_id"], podlove_vue["episode_id"]
+            logger.debug(f"Podlove reserved post_id={post_id}, episode_id={episode_id}")
 
         logger.debug("Submitting post data to WordPress")
         try:
@@ -285,13 +298,16 @@ class WordPress(WordPressHttpMixin, PodloveMixin):
         if response.status_code not in (200, 301, 302):
             logger.error(f"Post submit returned HTTP {response.status_code}; body[:500]={response.text[:500]!r}")
             return False
+        # Протухшая сессия: post.php редиректит на wp-login.php, requests идёт
+        # следом и получает 200 — без этой проверки это выглядело бы успехом.
+        if "wp-login.php" in str(getattr(response, "url", "") or ""):
+            raise RuntimeError("WordPress redirected post submit to wp-login.php (session expired)")
 
         self._dump_cookies()
+        self.last_post_id = str(post_id)
 
-        logger.debug(
-            f"Post saved (post_id={podlove_vue['post_id']}); updating Podlove episode_id={podlove_vue['episode_id']}"
-        )
-        self._update_podlove_episode(podlove_vue["episode_id"], info)
+        logger.debug(f"Post saved (post_id={post_id}); updating Podlove episode_id={episode_id}")
+        self._update_podlove_episode(episode_id, info)
         if info.get("chapters"):
-            self._update_podlove_chapters(podlove_vue["episode_id"], info["chapters"])
+            self._update_podlove_chapters(episode_id, info["chapters"])
         return True

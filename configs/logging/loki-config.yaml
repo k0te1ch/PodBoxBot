@@ -35,9 +35,10 @@ limits_config:
   retention_period: 168h     # 7 дней
   allow_structured_metadata: true
 
-table_manager:
-  retention_deletes_enabled: true
-  retention_period: 168h
+compactor:
+  working_directory: /loki/compactor
+  retention_enabled: true
+  delete_request_store: filesystem
 
 query_scheduler:
   max_outstanding_requests_per_tenant: 2048

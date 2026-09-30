@@ -30,6 +30,7 @@ def patched_publisher(monkeypatch):
     client.upload_audio = AsyncMock(return_value=("aud-1", 123))
     client.upload_image = AsyncMock(return_value="img-1")
     client.publish = AsyncMock(return_value="post-1")
+    client.get_post = AsyncMock(return_value={"id": "post-1"})
     monkeypatch.setattr(main._publisher, "client", client)
     monkeypatch.setattr(main, "BOOSTY_OWNER_ID", None)  # фоллбэк на client.get_container_id
     monkeypatch.setattr(main, "BOOSTY_SUBSCRIPTION_LEVEL_ID", "407063")
@@ -52,7 +53,7 @@ class TestHandleUpload:
         client.upload_image.assert_awaited_once_with("/app/static/boosty_pscover.png")
         client.publish.assert_awaited_once()
 
-        mock_producer.send.assert_called_once()
+        assert [c.args[1]["event_type"] for c in mock_producer.send.call_args_list].count("result") == 1
         result = mock_producer.send.call_args[0][1]
         assert result["event_type"] == "result"
         assert result["status"] == "success"
@@ -65,11 +66,11 @@ class TestHandleUpload:
         main, client = patched_publisher
         await main.handle_upload(sample_boosty_event_dict, mock_producer)
 
-        kwargs = client.publish.await_args.kwargs
-        assert kwargs["subscription_level_id"] == "407063"
-        assert kwargs["price"] == 10
-        assert kwargs["cover_id"] == "img-1"
-        assert kwargs["audio_id"] == "aud-1"
+        post = client.publish.await_args.args[0]
+        assert post.subscription_level_id == "407063"
+        assert post.price == 10
+        assert post.cover_id == "img-1"
+        assert post.audio_id == "aud-1"
 
     @pytest.mark.asyncio
     async def test_owner_id_from_config_skips_draft_lookup(
@@ -105,6 +106,67 @@ class TestHandleUpload:
         result = mock_producer.send.call_args[0][1]
         assert result["status"] == "failure"
         assert "boom" in result["error"]
+        assert result["metadata"]["stage"] == "publish"
+        assert client.publish.await_count == main._publisher.retry_attempts
+
+    @pytest.mark.asyncio
+    async def test_upload_retry_reports_each_attempt(self, sample_boosty_event_dict, mock_producer, patched_publisher):
+        main, client = patched_publisher
+        client.upload_audio.side_effect = [ConnectionError("reset"), ("aud-1", 123)]
+
+        await main.handle_upload(sample_boosty_event_dict, mock_producer)
+
+        sent = [c.args[1] for c in mock_producer.send.call_args_list if c.args[1]["event_type"] == "result"]
+        assert [e["status"] for e in sent] == ["retrying", "success"]
+        assert sent[0]["metadata"]["stage"] == "upload_audio"
+        assert sent[0]["metadata"]["attempt"] == "1"
+
+    @pytest.mark.asyncio
+    async def test_published_post_is_verified_via_api(
+        self, sample_boosty_event_dict, mock_producer, patched_publisher, monkeypatch
+    ):
+        main, client = patched_publisher
+        monkeypatch.setattr(main, "BOOSTY_BLOG", "razgovorny")
+
+        await main.handle_upload(sample_boosty_event_dict, mock_producer)
+
+        client.get_post.assert_awaited_once_with("post-1")
+        result = mock_producer.send.call_args.args[1]
+        assert result["status"] == "success"
+        assert result["metadata"] == {
+            "platform": "boosty",
+            "action": "published",
+            "url": "https://boosty.to/razgovorny/posts/post-1",
+        }
+
+    @pytest.mark.asyncio
+    async def test_missing_post_reports_verify_failure(
+        self, sample_boosty_event_dict, mock_producer, patched_publisher, monkeypatch
+    ):
+        main, client = patched_publisher
+        monkeypatch.setattr(main, "BOOSTY_BLOG", "razgovorny")
+        client.get_post = AsyncMock(return_value={"id": "post-1", "isDeleted": True})
+
+        await main.handle_upload(sample_boosty_event_dict, mock_producer)
+
+        client.publish.assert_awaited_once()
+        result = mock_producer.send.call_args.args[1]
+        assert result["status"] == "failure"
+        assert result["metadata"]["stage"] == "verify"
+
+    @pytest.mark.asyncio
+    async def test_auth_error_is_not_retried(self, sample_boosty_event_dict, mock_producer, patched_publisher):
+        from app.publishers.Boosty.boosty_auth import BoostyAuthError
+
+        main, client = patched_publisher
+        client.upload_audio = AsyncMock(side_effect=BoostyAuthError("refresh_token отклонён"))
+
+        await main.handle_upload(sample_boosty_event_dict, mock_producer)
+
+        client.upload_audio.assert_awaited_once()
+        result = mock_producer.send.call_args.args[1]
+        assert result["status"] == "failure"
+        assert "boosty_auth.json" in result["error"]
 
     @pytest.mark.asyncio
     async def test_invalid_payload_skipped(self, mock_producer, patched_publisher):

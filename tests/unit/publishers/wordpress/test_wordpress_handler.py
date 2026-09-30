@@ -19,6 +19,7 @@ class TestHandleUpload:
         with patch("app.publishers.WordPress.main.WordPress") as MockWP:
             wp_instance = MagicMock()
             wp_instance.upload_post.return_value = True
+            wp_instance.last_post_id = None
             wp_instance.__enter__ = MagicMock(return_value=wp_instance)
             wp_instance.__exit__ = MagicMock(return_value=False)
             MockWP.return_value = wp_instance
@@ -27,7 +28,7 @@ class TestHandleUpload:
 
             await handle_upload(sample_wp_event_dict, mock_producer)
 
-            mock_producer.send.assert_called_once()
+            assert [c.args[1]["event_type"] for c in mock_producer.send.call_args_list].count("result") == 1
             call_args = mock_producer.send.call_args
             result = call_args[0][1]
             assert result["event_type"] == "result"
@@ -63,6 +64,72 @@ class TestHandleUpload:
             result = call_args[0][1]
             assert result["status"] == "failure"
             assert "Connection refused" in result["error"]
+
+    @pytest.mark.asyncio
+    async def test_failure_is_retried_and_reported(self, sample_wp_event_dict, mock_producer):
+        with patch("app.publishers.WordPress.main.WordPress") as MockWP:
+            MockWP.side_effect = [RuntimeError("502"), RuntimeError("502"), RuntimeError("502")]
+
+            from app.publishers.WordPress.main import _publisher, handle_upload
+
+            await handle_upload(sample_wp_event_dict, mock_producer)
+
+            attempts = _publisher.retry_attempts
+            sent = [c.args[1] for c in mock_producer.send.call_args_list if c.args[1]["event_type"] == "result"]
+            assert [e["status"] for e in sent] == ["retrying"] * (attempts - 1) + ["failure"]
+            assert sent[0]["metadata"]["stage"] == "publish"
+            assert sent[-1]["metadata"]["attempts"] == str(attempts)
+
+    @pytest.mark.asyncio
+    async def test_saved_draft_is_verified(
+        self, sample_wp_event_dict, mock_producer, verify_published_mock, monkeypatch
+    ):
+        monkeypatch.setattr("app.publishers.WordPress.main.WP_URL", "https://example.org/")
+        with patch("app.publishers.WordPress.main.WordPress") as MockWP:
+            wp_instance = MagicMock()
+            wp_instance.upload_post.return_value = True
+            wp_instance.last_post_id = "777"
+            wp_instance.podcast_rest_path.return_value = "/wp/v2/episodes/777"
+            wp_instance.__enter__ = MagicMock(return_value=wp_instance)
+            wp_instance.__exit__ = MagicMock(return_value=False)
+            MockWP.return_value = wp_instance
+
+            from app.publishers.WordPress.main import handle_upload
+
+            await handle_upload(sample_wp_event_dict, mock_producer)
+
+            verify_published_mock.assert_awaited_once()
+            url = verify_published_mock.await_args.args[0]
+            assert url.endswith("/wp-json/wp/v2/episodes/777?context=edit")
+            result = mock_producer.send.call_args.args[1]
+            assert result["status"] == "success"
+            assert result["metadata"] == {"platform": "wp", "action": "draft", "post_id": "777", "url": url}
+
+    @pytest.mark.asyncio
+    async def test_unverified_draft_reports_failure(
+        self, sample_wp_event_dict, mock_producer, verify_published_mock, monkeypatch
+    ):
+        monkeypatch.setattr("app.publishers.WordPress.main.WP_URL", "https://example.org/")
+        from sagenza_tgbot_sdk.resilience import NotPublishedError
+
+        verify_published_mock.side_effect = NotPublishedError("u", "HTTP 404")
+        with patch("app.publishers.WordPress.main.WordPress") as MockWP:
+            wp_instance = MagicMock()
+            wp_instance.upload_post.return_value = True
+            wp_instance.last_post_id = "777"
+            wp_instance.__enter__ = MagicMock(return_value=wp_instance)
+            wp_instance.__exit__ = MagicMock(return_value=False)
+            MockWP.return_value = wp_instance
+
+            from app.publishers.WordPress.main import _publisher, handle_upload
+
+            await handle_upload(sample_wp_event_dict, mock_producer)
+
+            assert verify_published_mock.await_count == _publisher.verify_attempts
+            assert wp_instance.upload_post.call_count == 1
+            result = mock_producer.send.call_args.args[1]
+            assert result["status"] == "failure"
+            assert result["metadata"]["stage"] == "verify"
 
     @pytest.mark.asyncio
     async def test_invalid_payload_skipped(self, mock_producer):

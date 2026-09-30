@@ -10,7 +10,7 @@
 #     чем проверит CI.
 
 BOT := app/bot
-PUBLISHERS := app/publishers/FTP app/publishers/WordPress app/publishers/Boosty
+PUBLISHERS := app/publishers/FTP app/publishers/WordPress app/publishers/Boosty app/publishers/VK app/publishers/Patreon app/publishers/Sponsr
 
 .PHONY: install install-publishers lock update lint format test test-publishers         check run migrate makemigrations docker-build docker-up docker-stop docker-logs
 
@@ -52,6 +52,9 @@ test-publishers:
 	cd app/publishers/FTP && poetry run python -m pytest -c "$(CURDIR)/$(BOT)/pyproject.toml" 		--rootdir "$(CURDIR)" -o addopts="" "$(CURDIR)/tests/unit/publishers/ftp"
 	cd app/publishers/WordPress && poetry run python -m pytest -c "$(CURDIR)/$(BOT)/pyproject.toml" 		--rootdir "$(CURDIR)" -o addopts="" "$(CURDIR)/tests/unit/publishers/wordpress"
 	cd app/publishers/Boosty && poetry run python -m pytest -c "$(CURDIR)/$(BOT)/pyproject.toml" 		--rootdir "$(CURDIR)" -o addopts="" "$(CURDIR)/tests/unit/publishers/boosty"
+	cd app/publishers/VK && poetry run python -m pytest -c "$(CURDIR)/$(BOT)/pyproject.toml" 		--rootdir "$(CURDIR)" -o addopts="" "$(CURDIR)/tests/unit/publishers/vk"
+	cd app/publishers/Patreon && poetry run python -m pytest -c "$(CURDIR)/$(BOT)/pyproject.toml" 		--rootdir "$(CURDIR)" -o addopts="" "$(CURDIR)/tests/unit/publishers/patreon"
+	cd app/publishers/Sponsr && poetry run python -m pytest -c "$(CURDIR)/$(BOT)/pyproject.toml" 		--rootdir "$(CURDIR)" -o addopts="" "$(CURDIR)/tests/unit/publishers/sponsr"
 
 check:
 	poetry -C $(BOT) run pre-commit run --show-diff-on-failure --color=always --all-files

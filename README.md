@@ -12,8 +12,20 @@ publisher-сервисы (FTP, WordPress, Boosty) забирают и выпол
 
 Boosty — платная площадка: туда уходит только aftershow (послешоу), пост
 публикуется на платном уровне подписки (см. `BasePublisher.is_paywalled`).
-FTP и WordPress — для основного эпизода. Patreon заложен в `BasePublisher`
-тем же способом, но сервиса под него ещё нет.
+Кнопка появляется в боте при `BOOSTY_ENABLED=true`; как получить токены и
+прогнать живой смоук — `app/publishers/Boosty/SMOKE.md`.
+FTP и WordPress — для основного эпизода.
+
+Послешоу под замком публикуется ещё на трёх площадках, у каждой свой сервис
+(профиль compose `paywalled`) и флаг `<ПЛОЩАДКА>_ENABLED` в боте:
+
+| Площадка | Как работает | Состояние |
+| --- | --- | --- |
+| VK Donut | официальный VK API: `wall.post` с `donut_paid_duration`, звук видеозаписью или документом | готов, ждёт токен сообщества |
+| Patreon | API v2 постов не создаёт — запросы веб-редактора по куке `session_id` | собран, не сверен с живым аккаунтом |
+| Sponsr | API нет — веб-редактор по куке `SESS`; запросы публикации снимаются из HAR | сессия готова, публикация ждёт HAR |
+
+Что нужно для каждой — в `app/publishers/<Площадка>/SMOKE.md`.
 
 ## Что внутри
 
@@ -24,7 +36,10 @@ app/
 │   ├── FTP/              # ftp upload эпизода на хостинг
 │   ├── WordPress/        # WP post-new form + Podlove REST API (Application Password)
 │   │                     #   для метаданных и chapters
-│   └── Boosty/           # пост на платном уровне (mp3 + обложка-тизер), internal API — aftershow
+│   ├── Boosty/           # пост на платном уровне (mp3 + обложка-тизер), internal API — aftershow
+│   ├── VK/               # пост VK Donut, официальный API — aftershow
+│   ├── Patreon/          # пост для патронов, запросы веб-редактора — aftershow
+│   └── Sponsr/           # пост для подписчиков, запросы веб-редактора — aftershow
 ├── kafka/                # kafka-init: создаёт топики из topics.yaml при старте кластера
 ├── schema-watcher/       # регистрирует Avro-схемы в Schema Registry
 └── shared/
@@ -147,6 +162,17 @@ docker compose version   # должно показать v2.x
 | Kafdrop | `http://<host>:9000` | UI для Kafka — посмотреть топики, оффсеты, сообщения |
 | Telegram бот | в Telegram | пишешь боту, проверяешь сценарии |
 
+### Вторая Prometheus для метрик
+
+Бот отдаёт метрики на `bot:8080/metrics`, публишеры пушат свои в Pushgateway;
+оттуда их скрейпит Prometheus этого стека. Чтобы те же метрики бота и
+публишеров уходили ещё в одну Prometheus, в `.env` задаются
+`COMPOSE_PROFILES=personal-metrics` и `PERSONAL_METRICS_REMOTE_WRITE_URL`
+(адрес `.../api/v1/write` приёмника с включённым remote-write receiver).
+Поднимается сервис `metrics-forwarder` (Alloy,
+`configs/metrics/personal-forwarder.alloy`). Метрики хоста, Redis и Kafka во
+вторую Prometheus не уходят.
+
 ### Апгрейд
 
 `bootstrap.sh` рассчитан на **первый** деплой. На горячий апгрейд:
@@ -221,9 +247,48 @@ Schema Registry. Защита выстроена в три слоя:
 - `!` / `BREAKING CHANGE:` → major (пока версия `0.x` и включён
   `bump-minor-pre-major`, ломающее идёт в minor)
 
+Ветку release-PR release-please пересобирает поверх свежего `main` после
+каждого push (`always-update` в `release-please-config.json`), так что она не
+отстаёт от `main` даже после коммитов, которые не попадают в changelog.
+Проверки на release-PR запускает сам workflow release-please через
+`workflow_dispatch`: PR открыт от `GITHUB_TOKEN`, и обычный запуск по
+`pull_request` GitHub оставляет ждать ручного одобрения («action_required»).
+Одобрять его не нужно: запуск по dispatch копирует результаты обязательных
+джоб в статусы коммита с теми же именами (джоба `report-required-checks`), и
+правило `main` принимает их. Сами check runs запуска по `workflow_dispatch`
+GitHub в обязательные проверки PR не засчитывает. Если меняется список
+обязательных проверок в правиле, его же надо поправить в `needs` этой джобы.
+
 Накопились изменения — смержи release-PR: release-please создаст тег
 `vX.Y.Z`, GitHub Release и обновит `CHANGELOG.md`. Единственный рычаг
 версии — типы Conventional Commits, попадающих в `main`.
+
+### Заметки к релизу для админов
+
+После выкладки новой версии бот рассылает админам, что изменилось. Текст
+берётся не из `CHANGELOG.md` (там английские заголовки коммитов), а из
+`release-notes/ru/<версия>.md`: простой список пунктов на русском.
+
+```markdown
+- Если сервер с эпизодами недоступен, бот сообщает об ошибке, а не зависает.
+- Кнопка «Сайт» работает и для выпусков без таймкодов.
+```
+
+Строки с `- ` или `* ` становятся пунктами, строки с `#` пропускаются,
+остальное уходит как обычный текст. Пишем для людей, которые пользуются
+ботом: что изменилось для них, без названий модулей, номеров PR и хешей.
+Если файла для версии нет, админы получат только «Бот обновлён до версии X.»
+
+Порядок такой:
+
+1. Пока открыт release-PR, смотрим в нём номер версии (`.release-please-manifest.json`).
+2. Обычным PR в `main` добавляем `release-notes/ru/<версия>.md`
+   (коммит `docs(release-notes): add notes for X.Y.Z`).
+3. После мержа release-please пересоберёт свою ветку, и файл окажется в release-PR.
+
+Джоба `release-notes` в CI падает на release-PR, если файла для его версии
+нет или он пустой. Если к релизу добавились новые изменения и версия
+выросла (например, `0.8.1` → `0.9.0`), файл нужен под новый номер.
 
 ## Лицензия
 

@@ -1,8 +1,10 @@
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 
-from confluent_kafka import KafkaError
-from confluent_kafka.avro import AvroConsumer, SerializerError
+from confluent_kafka import Consumer, KafkaError
+from confluent_kafka.schema_registry import SchemaRegistryClient
+from confluent_kafka.schema_registry.avro import AvroDeserializer
+from confluent_kafka.serialization import MessageField, SerializationContext, SerializationError
 from loguru import logger
 
 from shared.kafka.wait_for_kafka import wait_for_kafka_stack
@@ -27,14 +29,15 @@ class KafkaConsumer:
         self._running = True
         self._executor = ThreadPoolExecutor(max_workers=max_workers)
 
-        self.consumer = AvroConsumer(
+        self.consumer = Consumer(
             {
                 "bootstrap.servers": kafka_server,
                 "group.id": group_id,
                 "auto.offset.reset": "earliest",
-                "schema.registry.url": schema_registry_url,
             }
         )
+        self._deserializer = AvroDeserializer(SchemaRegistryClient({"url": schema_registry_url}))
+        self._value_ctx = SerializationContext(topic, MessageField.VALUE)
 
     async def start(self, handler):
         """Async Kafka polling loop with retry backoff on transient errors.
@@ -76,13 +79,16 @@ class KafkaConsumer:
                 # Reset backoff after a successful message
                 retry_delay = _RETRY_INITIAL_DELAY
 
-                value = msg.value()
+                raw = msg.value()
+                if raw is None:
+                    continue
+                value = await loop.run_in_executor(self._executor, self._deserializer, raw, self._value_ctx)
                 if value is None:
                     continue
 
                 _task = asyncio.create_task(handler(value))  # noqa: RUF006
 
-            except SerializerError as e:
+            except SerializationError as e:
                 # Обычно schema registry недоступна/схема не зарегистрирована.
                 # Пауза, чтобы не молотить broker и логи в плотном цикле, пока
                 # зависимость не восстановится.

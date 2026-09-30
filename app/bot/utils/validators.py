@@ -1,5 +1,5 @@
 import re
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 from loguru import logger
@@ -10,13 +10,29 @@ _RECORDING_DATE_RE = re.compile(r"^[ \t]*Recording Date:[ \t]*(.+?)[ \t]*$\n?", 
 
 
 def _parse_recording_date(raw: str) -> str | None:
-    """DD.MM.YYYY (./-/пробел как разделитель) -> ISO YYYY-MM-DD, иначе None."""
+    """DD.MM.YYYY (./-/ как разделитель) -> ISO YYYY-MM-DD, иначе None.
+
+    Дата из будущего тоже None: эпизод не может быть записан завтра, это
+    опечатка в годе или месяце (день запаса — на разницу часовых поясов).
+    """
     for fmt in ("%d.%m.%Y", "%d/%m/%Y", "%d-%m-%Y", "%Y-%m-%d"):
         try:
-            return datetime.strptime(raw.strip(), fmt).strftime("%Y-%m-%d")
+            parsed = datetime.strptime(raw.strip(), fmt).date()
         except ValueError:
             continue
-    logger.warning(f"Unrecognized recording date {raw!r}; ignoring")
+        if parsed > date.today() + timedelta(days=1):
+            logger.warning(f"Recording date {raw!r} is in the future; rejecting")
+            return None
+        return parsed.isoformat()
+    logger.warning(f"Unrecognized recording date {raw!r}; rejecting")
+    return None
+
+
+def invalid_recording_date(text: str) -> str | None:
+    """Значение строки ``Recording Date:``, если оно есть и не распознано, иначе None."""
+    match = _RECORDING_DATE_RE.search(text)
+    if match and _parse_recording_date(match.group(1)) is None:
+        return match.group(1)
     return None
 
 
@@ -43,6 +59,8 @@ def validate_template(text: str) -> dict[str, str] | None:
     date_match = _RECORDING_DATE_RE.search(text)
     if date_match:
         recording_date = _parse_recording_date(date_match.group(1))
+        if recording_date is None:
+            return None
         text = text[: date_match.start()] + text[date_match.end() :]
 
     headers = ["number", "title", "comment"]

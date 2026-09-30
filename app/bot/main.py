@@ -12,17 +12,37 @@ from aiohttp import ClientSession
 from aiohttp.hdrs import USER_AGENT
 from aiohttp.http import SERVER_SOFTWARE
 from loguru import logger
+from sagenza_tgbot_sdk import SdkSettings, setup_sdk
+from sagenza_tgbot_sdk.health import HealthModule
+from sagenza_tgbot_sdk.host_watch import HostWatchModule, HostWatchSettings
+from sagenza_tgbot_sdk.logs import LoggingModule, LoggingSettings
+from sagenza_tgbot_sdk.metrics import MetricsModule, MetricsSettings
+from sagenza_tgbot_sdk.notify import NotifyModule
+from sagenza_tgbot_sdk.status import StatusModule
 
-from handlers import ROUTERS
+from handlers import ROUTERS, bot_menus
 from middlewares.base.user_context_middleware import UserContextMiddleware
 from services import init_services, redis
 from services.none_module import _NoneModule
+from services.rss import RssWatcher
 from utils.error_reporting import register_error_handler
 from utils.release_notes import get_version, send_release_note
 
 MAIN_MODULE_NAME = os.path.basename(__file__)[:-3]
 
-from config import API_TOKEN, DEBUG, PARSE_MODE
+from config import (
+    ADMINS_ID,
+    API_TOKEN,
+    DEBUG,
+    DISK_ALERT_PERCENT,
+    DISK_CHECK_INTERVAL,
+    KAFKA_SERVER,
+    PARSE_MODE,
+    RSS_FAILURE_ALERT,
+    RSS_FEED_URL,
+    RSS_POLL_INTERVAL,
+    SCHEMA_REGISTRY_URL,
+)
 from shared.kafka.consumer import KafkaConsumer
 
 logger.debug("Loading settings from config")
@@ -112,11 +132,14 @@ async def on_startup():
         ("publisher.ftp.result", "publisher.ftp.result.group"),
         ("publisher.wordpress.result", "publisher.wordpress.result.group"),
         ("publisher.boosty.result", "publisher.boosty.result.group"),
+        ("publisher.vk.result", "publisher.vk.result.group"),
+        ("publisher.patreon.result", "publisher.patreon.result.group"),
+        ("publisher.sponsr.result", "publisher.sponsr.result.group"),
     ]
     for topic, group_id in result_topics:
         consumer = KafkaConsumer(
-            kafka_server="kafka:9092",
-            schema_registry_url="http://schema-registry:8081",
+            kafka_server=KAFKA_SERVER,
+            schema_registry_url=SCHEMA_REGISTRY_URL,
             topic=topic,
             group_id=group_id,
         )
@@ -142,15 +165,46 @@ async def _supervise_consumer(consumer: "KafkaConsumer", handler, restart_delay:
         await asyncio.sleep(restart_delay)
 
 
-@logger.catch
-async def on_shutdown():
-    pass
+async def start_rss_watcher(bot: Bot) -> None:
+    """Запускает слежение за RSS, если задан адрес ленты и есть Redis."""
+    if not RSS_FEED_URL:
+        return
+    if isinstance(redis, _NoneModule):
+        logger.warning("RSS_FEED_URL is set but Redis is not configured: RSS watcher disabled")
+        return
+    watcher = RssWatcher(bot, redis, RSS_FEED_URL, ADMINS_ID, RSS_POLL_INTERVAL, RSS_FAILURE_ALERT)
+    _rss_tasks.add(asyncio.create_task(watcher.run()))
+
+
+_rss_tasks: set[asyncio.Task] = set()
 
 
 def _add_middlewares_to_observers(observers: list[TelegramEventObserver], middlewares: list[BaseMiddleware]) -> None:
     for observer in observers:
         for middleware in middlewares:
             observer.middleware(middleware)
+
+
+def _setup_sdk(dp: Dispatcher) -> None:
+    # Синки loguru настраивает config.py, поэтому logging из SDK ставится с
+    # configure=False: только контекст апдейта в логах и предупреждение о
+    # медленных апдейтах. Ошибки остаются на своём обработчике
+    # (utils/error_reporting.py): он шлёт разработчику полный трейсбек без
+    # токена бота, а errors из SDK шлёт всем админам только текст исключения.
+    settings = SdkSettings(bot_token=API_TOKEN, admin_ids=frozenset(ADMINS_ID))
+    host_watch = HostWatchSettings(threshold_percent=DISK_ALERT_PERCENT, interval_seconds=DISK_CHECK_INTERVAL)
+    modules = [
+        LoggingModule(LoggingSettings(configure=False)),
+        MetricsModule(MetricsSettings(bot_name="podboxbot")),
+        HealthModule(),
+        StatusModule(),
+        HostWatchModule(host_watch),
+        bot_menus,
+    ]
+    # notify без получателя падает на старте: без ADMINS_ID его просто не ставим.
+    if ADMINS_ID:
+        modules.append(NotifyModule())
+    setup_sdk(dp, settings, modules=modules)
 
 
 def _get_dp_obj(bot, redis):
@@ -164,10 +218,11 @@ def _get_dp_obj(bot, redis):
     dp = Dispatcher(storage=storage)
     _add_middlewares_to_observers([dp.message, dp.callback_query], [UserContextMiddleware()])
     register_error_handler(dp)
+    _setup_sdk(dp)
     dp.include_routers(*ROUTERS)
 
     dp.startup.register(on_startup)
-    dp.shutdown.register(on_shutdown)
+    dp.startup.register(start_rss_watcher)
 
     logger.debug("Dispatcher is configured")
     return dp

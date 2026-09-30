@@ -19,6 +19,7 @@ class BoostyEvent(BaseModel):
     username: str = Field(..., min_length=1)
     status: str | None = Field(None, description="pending | success | failure")
     error: str | None = Field(None, description="Описание ошибки")
+    metadata: dict[str, str] | None = Field(None, description="Подробности попытки: stage, attempt, attempts, url")
     chat_id: str | None = Field(None)
     message_id: str | None = Field(None)
 
@@ -51,7 +52,7 @@ class BoostyEvent(BaseModel):
     def validate_status(cls, v):
         if v is None:
             return v
-        allowed = {"pending", "success", "failure"}
+        allowed = {"pending", "success", "failure", "retrying"}
         if v not in allowed:
             raise ValueError(f"Invalid status '{v}', must be one of {allowed}")
         return v

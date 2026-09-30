@@ -1,0 +1,55 @@
+# Локальный e2e: боевые FTP/WordPress подменены, наружу ничего не уходит.
+services:
+  sftp:
+    image: lscr.io/linuxserver/openssh-server:latest
+    environment:
+      USER_NAME: e2e
+      USER_PASSWORD: e2e
+      PASSWORD_ACCESS: "true"
+      PUID: "1000"
+      PGID: "1000"
+    volumes:
+      - e2e_ftp:/config
+    networks:
+      - podboxbot_network
+  # Бот читает список эпизодов по FTPS:21, публишер пишет по SFTP:2222 — на
+  # том же хосте. Поэтому FTPS живёт в сетевом пространстве sftp и на общем томе.
+  ftps:
+    image: stilliard/pure-ftpd:latest
+    network_mode: "service:sftp"
+    environment:
+      PUBLICHOST: sftp
+      FTP_USER_NAME: e2e
+      FTP_USER_PASS: e2e
+      FTP_USER_HOME: /home/e2e
+      FTP_USER_UID: "1000"
+      FTP_USER_GID: "1000"
+      ADDED_FLAGS: "--tls=1"
+      TLS_CN: sftp
+      TLS_ORG: e2e
+      TLS_C: RU
+    volumes:
+      - e2e_ftp:/home/e2e
+  bot:
+    environment:
+      FTP_SERVER: sftp
+      FTP_LOGIN: e2e
+      FTP_PASSWORD: e2e
+      WP_URL: http://127.0.0.1:9
+  publisher_ftp:
+    depends_on:
+      sftp:
+        condition: service_started
+    environment:
+      FTP_SERVER: sftp
+      FTP_LOGIN: e2e
+      FTP_PASSWORD: e2e
+  publisher_wordpress:
+    environment:
+      WP_URL: http://127.0.0.1:9
+  tun2socks:
+    environment:
+      PROXY: http://host.docker.internal:11000
+
+volumes:
+  e2e_ftp:

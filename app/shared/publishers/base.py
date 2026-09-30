@@ -7,6 +7,10 @@ upload_topic, result_topic, group_id) и реализуют `publish(event)`. Б
 * поднимает KafkaConsumer + KafkaProducer на конфиге shared.config;
 * валидирует входящий payload через event_cls;
 * меряет длительность и шлёт success/failure-счётчики в Pushgateway;
+* повторяет внешние вызовы через `call_with_retry` (retry из
+  sagenza_tgbot_sdk) и на каждую неудачную попытку шлёт result-event со
+  статусом `retrying` и metadata (stage/attempt/attempts), чтобы бот
+  сообщил админу;
 * при исключении в `publish` собирает failure-result event (по умолчанию
   через model_copy + override полей status/error/event_type) и отправляет
   в result_topic, чтобы бот апдейтил TG-сообщение пользователя.
@@ -20,16 +24,31 @@ Aftershow-эпизоды (`event.type_episode == "aftershow"`) — это мар
 
 from __future__ import annotations
 
+import asyncio
 import time
 from abc import ABC, abstractmethod
+from collections.abc import Awaitable, Callable
+from typing import TypeVar
 
 from loguru import logger
 from pydantic import BaseModel
+from sagenza_tgbot_sdk.resilience import PermanentError, retry, verify_published
 
 from shared.config import config
 from shared.kafka.consumer import KafkaConsumer
 from shared.kafka.producer import KafkaProducer
 from shared.publishers.metrics import PublisherMetrics
+
+T = TypeVar("T")
+
+
+class StepFailedError(Exception):
+    """Шаг публикации не удался после всех попыток."""
+
+    def __init__(self, stage: str, attempts: int, error: BaseException) -> None:
+        super().__init__(f"{stage}: {error} (попыток: {attempts})")
+        self.stage = stage
+        self.attempts = attempts
 
 
 class BasePublisher(ABC):
@@ -43,7 +62,7 @@ class BasePublisher(ABC):
     """Pydantic-модель события, на которое подписан publisher."""
 
     schema_path: str
-    """Путь к .avsc внутри контейнера (для AvroProducer)."""
+    """Путь к .avsc внутри контейнера (для KafkaProducer)."""
 
     upload_topic: str
     """Топик, который publisher слушает."""
@@ -63,6 +82,24 @@ class BasePublisher(ABC):
 
     supports_scheduled: bool = False
     """True если publisher умеет отложенную публикацию по расписанию."""
+
+    publish_action: str = "published"
+    """Что делает успешная публикация: ``published`` (сразу видна подписчикам),
+    ``draft`` (черновик) или ``scheduled`` (отложенный пост). Бот по нему
+    пишет итог в статус-сообщении."""
+
+    # --- Retry policy ---
+    retry_attempts: int = 3
+    """Сколько раз всего пробовать внешний вызов (подкласс берёт из конфига)."""
+
+    retry_backoff: float = 5.0
+    """Пауза перед второй попыткой, дальше растёт экспоненциально."""
+
+    verify_attempts: int = config.VERIFY_ATTEMPTS
+    verify_backoff: float = config.VERIFY_BACKOFF
+
+    retry_sleep: Callable[[float], Awaitable[None]] = staticmethod(asyncio.sleep)
+    """Пауза между попытками; тесты подменяют на no-op."""
 
     def __init__(
         self,
@@ -148,6 +185,97 @@ class BasePublisher(ABC):
             }
         )
 
+    def success_metadata(self, **extra: str) -> dict[str, str]:
+        """``metadata`` success-события: площадка (``name``) и сделанное действие.
+
+        ``extra`` дописывает поля (``url``, ``post_id``) и может переопределить
+        ``action``, если оно зависит от события или настроек.
+        """
+        return {"platform": self.name, "action": self.publish_action, **extra}
+
+    def build_retry_event(self, event, error: str, metadata: dict[str, str]):
+        """Result-event о неудачной попытке, после которой будет повтор."""
+        failure = self.build_failure_event(event, error)
+        return failure.model_copy(update={"status": "retrying", "metadata": metadata})
+
+    def build_stage_event(self, event, stage: str):
+        """Progress-event «начат шаг ``stage``» для статус-сообщения бота."""
+        return event.model_copy(
+            update={"event_type": "progress", "status": "pending", "error": None, "metadata": {"stage": stage}}
+        )
+
+    async def report_stage(self, event, stage: str) -> None:
+        """Сообщает боту, что начался шаг публикации; сбой отправки не мешает публикации."""
+        try:
+            await self.producer.send(self.result_topic, self.build_stage_event(event, stage).model_dump())
+        except Exception as e:
+            logger.error(f"Failed to emit stage {stage} for {self.name}/{self.event_key(event)}: {e!r}")
+
+    async def _report_retry(self, event, stage: str, attempt: int, attempts: int, error: BaseException) -> None:
+        key = str(self.event_key(event))
+        self.metrics.retry({"target": key, "stage": stage})
+        metadata = {"stage": stage, "attempt": str(attempt), "attempts": str(attempts)}
+        try:
+            retry_event = self.build_retry_event(event, f"{type(error).__name__}: {error}", metadata)
+            await self.producer.send(self.result_topic, retry_event.model_dump())
+        except Exception as e:
+            logger.error(f"Failed to emit retry result for {self.name}/{key}: {e!r}")
+
+    async def call_with_retry(
+        self,
+        event,
+        stage: str,
+        func: Callable[[], Awaitable[T]],
+        *,
+        attempts: int | None = None,
+        backoff: float | None = None,
+    ) -> T:
+        """Выполняет ``func`` с повторами. Перед первой попыткой уходит
+        progress-event с ``metadata.stage``; каждая неудачная попытка, кроме
+        последней, уходит в result_topic событием ``retrying``.
+
+        После последней неудачи поднимает :class:`StepFailedError` — база
+        превратит его в failure-event с тем же stage в metadata.
+        """
+        total = attempts or self.retry_attempts
+        attempt = 0
+        await self.report_stage(event, stage)
+
+        async def _once() -> T:
+            nonlocal attempt
+            attempt += 1
+            try:
+                return await func()
+            except PermanentError:
+                raise
+            except Exception as e:
+                if attempt < total:
+                    await self._report_retry(event, stage, attempt, total, e)
+                raise
+
+        runner = retry(
+            attempts=total,
+            backoff=self.retry_backoff if backoff is None else backoff,
+            sleep=self.retry_sleep,
+        )(_once)
+        try:
+            return await runner()
+        except Exception as e:
+            raise StepFailedError(stage, attempt, e) from e
+
+    async def verify(self, event, url: str, **kwargs) -> None:
+        """Проверяет, что пост доступен по ``url`` (с повторами).
+
+        kwargs пробрасываются в ``verify_published`` (session, contains).
+        """
+        await self.call_with_retry(
+            event,
+            "verify",
+            lambda: verify_published(url, **kwargs),
+            attempts=self.verify_attempts,
+            backoff=self.verify_backoff,
+        )
+
     # --- Main loop ---
 
     async def _handle(self, payload: dict) -> None:
@@ -175,6 +303,9 @@ class BasePublisher(ABC):
             self.metrics.failure({"target": str(key)})
             try:
                 failure = self.build_failure_event(event, str(e))
+                if isinstance(e, StepFailedError) and "metadata" in type(failure).model_fields:
+                    metadata = {"stage": e.stage, "attempt": str(e.attempts), "attempts": str(e.attempts)}
+                    failure = failure.model_copy(update={"metadata": {**(failure.metadata or {}), **metadata}})
                 await self.producer.send(self.result_topic, failure.model_dump())
             except Exception as e2:
                 logger.error(f"Failed to emit failure result for {self.name}/{key}: {e2!r}")

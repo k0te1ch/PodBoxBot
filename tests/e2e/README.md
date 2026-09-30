@@ -12,8 +12,9 @@ from the default `pytest` run** (`addopts = -m 'not e2e'` in
   - `test_full_pipeline_ftp` — start → choose type → upload MP3 → template → click **FTP menu → FTP upload**.
   - `test_full_pipeline_wordpress` — same flow ending in **WP menu → WP upload**.
 
-The MP3 upload step uses Telethon directly because tgtest's YAML step
-actions don't include file upload as of this writing.
+Everything goes through tgtest (0.2+): the MP3 upload uses `chat.send_file`,
+menu edits are checked with `expect_edit` / `wait_until`, and the account
+language comes from `E2E_LANG` via `TG_LANG_CODE`.
 
 ## One-time setup
 
@@ -45,6 +46,25 @@ poetry run tgtest run tests/e2e/scenarios/start_menu.yaml
 # one pipeline
 poetry run pytest tests/e2e/test_full_pipeline.py::test_full_pipeline_ftp -m e2e
 ```
+
+### Isolated stand
+
+`docker-compose.e2e.yml` swaps the real FTP/WordPress for local stubs, so a
+run never publishes anywhere: SFTP on `sftp:2222` for the publisher, FTPS on
+`sftp:21` for the bot (same storage), WordPress pointed at a dead address.
+Telegram goes through tun2socks, as in production; set its `PROXY` to your
+local proxy if DC traffic is blocked.
+
+```sh
+docker compose -p podbox-e2e -f docker-compose.tun2socks.yml -f tests/e2e/docker-compose.e2e.yml \
+  up -d --build bot publisher_ftp publisher_wordpress sftp ftps
+# the bot needs at least one episode on FTP to compute the next number
+docker exec podbox-e2e-sftp-1 sh -c 'touch /config/600_rz_seed.mp3 && chown 1000:1000 /config/600_rz_seed.mp3'
+```
+
+The test account's messages are matched against the bot's own `.ftl`
+strings in `E2E_LANG` (default `ru`); the client connects with that
+`lang_code` so the bot answers in the same language.
 
 ## Notes
 

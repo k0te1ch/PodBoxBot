@@ -223,6 +223,99 @@ class TestWordPressUploadPost:
         mock_login.assert_called_once()
 
 
+def _rest_json(routes: dict):
+    """side_effect для _rest_session.request: путь -> JSON-ответ."""
+
+    def _request(method, url, **kwargs):
+        for suffix, body in routes.items():
+            if url.endswith(suffix):
+                return MagicMock(ok=True, status_code=200, text="", json=MagicMock(return_value=body))
+        return MagicMock(ok=True, status_code=200, text="{}", json=MagicMock(return_value={}))
+
+    return _request
+
+
+class TestWordPressIdempotency:
+    def test_existing_draft_is_updated_not_duplicated(self, mock_session, sample_post_info):
+        urls = []
+
+        def _request(method, url, **kwargs):
+            urls.append((method, url))
+            if method == "POST":
+                return MagicMock(status_code=302, ok=True, text="", url="https://example.com/wp-admin/post.php")
+            return MagicMock(status_code=200, ok=True, content=_FORM_PAGE, text=_FORM_PAGE.decode())
+
+        mock_session.request.side_effect = _request
+        wp = _make_wp(mock_session)
+        wp._rest_session.request.side_effect = _rest_json(
+            {
+                "/podlove/v2/episodes?status=draft": {
+                    "results": [{"id": 7, "title": "Другое"}, {"id": 42, "title": "Разговорный жанр &#8212; 123"}]
+                },
+                "/podlove/v2/episodes/42": {"id": 42, "post_id": 555},
+            }
+        )
+
+        with patch.object(wp, "_dump_cookies", return_value=True):
+            assert wp.upload_post(sample_post_info) is True
+
+        assert ("GET", "https://example.com/wp-admin/post.php?post=555&action=edit") in urls
+        assert not any("post-new.php" in u for _, u in urls)
+        assert wp.last_post_id == "555"
+
+    def test_draft_lookup_failure_falls_back_to_new_post(self, mock_session, sample_post_info):
+        mock_session.request.side_effect = lambda method, url, **kw: (
+            MagicMock(status_code=302, ok=True, text="")
+            if method == "POST"
+            else MagicMock(status_code=200, ok=True, content=_FORM_PAGE, text=_FORM_PAGE.decode())
+        )
+        wp = _make_wp(mock_session)
+        rest_ok = MagicMock(ok=True, status_code=200, text="{}")
+        wp._rest_session.request.side_effect = [MagicMock(ok=False, status_code=500, text="boom"), rest_ok, rest_ok]
+
+        with patch.object(wp, "_dump_cookies", return_value=True):
+            assert wp.upload_post(sample_post_info) is True
+        assert wp.last_post_id == "99"
+
+    def test_redirect_to_login_on_submit_is_an_error(self, mock_session, sample_post_info):
+        mock_session.request.side_effect = lambda method, url, **kw: (
+            MagicMock(status_code=200, ok=True, text="login", url="https://example.com/wp-login.php?redirect_to=x")
+            if method == "POST"
+            else MagicMock(status_code=200, ok=True, content=_FORM_PAGE, text=_FORM_PAGE.decode())
+        )
+        wp = _make_wp(mock_session)
+        with patch.object(wp, "_dump_cookies", return_value=True), pytest.raises(RuntimeError, match="wp-login"):
+            wp.upload_post(sample_post_info)
+
+    def test_hidden_input_without_value_does_not_crash(self, mock_session, sample_post_info):
+        page = _FORM_PAGE.replace(b"</form>", b'<input type="hidden" name="empty"/><input type="hidden"/></form>')
+        captured = {}
+
+        def _request(method, url, **kwargs):
+            if method == "POST":
+                captured["form"] = kwargs["data"]
+                return MagicMock(status_code=302, ok=True, text="")
+            return MagicMock(status_code=200, ok=True, content=page, text=page.decode())
+
+        mock_session.request.side_effect = _request
+        wp = _make_wp(mock_session)
+        with patch.object(wp, "_dump_cookies", return_value=True):
+            assert wp.upload_post(sample_post_info) is True
+        assert captured["form"]["empty"] == ""
+
+
+class TestPodcastRestPath:
+    def test_uses_rest_base_from_types_endpoint(self, mock_session):
+        wp = _make_wp(mock_session)
+        wp._rest_session.request.side_effect = _rest_json({"/wp/v2/types/podcast": {"rest_base": "episodes"}})
+        assert wp.podcast_rest_path("777") == "/wp/v2/episodes/777"
+
+    def test_falls_back_to_episodes(self, mock_session):
+        wp = _make_wp(mock_session)
+        wp._rest_session.request.return_value = MagicMock(ok=False, status_code=404, text="")
+        assert wp.podcast_rest_path("777") == "/wp/v2/episodes/777"
+
+
 class TestWordPressContextManager:
     def test_enter_returns_self(self, mock_session):
         wp = WordPress.__new__(WordPress)

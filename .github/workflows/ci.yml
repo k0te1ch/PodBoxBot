@@ -7,6 +7,11 @@ on:
   pull_request:
     branches:
       - main
+  # The release PR is opened with GITHUB_TOKEN, so its pull_request runs
+  # wait for manual approval. release-please.yml dispatches this workflow on
+  # the release branch instead, and report-required-checks at the bottom
+  # turns the results into the statuses the ruleset looks for.
+  workflow_dispatch:
 
 jobs:
   lint:
@@ -15,8 +20,8 @@ jobs:
       run:
         working-directory: app/bot
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - name: Install tooling
@@ -28,14 +33,36 @@ jobs:
       - name: Ruff format check
         run: ruff format --check "$GITHUB_WORKSPACE/app" "$GITHUB_WORKSPACE/tests"
 
+  # The release PR must carry Russian notes for its version: the bot sends
+  # release-notes/ru/<version>.md to the show's admins after a deploy, and
+  # without the file they only get the bare version number. The notes land
+  # in main through a normal PR; release-please rebuilds its branch on top of
+  # it ("always-update" in release-please-config.json). Runs for the release
+  # branch on any event (the release PR is checked via workflow_dispatch),
+  # skipped (reported as success) everywhere else.
+  release-notes:
+    if: startsWith(github.head_ref || github.ref_name, 'release-please--branches--')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check Russian release notes for the release version
+        run: |
+          version=$(jq -r '."."' .release-please-manifest.json)
+          notes="release-notes/ru/${version}.md"
+          if ! grep -q '[^[:space:]]' "$notes" 2>/dev/null; then
+            echo "::error file=${notes}::Missing or empty ${notes}. Add Russian release notes for ${version} in a separate PR to main."
+            exit 1
+          fi
+          echo "Found ${notes}"
+
   # Job id is the status-check context required by the "main protection"
   # ruleset ("test"). A matrix would report it as "test (3.12)" and never
   # satisfy that requirement, so keep it a single un-matrixed job.
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - name: Install Poetry
@@ -48,8 +75,16 @@ jobs:
         # --only main,testing mirrors the Dockerfile (main) plus what the suite
         # needs (pytest, pytest-cov). The dev group holds ruff and pre-commit,
         # which have their own pinned install in the lint job.
+        # sagenza-tgbot-sdk is private: SDK_DEPLOY_KEY is its read-only deploy key.
+        env:
+          SDK_DEPLOY_KEY: ${{ secrets.SDK_DEPLOY_KEY }}
         run: |
+          install -m 600 /dev/null ~/sdk_deploy_key
+          printf '%s\n' "$SDK_DEPLOY_KEY" > ~/sdk_deploy_key
+          export GIT_SSH_COMMAND="ssh -i $HOME/sdk_deploy_key -o StrictHostKeyChecking=accept-new"
+          git config --global url."git@github.com:k0te1ch/sagenza-tgbot-sdk".insteadOf "https://github.com/k0te1ch/sagenza-tgbot-sdk"
           poetry config virtualenvs.create false
+          poetry config system-git-client true
           poetry install --only main,testing --no-root
       - name: Run tests
         # Publisher microservice tests need each service's own deps (asyncssh,
@@ -60,8 +95,8 @@ jobs:
   test-publisher-ftp:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - name: Install Poetry
@@ -71,8 +106,16 @@ jobs:
         run: python -m pip install --upgrade pip && python -m pip install poetry==2.3.4
       - name: Install FTP publisher dependencies (system env, mirrors Dockerfile)
         working-directory: app/publishers/FTP
+        # sagenza-tgbot-sdk is private: SDK_DEPLOY_KEY is its read-only deploy key.
+        env:
+          SDK_DEPLOY_KEY: ${{ secrets.SDK_DEPLOY_KEY }}
         run: |
+          install -m 600 /dev/null ~/sdk_deploy_key
+          printf '%s\n' "$SDK_DEPLOY_KEY" > ~/sdk_deploy_key
+          export GIT_SSH_COMMAND="ssh -i $HOME/sdk_deploy_key -o StrictHostKeyChecking=accept-new"
+          git config --global url."git@github.com:k0te1ch/sagenza-tgbot-sdk".insteadOf "https://github.com/k0te1ch/sagenza-tgbot-sdk"
           poetry config virtualenvs.create false
+          poetry config system-git-client true
           poetry install --only main --no-root
       - name: Install test tooling
         run: python -m pip install "pytest>=9.0.3,<10" "pytest-asyncio>=1.4,<2"
@@ -82,8 +125,8 @@ jobs:
   test-publisher-wordpress:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - name: Install Poetry
@@ -93,8 +136,16 @@ jobs:
         run: python -m pip install --upgrade pip && python -m pip install poetry==2.3.4
       - name: Install WordPress publisher dependencies (system env, mirrors Dockerfile)
         working-directory: app/publishers/WordPress
+        # sagenza-tgbot-sdk is private: SDK_DEPLOY_KEY is its read-only deploy key.
+        env:
+          SDK_DEPLOY_KEY: ${{ secrets.SDK_DEPLOY_KEY }}
         run: |
+          install -m 600 /dev/null ~/sdk_deploy_key
+          printf '%s\n' "$SDK_DEPLOY_KEY" > ~/sdk_deploy_key
+          export GIT_SSH_COMMAND="ssh -i $HOME/sdk_deploy_key -o StrictHostKeyChecking=accept-new"
+          git config --global url."git@github.com:k0te1ch/sagenza-tgbot-sdk".insteadOf "https://github.com/k0te1ch/sagenza-tgbot-sdk"
           poetry config virtualenvs.create false
+          poetry config system-git-client true
           poetry install --only main --no-root
       - name: Install test tooling
         run: python -m pip install "pytest>=9.0.3,<10" "pytest-asyncio>=1.4,<2"
@@ -104,8 +155,8 @@ jobs:
   test-publisher-boosty:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - name: Install Poetry
@@ -115,10 +166,183 @@ jobs:
         run: python -m pip install --upgrade pip && python -m pip install poetry==2.3.4
       - name: Install Boosty publisher dependencies (system env, mirrors Dockerfile)
         working-directory: app/publishers/Boosty
+        # sagenza-tgbot-sdk is private: SDK_DEPLOY_KEY is its read-only deploy key.
+        env:
+          SDK_DEPLOY_KEY: ${{ secrets.SDK_DEPLOY_KEY }}
         run: |
+          install -m 600 /dev/null ~/sdk_deploy_key
+          printf '%s\n' "$SDK_DEPLOY_KEY" > ~/sdk_deploy_key
+          export GIT_SSH_COMMAND="ssh -i $HOME/sdk_deploy_key -o StrictHostKeyChecking=accept-new"
+          git config --global url."git@github.com:k0te1ch/sagenza-tgbot-sdk".insteadOf "https://github.com/k0te1ch/sagenza-tgbot-sdk"
           poetry config virtualenvs.create false
+          poetry config system-git-client true
           poetry install --only main --no-root
       - name: Install test tooling
         run: python -m pip install "pytest>=9.0.3,<10" "pytest-asyncio>=1.4,<2"
       - name: Run Boosty publisher tests
         run: pytest -c app/bot/pyproject.toml -o addopts="" tests/unit/publishers/boosty
+
+  test-publisher-vk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Install Poetry
+        # Pin poetry: the committed locks were generated by this version, and an
+        # unpinned `--upgrade` has twice downgraded virtualenv mid-install and
+        # broken poetry's own files (flaky 'Cannot install ...' failures).
+        run: python -m pip install --upgrade pip && python -m pip install poetry==2.3.4
+      - name: Install VK publisher dependencies (system env, mirrors Dockerfile)
+        working-directory: app/publishers/VK
+        # sagenza-tgbot-sdk is private: SDK_DEPLOY_KEY is its read-only deploy key.
+        env:
+          SDK_DEPLOY_KEY: ${{ secrets.SDK_DEPLOY_KEY }}
+        run: |
+          install -m 600 /dev/null ~/sdk_deploy_key
+          printf '%s\n' "$SDK_DEPLOY_KEY" > ~/sdk_deploy_key
+          export GIT_SSH_COMMAND="ssh -i $HOME/sdk_deploy_key -o StrictHostKeyChecking=accept-new"
+          git config --global url."git@github.com:k0te1ch/sagenza-tgbot-sdk".insteadOf "https://github.com/k0te1ch/sagenza-tgbot-sdk"
+          poetry config virtualenvs.create false
+          poetry config system-git-client true
+          poetry install --only main --no-root
+      - name: Install test tooling
+        run: python -m pip install "pytest>=9.0.3,<10" "pytest-asyncio>=1.4,<2"
+      - name: Run VK publisher tests
+        run: pytest -c app/bot/pyproject.toml -o addopts="" tests/unit/publishers/vk
+
+  test-publisher-patreon:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Install Poetry
+        # Pin poetry: the committed locks were generated by this version, and an
+        # unpinned `--upgrade` has twice downgraded virtualenv mid-install and
+        # broken poetry's own files (flaky 'Cannot install ...' failures).
+        run: python -m pip install --upgrade pip && python -m pip install poetry==2.3.4
+      - name: Install Patreon publisher dependencies (system env, mirrors Dockerfile)
+        working-directory: app/publishers/Patreon
+        # sagenza-tgbot-sdk is private: SDK_DEPLOY_KEY is its read-only deploy key.
+        env:
+          SDK_DEPLOY_KEY: ${{ secrets.SDK_DEPLOY_KEY }}
+        run: |
+          install -m 600 /dev/null ~/sdk_deploy_key
+          printf '%s\n' "$SDK_DEPLOY_KEY" > ~/sdk_deploy_key
+          export GIT_SSH_COMMAND="ssh -i $HOME/sdk_deploy_key -o StrictHostKeyChecking=accept-new"
+          git config --global url."git@github.com:k0te1ch/sagenza-tgbot-sdk".insteadOf "https://github.com/k0te1ch/sagenza-tgbot-sdk"
+          poetry config virtualenvs.create false
+          poetry config system-git-client true
+          poetry install --only main --no-root
+      - name: Install test tooling
+        run: python -m pip install "pytest>=9.0.3,<10" "pytest-asyncio>=1.4,<2"
+      - name: Run Patreon publisher tests
+        run: pytest -c app/bot/pyproject.toml -o addopts="" tests/unit/publishers/patreon
+
+  test-publisher-sponsr:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Install Poetry
+        # Pin poetry: the committed locks were generated by this version, and an
+        # unpinned `--upgrade` has twice downgraded virtualenv mid-install and
+        # broken poetry's own files (flaky 'Cannot install ...' failures).
+        run: python -m pip install --upgrade pip && python -m pip install poetry==2.3.4
+      - name: Install Sponsr publisher dependencies (system env, mirrors Dockerfile)
+        working-directory: app/publishers/Sponsr
+        # sagenza-tgbot-sdk is private: SDK_DEPLOY_KEY is its read-only deploy key.
+        env:
+          SDK_DEPLOY_KEY: ${{ secrets.SDK_DEPLOY_KEY }}
+        run: |
+          install -m 600 /dev/null ~/sdk_deploy_key
+          printf '%s\n' "$SDK_DEPLOY_KEY" > ~/sdk_deploy_key
+          export GIT_SSH_COMMAND="ssh -i $HOME/sdk_deploy_key -o StrictHostKeyChecking=accept-new"
+          git config --global url."git@github.com:k0te1ch/sagenza-tgbot-sdk".insteadOf "https://github.com/k0te1ch/sagenza-tgbot-sdk"
+          poetry config virtualenvs.create false
+          poetry config system-git-client true
+          poetry install --only main --no-root
+      - name: Install test tooling
+        run: python -m pip install "pytest>=9.0.3,<10" "pytest-asyncio>=1.4,<2"
+      - name: Run Sponsr publisher tests
+        run: pytest -c app/bot/pyproject.toml -o addopts="" tests/unit/publishers/sponsr
+
+  # Live Kafka + Schema Registry: the new serializer API end to end, plus
+  # reading messages written by the legacy AvroProducer still in prod topics.
+  kafka-e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Start Kafka and Schema Registry
+        run: docker compose -f tests/integration/kafka/docker-compose.yml up -d --wait
+      - name: Install Poetry
+        run: python -m pip install --upgrade pip && python -m pip install poetry==2.3.4
+      - name: Install FTP publisher dependencies (system env, mirrors Dockerfile)
+        working-directory: app/publishers/FTP
+        # sagenza-tgbot-sdk is private: SDK_DEPLOY_KEY is its read-only deploy key.
+        env:
+          SDK_DEPLOY_KEY: ${{ secrets.SDK_DEPLOY_KEY }}
+        run: |
+          install -m 600 /dev/null ~/sdk_deploy_key
+          printf '%s\n' "$SDK_DEPLOY_KEY" > ~/sdk_deploy_key
+          export GIT_SSH_COMMAND="ssh -i $HOME/sdk_deploy_key -o StrictHostKeyChecking=accept-new"
+          git config --global url."git@github.com:k0te1ch/sagenza-tgbot-sdk".insteadOf "https://github.com/k0te1ch/sagenza-tgbot-sdk"
+          poetry config virtualenvs.create false
+          poetry config system-git-client true
+          poetry install --only main --no-root
+      - name: Install test tooling
+        run: python -m pip install "pytest>=8.3.2,<9" "pytest-asyncio>=0.24,<0.25"
+      - name: Run Kafka e2e tests
+        env:
+          KAFKA_E2E_BOOTSTRAP: localhost:9092
+          KAFKA_E2E_SCHEMA_REGISTRY: http://localhost:8081
+        run: pytest -c app/bot/pyproject.toml -o addopts="" tests/integration/kafka -v
+      - name: Kafka logs on failure
+        if: failure()
+        run: docker compose -f tests/integration/kafka/docker-compose.yml logs --tail=200
+
+  # Dispatched runs only (release-please.yml starts one on the release PR).
+  # GitHub leaves check runs of a workflow_dispatch run out of the PR's
+  # required checks, but it does count commit statuses. So the result of each
+  # job required by the "main protection" ruleset is copied to a commit status
+  # with the same name. Keep `needs` in sync with the ruleset's check list.
+  report-required-checks:
+    if: always() && github.event_name == 'workflow_dispatch'
+    needs:
+      - lint
+      - release-notes
+      - test
+      - test-publisher-ftp
+      - test-publisher-wordpress
+      - test-publisher-boosty
+    runs-on: ubuntu-latest
+    permissions:
+      statuses: write
+    steps:
+      - name: Mirror job results as commit statuses
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NEEDS: ${{ toJSON(needs) }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          jq -r 'to_entries[] | "\(.key) \(.value.result)"' <<< "$NEEDS" |
+            while read -r job result; do
+              # A skipped job passes, the same way GitHub treats a skipped check.
+              case "$result" in
+                success|skipped) state=success ;;
+                *) state=failure ;;
+              esac
+              gh api "repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" \
+                -f state="$state" -f context="$job" \
+                -f target_url="$RUN_URL" -f description="workflow_dispatch: $result" \
+                --silent
+              echo "$job: $result -> $state"
+            done

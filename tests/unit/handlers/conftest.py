@@ -8,29 +8,6 @@ from aiogram_tests.types.dataset import MESSAGE
 
 from middlewares.base.general_middleware import GeneralMiddleware
 
-# aiogram-testing registers ``dp_middlewares`` on every dispatcher observer,
-# including the root ``update`` observer whose event is an ``Update``. The bot's
-# message/callback middlewares (e.g. GeneralMiddleware) expect a ``Message`` /
-# ``CallbackQuery`` and read ``event.from_user``. Keep them off the ``update``
-# observer so they only run where the event type matches, mirroring how the bot
-# registers them at runtime.
-_EXCLUDE_OBSERVERS = ["update"]
-
-
-@pytest.fixture(autouse=True, scope="session")
-def _init_keyboards():
-    """Populate the keyboards registry.
-
-    At runtime ``init_services(bot)`` loads the keyboards; the unit tests never
-    call it, so handlers that read ``keyboards["..."]`` would raise. The
-    keyboards themselves don't need a bot, so load them directly here.
-    """
-    from services import keyboards
-    from services.keyboards import _get_keyboards_obj
-
-    keyboards._load(_get_keyboards_obj())
-    yield
-
 
 @pytest.fixture
 def handler_factory() -> Callable[..., MessageHandler]:
@@ -50,14 +27,12 @@ def handler_factory() -> Callable[..., MessageHandler]:
                 handler_func,
                 command,
                 dp_middlewares=dp_middlewares,
-                exclude_observer_methods=_EXCLUDE_OBSERVERS,
                 state=state,
                 state_data=state_data,
             )
         return MessageHandler(
             handler_func,
             dp_middlewares=dp_middlewares,
-            exclude_observer_methods=_EXCLUDE_OBSERVERS,
             state=state,
             state_data=state_data,
         )
@@ -80,7 +55,6 @@ def callback_handler_factory() -> Callable[..., CallbackQueryHandler]:
         return CallbackQueryHandler(
             handler_func,
             dp_middlewares=dp_middlewares,
-            exclude_observer_methods=_EXCLUDE_OBSERVERS,
             state=state,
             state_data=state_data,
         )
@@ -110,3 +84,49 @@ def state_context_factory() -> Callable[..., Awaitable[FSMContext]]:
         return handler.dp.fsm.get_context(handler.bot, message.chat.id, message.from_user.id)
 
     return _create_state_context
+
+
+class FakeRedis:
+    """Те команды Redis, что нужны EntryStore, — в памяти."""
+
+    def __init__(self) -> None:
+        self.values: dict[str, str] = {}
+        self.zsets: dict[str, dict[str, float]] = {}
+
+    async def set(self, key, value, nx=False):
+        if nx and key in self.values:
+            return None
+        self.values[key] = str(value)
+        return True
+
+    async def get(self, key):
+        return self.values.get(key)
+
+    async def delete(self, key):
+        return int(self.values.pop(key, None) is not None)
+
+    async def incr(self, key):
+        self.values[key] = str(int(self.values.get(key, 0)) + 1)
+        return int(self.values[key])
+
+    async def zadd(self, key, mapping):
+        self.zsets.setdefault(key, {}).update(mapping)
+
+    async def zrem(self, key, member):
+        self.zsets.get(key, {}).pop(member, None)
+
+    async def zcard(self, key):
+        return len(self.zsets.get(key, {}))
+
+    async def zrevrange(self, key, start, end):
+        members = sorted(self.zsets.get(key, {}).items(), key=lambda kv: kv[1], reverse=True)
+        return [m for m, _ in members[start : end + 1]]
+
+
+@pytest.fixture
+def fake_redis(monkeypatch) -> FakeRedis:
+    from handlers import collector_handler
+
+    fake = FakeRedis()
+    monkeypatch.setattr(collector_handler, "redis", fake)
+    return fake
