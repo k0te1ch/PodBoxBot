@@ -9,7 +9,8 @@ on:
       - main
   # The release PR is opened with GITHUB_TOKEN, so its pull_request runs
   # wait for manual approval. release-please.yml dispatches this workflow on
-  # the release branch instead; see the comment there.
+  # the release branch instead, and report-required-checks at the bottom
+  # turns the results into the statuses the ruleset looks for.
   workflow_dispatch:
 
 jobs:
@@ -307,3 +308,41 @@ jobs:
       - name: Kafka logs on failure
         if: failure()
         run: docker compose -f tests/integration/kafka/docker-compose.yml logs --tail=200
+
+  # Dispatched runs only (release-please.yml starts one on the release PR).
+  # GitHub leaves check runs of a workflow_dispatch run out of the PR's
+  # required checks, but it does count commit statuses. So the result of each
+  # job required by the "main protection" ruleset is copied to a commit status
+  # with the same name. Keep `needs` in sync with the ruleset's check list.
+  report-required-checks:
+    if: always() && github.event_name == 'workflow_dispatch'
+    needs:
+      - lint
+      - release-notes
+      - test
+      - test-publisher-ftp
+      - test-publisher-wordpress
+      - test-publisher-boosty
+    runs-on: ubuntu-latest
+    permissions:
+      statuses: write
+    steps:
+      - name: Mirror job results as commit statuses
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NEEDS: ${{ toJSON(needs) }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          jq -r 'to_entries[] | "\(.key) \(.value.result)"' <<< "$NEEDS" |
+            while read -r job result; do
+              # A skipped job passes, the same way GitHub treats a skipped check.
+              case "$result" in
+                success|skipped) state=success ;;
+                *) state=failure ;;
+              esac
+              gh api "repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" \
+                -f state="$state" -f context="$job" \
+                -f target_url="$RUN_URL" -f description="workflow_dispatch: $result" \
+                --silent
+              echo "$job: $result -> $state"
+            done
