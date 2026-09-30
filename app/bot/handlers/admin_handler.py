@@ -8,6 +8,7 @@ from sagenza_tgbot_sdk.menus import MenuContext
 
 from config import LOGS_ZIP_NAME
 from services.i18n import t
+from services.metrics import bot_metrics
 from utils.bot_methods import get_zip_logs, restart_bot
 from utils.menu_context import username as username_of
 
@@ -16,6 +17,7 @@ async def restart(ctx: MenuContext):
     """Handle the bot restart command"""
     username = username_of(ctx)
     logger.warning(f"User {username} is restarting the bot")
+    bot_metrics.admin_action("restart")
 
     await ctx.answer(t("bot_restarting", ctx.locale), alert=True)
     restart_bot()
@@ -25,6 +27,7 @@ async def send_logs(ctx: MenuContext):
     """Handle the request to send logs"""
     username = username_of(ctx)
     logger.opt(colors=True).debug(f"[<y>{username}</y>]: Request to send logs")
+    bot_metrics.admin_action("logs")
 
     log_zip = get_zip_logs(LOGS_ZIP_NAME)
     if not log_zip:

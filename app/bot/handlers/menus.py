@@ -35,6 +35,7 @@ from handlers.paywalled_handler import PATREON, SPONSR, VK, Platform, upload_to
 from handlers.service_handler import open_from_menu as open_service_message
 from handlers.wordpress_handler import upload_WP
 from services.i18n import DEFAULT_LOCALE, translator
+from services.metrics import bot_metrics
 from utils.menu_context import is_admin
 
 ADMIN_MENU = "admin"
@@ -185,4 +186,5 @@ router.message.filter(IsPrivate, IsAdmin)
 async def admin(msg: Message, username: str, language: str):
     """Handle the /admin command"""
     logger.opt(colors=True).debug(f"[<y>{username}</y>]: Admin panel called")
+    bot_metrics.admin_action("admin_panel")
     await menus.send(msg, ADMIN_MENU, language=language)

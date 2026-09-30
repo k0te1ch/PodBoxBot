@@ -2,6 +2,7 @@ import asyncio
 import os
 import re
 import shutil
+import time
 from html import escape
 from pathlib import Path
 from typing import Any
@@ -38,6 +39,7 @@ from filters.dispatcher_filters import IsAdmin, IsPrivate
 from forms.upload_file import DIALOG_ID, MP3, TEMPLATE, TYPE_EPISODE, upload_file_runner
 from handlers.menus import audio_menu_markup
 from services.i18n import t
+from services.metrics import bot_metrics
 from services.none_module import _NoneModule
 from services.redis import redis
 from services.rss import mark_published
@@ -73,6 +75,38 @@ async def _drop_keyboard(bot: Bot, anchor: MessageAnchor | None) -> None:
         logger.debug(f"step keyboard was not removed: {e!r}")
 
 
+def _step_id(session) -> str:
+    step = runner.engine.current_step(session) if session is not None else None
+    return step.id if step is not None else "unknown"
+
+
+def _step_index(step_id: str) -> int:
+    ids = [step.id for step in runner.engine.steps]
+    return ids.index(step_id) if step_id in ids else -1
+
+
+async def _track_turn(state: FSMContext, before: str, turn: DialogTurn) -> None:
+    """Шаг диалога загрузки в метриках: пройден, отклонён, отменён или истёк.
+
+    Так видно, на каком шаге админы бросают загрузку. «Назад» не считается.
+    """
+    if not turn.handled:
+        return
+    if turn.expired:
+        bot_metrics.upload_step(before, "expired")
+    elif turn.cancelled:
+        bot_metrics.upload_step(before, "cancelled")
+    elif turn.finished:
+        bot_metrics.upload_step(before, "done")
+    else:
+        session, _ui = await storage.load(state)
+        after = _step_id(session)
+        if after == before:
+            bot_metrics.upload_step(before, "invalid")
+        elif _step_index(after) > _step_index(before):
+            bot_metrics.upload_step(before, "done")
+
+
 async def clear_old_mp3_files():
     """Удаляет старые MP3-файлы и их sidecar-метаданные."""
     for item in FILES_PATH.iterdir():
@@ -96,6 +130,8 @@ async def clear_old_mp3_files():
 @router.message(F.text, CommandStart())
 async def start(msg: Message, state: FSMContext, bot: Bot, language: str):
     """Обработчик команды /start: новый диалог загрузки поверх любого старого."""
+    bot_metrics.admin_action("upload")
+    bot_metrics.upload_step("start", "done")
     await runner.start(
         state,
         DefaultSender(bot, msg.chat.id),
@@ -108,7 +144,8 @@ async def start(msg: Message, state: FSMContext, bot: Bot, language: str):
 async def cancel(msg: Message, state: FSMContext, bot: Bot, language: str, username: str):
     """Отмена загрузки командой /cancel — то же, что кнопка «Отмена»."""
     logger.debug(f"[{username}]: Отмена загрузки MP3")
-    _session, ui = await storage.load(state)
+    session, ui = await storage.load(state)
+    bot_metrics.upload_step(_step_id(session), "cancelled")
     await runner.cancel(state)
     await _drop_keyboard(bot, ui.anchor)
     await msg.reply(t("canceled", language))
@@ -118,7 +155,10 @@ async def cancel(msg: Message, state: FSMContext, bot: Bot, language: str, usern
 @router.callback_query(DialogCallbackFilter(DIALOG_ID))
 async def on_dialog_button(callback: CallbackQuery, state: FSMContext, bot: Bot, language: str, username: str):
     """Кнопки диалога: выбор типа эпизода, «Назад», «Отмена»."""
+    session, _ui = await storage.load(state)
+    before = _step_id(session)
     turn = await runner.on_callback(callback.data, state, DefaultSender(bot, callback.message.chat.id))
+    await _track_turn(state, before, turn)
     await callback.answer(text=turn.alert, show_alert=bool(turn.alert))
     if turn.cancelled and not turn.expired:
         logger.debug(f"[{username}]: Отмена загрузки MP3")
@@ -176,7 +216,8 @@ async def get_MP3(msg: Message, state: FSMContext, bot: Bot, language: str, user
             raise ValidationError("not the mp3 step")
         validate(step, files)
     except ValidationError:
-        await runner.on_files(files, state, sender)
+        before = _step_id(session)
+        await _track_turn(state, before, await runner.on_files(files, state, sender))
         return
 
     await clear_old_mp3_files()
@@ -184,8 +225,13 @@ async def get_MP3(msg: Message, state: FSMContext, bot: Bot, language: str, user
     logger.debug(f"[{username}]: Загружает MP3...")
     download_msg = await msg.reply(t("got_mp3", language))
 
-    if not await _download_mp3(files[0], bot, download_msg):
+    received_at = time.time()
+    downloaded = await _download_mp3(files[0], bot, download_msg)
+    if downloaded:
+        bot_metrics.mp3_downloaded(time.time() - received_at)
+    else:
         logger.warning(f"[{username}]: MP3 не загрузился")
+        bot_metrics.upload_step(MP3, "download_failed")
         await download_msg.edit_text(t("download_failed", language))
         await runner.cancel(state)
         await _drop_keyboard(bot, ui.anchor)
@@ -198,6 +244,7 @@ async def get_MP3(msg: Message, state: FSMContext, bot: Bot, language: str, user
         # Без номера шаблон не собрать: говорим, что случилось, и закрываем
         # диалог, иначе он висит на шаге MP3 без ответа.
         logger.error(f"[{username}]: номер эпизода не получен с FTP: {e}")
+        bot_metrics.upload_step(MP3, "number_failed")
         await download_msg.edit_text(t("episode_number_failed", language, error=escape(str(e))))
         await runner.cancel(state)
         await _drop_keyboard(bot, ui.anchor)
@@ -207,19 +254,23 @@ async def get_MP3(msg: Message, state: FSMContext, bot: Bot, language: str, user
     # шага осталось выше по чату, с него снимаются кнопки.
     await _drop_keyboard(bot, ui.anchor)
     session.context["number"] = str(number)
+    # Отсюда считается время до публикации на площадках.
+    session.context["mp3_received_at"] = received_at
     ui.anchor = None
     await storage.save(state, session, ui)
 
     await download_msg.edit_text(t("downloaded", language))
-    await runner.on_files(files, state, sender)
+    await _track_turn(state, MP3, await runner.on_files(files, state, sender))
 
 
 @logger.catch
 @router.message(F.text, DialogActiveFilter(storage), flags={"long_operation": "upload_audio"})
 async def set_template(msg: Message, state: FSMContext, bot: Bot, language: str, username: str):
     """Текстовый ответ диалогу; на шаге шаблона его разбирает валидатор шага."""
-    _session, ui = await storage.load(state)
+    session, ui = await storage.load(state)
+    before = _step_id(session)
     turn = await runner.on_text(msg.text, state, DefaultSender(bot, msg.chat.id))
+    await _track_turn(state, before, turn)
     if not turn.finished:
         return
     await _drop_keyboard(bot, ui.anchor)
@@ -253,6 +304,14 @@ async def publish_episode(msg: Message, turn: DialogTurn, language: str, usernam
         await telegram_progress_callback(bytes_uploaded, tmp, file.stat().st_size)
 
     duration, performer = read_duration_and_artist(file)
+    await bot_metrics.episode_prepared(
+        info["number"],
+        type_episode,
+        "upload",
+        received_at=turn.context.get("mp3_received_at") or time.time(),
+        size_bytes=file.stat().st_size,
+        duration_seconds=duration,
+    )
 
     await save_template_info(new_file_name, info, type_episode)
     await mark_published(None if isinstance(redis, _NoneModule) else redis, info["number"])
