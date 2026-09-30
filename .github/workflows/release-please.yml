@@ -28,9 +28,10 @@ jobs:
       # Pushes made with GITHUB_TOKEN don't start pull_request workflows the
       # normal way: GitHub parks the release PR's CI as "action_required" until
       # someone approves it. workflow_dispatch is the exception GITHUB_TOKEN is
-      # allowed to trigger, and a dispatched run on the release branch reports
-      # its checks (lint, test, release-notes, ...) on the PR's head commit, so
-      # the required checks of the main ruleset are met without approval.
+      # allowed to trigger. The dispatched run tests the PR's head commit and
+      # copies the required jobs' results (lint, test, release-notes, ...) to
+      # commit statuses, which the main ruleset accepts; the check runs of a
+      # dispatched workflow alone don't count toward a PR's required checks.
       - name: Run CI on the release PR
         env:
           GH_TOKEN: ${{ github.token }}
