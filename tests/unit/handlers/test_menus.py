@@ -114,7 +114,7 @@ def test_dangerous_buttons_ask_for_confirmation():
         for item in menu.items
         if isinstance(item, Button) and item.confirm
     }
-    assert confirm == {"restart", "forward", "post_button"}
+    assert confirm == {"restart", "forward", "post_button", "publish"}
 
 
 def _pressed_under(message: MagicMock) -> MenuContext:
