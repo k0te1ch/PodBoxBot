@@ -49,10 +49,11 @@ COPY app/shared /app/shared/
 COPY app/bot /app/
 COPY files /app/files/
 COPY static /app/static/
-# CHANGELOG.md нужен on_startup для release-note (send_release_note).
-# Без него код падает на FileNotFoundError — теперь графично обрабатывается,
-# но иметь файл всё равно правильно.
+# CHANGELOG.md (номер версии) и release-notes (русский текст для админов)
+# нужны on_startup для релиз-ноута (send_release_note). Без них бот не
+# падает, но админам уйдёт только номер версии или ничего.
 COPY CHANGELOG.md /app/CHANGELOG.md
+COPY release-notes /app/release-notes/
 
 ENV SCHEMA_REGISTRY_URL=http://schema-registry:8081
 

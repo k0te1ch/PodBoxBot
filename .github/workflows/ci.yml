@@ -28,6 +28,26 @@ jobs:
       - name: Ruff format check
         run: ruff format --check "$GITHUB_WORKSPACE/app" "$GITHUB_WORKSPACE/tests"
 
+  # The release PR must carry Russian notes for its version: the bot sends
+  # release-notes/ru/<version>.md to the show's admins after a deploy, and
+  # without the file they only get the bare version number. The notes land
+  # in main through a normal PR; release-please rebases its branch onto it.
+  # Skipped (reported as success) on every other PR.
+  release-notes:
+    if: github.event_name == 'pull_request' && startsWith(github.head_ref, 'release-please--branches--')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check Russian release notes for the release version
+        run: |
+          version=$(jq -r '."."' .release-please-manifest.json)
+          notes="release-notes/ru/${version}.md"
+          if ! grep -q '[^[:space:]]' "$notes" 2>/dev/null; then
+            echo "::error file=${notes}::Missing or empty ${notes}. Add Russian release notes for ${version} in a separate PR to main."
+            exit 1
+          fi
+          echo "Found ${notes}"
+
   # Job id is the status-check context required by the "main protection"
   # ruleset ("test"). A matrix would report it as "test (3.12)" and never
   # satisfy that requirement, so keep it a single un-matrixed job.
