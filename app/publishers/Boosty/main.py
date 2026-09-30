@@ -118,7 +118,7 @@ class BoostyPublisher(BasePublisher):
         """Режим publish: пост сразу виден подписчикам платного уровня."""
         post_id = await self.call_with_retry(event, "publish", lambda: self.client.publish(post))
 
-        metadata = {"action": "published"}
+        metadata = self.success_metadata()
         if post_id and BOOSTY_BLOG:
             # Страница поста — SPA и отвечает 200 на любой id, поэтому
             # проверяем через API: пост должен находиться по id.
@@ -142,7 +142,7 @@ class BoostyPublisher(BasePublisher):
             attempts=self.verify_attempts,
             backoff=self.verify_backoff,
         )
-        metadata = {"action": "draft"}
+        metadata = self.success_metadata(action="draft")
         if BOOSTY_BLOG:
             metadata["url"] = f"https://boosty.to/{BOOSTY_BLOG}/new-post"
         await self._send_success(event, "", metadata)
@@ -160,7 +160,7 @@ class BoostyPublisher(BasePublisher):
                 attempts=self.verify_attempts,
                 backoff=self.verify_backoff,
             )
-        metadata = {"action": "scheduled", "publish_at": _local_time(publish_time)}
+        metadata = self.success_metadata(action="scheduled", publish_at=_local_time(publish_time))
         if post_id and BOOSTY_BLOG:
             metadata["url"] = f"https://boosty.to/{BOOSTY_BLOG}/posts/{post_id}"
         await self._send_success(event, post_id, metadata)

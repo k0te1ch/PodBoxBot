@@ -133,7 +133,11 @@ class TestHandleUpload:
         client.get_post.assert_awaited_once_with("post-1")
         result = mock_producer.send.call_args.args[1]
         assert result["status"] == "success"
-        assert result["metadata"] == {"action": "published", "url": "https://boosty.to/razgovorny/posts/post-1"}
+        assert result["metadata"] == {
+            "platform": "boosty",
+            "action": "published",
+            "url": "https://boosty.to/razgovorny/posts/post-1",
+        }
 
     @pytest.mark.asyncio
     async def test_missing_post_reports_verify_failure(

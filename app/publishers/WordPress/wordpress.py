@@ -201,16 +201,18 @@ class WordPress(WordPressHttpMixin, PodloveMixin):
     def _build_form(self, info: dict) -> dict[str, str]:
         number = info["number"]
         chapters = "".join(
-            f"[skipto time={time_str}]{time_str}[/skipto] — {chapter}\n" for time_str, chapter in info["chapters"]
+            f"[skipto time={time_str}]{time_str}[/skipto] — {chapter}\n"
+            for time_str, chapter in info.get("chapters") or []
         )
+        # Шаблон без Chapters: без пустого заголовка «Таймлайн».
+        timeline = f"<b><i>Таймлайн:</i></b>\n{chapters}" if chapters else ""
         date_str = self._format_recording_date(info, datetime.now(self._timezone))
         return {
             "post_title": self.post_title(number),
             "content": f"""<span style="font-size: large;">{info["title"].replace(number + ". ", "")}</span>
 <b><i>Описание:</i></b>
 {info["comment"]}
-<!--more--><b><i>Таймлайн:</i></b>
-{chapters}
+<!--more-->{timeline}
 Всё это вы услышите в {number}-м эпизоде подкаста «Разговорный жанр».
 [podlove-template template="subscriptions"]
 <span style="font-size: small;">Дата записи: {date_str}</span>""",
@@ -231,7 +233,7 @@ class WordPress(WordPressHttpMixin, PodloveMixin):
             "episode_contributor[0][3][comment]": "",
             "referredby": f"{self._wp_url}/wp-admin/profile.php",
             "_wp_original_http_referer": f"{self._wp_url}/wp-admin/profile.php",
-            "tax_input[post_tag]": ",".join(info["tags"]),
+            "tax_input[post_tag]": ",".join(info.get("tags") or []),
             "newtag[post_tag]": "",
             "_thumbnail_id": "6038",
         }
