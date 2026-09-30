@@ -94,7 +94,7 @@ class BoostyPublisher(BasePublisher):
             ),
         )
 
-        metadata: dict[str, str] = {}
+        metadata = self.success_metadata()
         if post_id and BOOSTY_BLOG:
             # Страница поста — SPA и отвечает 200 на любой id, поэтому
             # проверяем через API: пост должен находиться по id.
@@ -112,7 +112,7 @@ class BoostyPublisher(BasePublisher):
                 "event_type": "result",
                 "status": "success",
                 "post_id": post_id,
-                "metadata": metadata or None,
+                "metadata": metadata,
             }
         )
         await self.producer.send(self.result_topic, result.model_dump())
