@@ -66,11 +66,11 @@ class TestHandleUpload:
         main, client = patched_publisher
         await main.handle_upload(sample_boosty_event_dict, mock_producer)
 
-        kwargs = client.publish.await_args.kwargs
-        assert kwargs["subscription_level_id"] == "407063"
-        assert kwargs["price"] == 10
-        assert kwargs["cover_id"] == "img-1"
-        assert kwargs["audio_id"] == "aud-1"
+        post = client.publish.await_args.args[0]
+        assert post.subscription_level_id == "407063"
+        assert post.price == 10
+        assert post.cover_id == "img-1"
+        assert post.audio_id == "aud-1"
 
     @pytest.mark.asyncio
     async def test_owner_id_from_config_skips_draft_lookup(
@@ -133,7 +133,7 @@ class TestHandleUpload:
         client.get_post.assert_awaited_once_with("post-1")
         result = mock_producer.send.call_args.args[1]
         assert result["status"] == "success"
-        assert result["metadata"] == {"url": "https://boosty.to/razgovorny/posts/post-1"}
+        assert result["metadata"] == {"action": "published", "url": "https://boosty.to/razgovorny/posts/post-1"}
 
     @pytest.mark.asyncio
     async def test_missing_post_reports_verify_failure(

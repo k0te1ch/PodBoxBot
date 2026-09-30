@@ -2,6 +2,7 @@
 
 import sys
 from pathlib import Path
+from typing import Literal
 
 from loguru import logger
 from pydantic import Field
@@ -74,6 +75,10 @@ class SharedSettings(BaseSettings):
     BOOSTY_PRICE: int = 10  # цена поста (pay-per-post), ₽
     BOOSTY_COVER_PATH: str = "/app/static/boosty_pscover.png"  # обложка-тизер (том static)
     BOOSTY_ADVERTISER_INFO: str = ""  # маркировка рекламы (обязательное поле, пустое ок)
+    # publish — сразу подписчикам; draft — черновиком в редактор блога;
+    # scheduled — отложенным постом через BOOSTY_SCHEDULE_DELAY_HOURS часов
+    BOOSTY_PUBLISH_MODE: Literal["publish", "draft", "scheduled"] = "publish"
+    BOOSTY_SCHEDULE_DELAY_HOURS: float = Field(24.0, gt=0)
     BOOSTY_UPLOAD_TOPIC: str = "publisher.boosty.upload"
     BOOSTY_RESULT_TOPIC: str = "publisher.boosty.result"
     BOOSTY_RETRY_ATTEMPTS: int = 3
