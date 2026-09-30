@@ -37,11 +37,15 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          sha=$(gh pr list --head "$RELEASE_BRANCH" --state open --json headRefOid --jq '.[0].headRefOid // empty')
-          if [ -z "$sha" ]; then
+          pr=$(gh pr list --head "$RELEASE_BRANCH" --state open --json number --jq '.[0].number // empty')
+          if [ -z "$pr" ]; then
             echo "No open release PR"
             exit 0
           fi
+          # Read the branch itself: the PR's headRefOid lags for a few seconds
+          # after release-please force-pushes, and a stale sha would match the
+          # previous dispatch and skip this one.
+          sha=$(gh api "repos/$GH_REPO/git/ref/heads/$RELEASE_BRANCH" --jq .object.sha)
           dispatched=$(gh run list --workflow ci.yml --event workflow_dispatch --commit "$sha" --json databaseId --jq length)
           if [ "$dispatched" -gt 0 ]; then
             echo "CI already ran for $sha"
