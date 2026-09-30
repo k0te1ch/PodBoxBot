@@ -160,7 +160,11 @@ async def test_handler_publishes(event_dict, publisher):
     assert "<p>Описание</p>" in kwargs["content"]
     result = producer.send.await_args.args[1]
     assert result["status"] == "success"
-    assert result["metadata"] == {"url": "https://www.patreon.com/posts/p1"}
+    assert result["metadata"] == {
+        "platform": "patreon",
+        "action": "published",
+        "url": "https://www.patreon.com/posts/p1",
+    }
 
 
 @pytest.mark.asyncio

@@ -103,7 +103,7 @@ class TestHandleUpload:
             assert url.endswith("/wp-json/wp/v2/episodes/777?context=edit")
             result = mock_producer.send.call_args.args[1]
             assert result["status"] == "success"
-            assert result["metadata"] == {"post_id": "777", "url": url}
+            assert result["metadata"] == {"platform": "wp", "action": "draft", "post_id": "777", "url": url}
 
     @pytest.mark.asyncio
     async def test_unverified_draft_reports_failure(

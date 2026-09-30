@@ -11,6 +11,20 @@
     PUT  api.boosty.to/v1/blog/{blog}/post_draft         — заполнить черновик
     POST api.boosty.to/v1/blog/{blog}/post_draft/publish/ → опубликованный пост
     GET  api.boosty.to/v1/blog/{blog}/post/{id}           — проверка
+    DELETE api.boosty.to/v1/blog/{blog}/post/{id}         — удаление (смоук)
+
+Три режима (``BOOSTY_PUBLISH_MODE``):
+
+* ``publish`` — PUT черновика и publish: пост сразу виден подписчикам;
+* ``draft`` — только PUT черновика (как автосейв редактора): пост ждёт в
+  редакторе блога, опубликует его автор руками;
+* ``scheduled`` — PUT и publish с ``publish_time`` (unix-время в секундах):
+  отложенный пост, ``isPublished=false`` до наступления времени.
+
+``publish_time`` на обоих запросах шлёт и веб-редактор Boosty (сверено с его
+JS-бандлом 2026-09-30, поле ``publish_time`` у ``post_draft`` и у
+``post_draft/publish/``). Черновик у блога один: любой режим перезаписывает то,
+что автор держит в редакторе.
 
 Авторизация — Bearer из auth.json (см. :mod:`boosty_auth`). Истёкший токен клиент
 обновляет сам: заранее, если до истечения меньше десяти минут, и один раз по
@@ -34,6 +48,7 @@ import aiohttp
 from boosty_auth import DEFAULT_USER_AGENT, AuthData, BoostyAuthError, load, save
 from content import build_audio_block, build_post_data, build_teaser_data
 from loguru import logger
+from sagenza_tgbot_sdk.resilience import PermanentError
 
 # Фиксированные хосты internal API. Не конфиг: если Boosty их переедет,
 # ломается весь протокол, а не одна настройка.
@@ -97,6 +112,37 @@ class BoostyApiError(RuntimeError):
     def __init__(self, what: str, response: Response) -> None:
         super().__init__(f"Boosty {what} → HTTP {response.status}: {response.json()!r}")
         self.status = response.status
+
+
+class BoostyPublishedNowError(PermanentError):
+    """Отложенный пост ушёл подписчикам сразу: Boosty не принял ``publish_time``.
+
+    PermanentError: повтор шага опубликовал бы второй пост.
+    """
+
+    def __init__(self, post_id: str) -> None:
+        super().__init__(f"Boosty опубликовал пост {post_id or '?'} сразу вместо отложенной публикации")
+        self.post_id = post_id
+
+
+@dataclass
+class PostContent:
+    """Содержимое поста: текст, загруженные аудио и обложка, доступ."""
+
+    title: str
+    body: str
+    chapters: list[list[str]] | None
+    audio_id: str
+    audio_size: int
+    audio_title: str
+    cover_id: str
+    subscription_level_id: str
+    price: int
+    advertiser_info: str = ""
+
+
+def _post_id(post: dict) -> str:
+    return str(post.get("id") or post.get("int_id") or "")
 
 
 class BoostyClient:
@@ -185,10 +231,8 @@ class BoostyClient:
         только когда он создан/сохранён в редакторе — на «пустом» блоге
         `postDraft` == null, тогда нужен BOOSTY_OWNER_ID.
         """
-        resp = await self._api_json("post_draft", "GET", f"/v1/blog/{self.blog_name}/post_draft")
-        data = resp.get("data")
-        draft = data.get("postDraft") if isinstance(data, dict) else None
-        owner_id = draft.get("ownerId") if isinstance(draft, dict) else None
+        draft = await self.get_draft()
+        owner_id = draft.get("ownerId") if draft else None
         if owner_id is None:
             raise RuntimeError(
                 "Cannot resolve ownerId: no active post_draft on the blog. "
@@ -247,54 +291,78 @@ class BoostyClient:
         """Загружает обложку. Возвращает fileId."""
         return await self._upload("image", {}, path)
 
-    async def publish(
-        self,
-        *,
-        title: str,
-        body: str,
-        chapters: list[list[str]] | None,
-        audio_id: str,
-        audio_size: int,
-        audio_title: str,
-        cover_id: str,
-        subscription_level_id: str,
-        price: int,
-        advertiser_info: str = "",
-    ) -> str:
-        """Публикует пост с прикреплённым аудио и обложкой-тизером.
+    async def save_draft(self, post: PostContent, *, publish_time: int | None = None) -> None:
+        """Заполняет черновик-синглтон блога (``PUT post_draft``), ничего не публикуя.
 
-        Два шага (сверено с HAR клика «Опубликовать»):
-          1. PUT  /v1/blog/{blog}/post_draft         — заполнить черновик-синглтон;
-          2. POST /v1/blog/{blog}/post_draft/publish/ — опубликовать.
-        Возвращает id поста (uuid из `data.post.id`).
+        Этот же запрос редактор шлёт автосейвом, пока автор печатает.
+        ``publish_time`` — время отложенной публикации (unix, секунды).
         """
         payload = {
-            "title": title,
-            "data": build_post_data(body, chapters, audio=build_audio_block(audio_id, audio_size, audio_title)),
-            "teaser_data": build_teaser_data(cover_id, body),
-            "subscription_level_id": str(subscription_level_id),
-            "price": str(price),
+            "title": post.title,
+            "data": build_post_data(
+                post.body, post.chapters, audio=build_audio_block(post.audio_id, post.audio_size, post.audio_title)
+            ),
+            "teaser_data": build_teaser_data(post.cover_id, post.body),
+            "subscription_level_id": str(post.subscription_level_id),
+            "price": str(post.price),
             "tags": "",
             "deny_comments": "false",
             "deny_reactions": "false",
             "wait_video": "false",
-            "advertiser_info": advertiser_info,
+            "advertiser_info": post.advertiser_info,
             "last_updated_at": str(int(time.time())),
             "bundle_ids": "",
         }
+        if publish_time is not None:
+            payload["publish_time"] = str(publish_time)
         await self._api_json("save draft", "PUT", f"/v1/blog/{self.blog_name}/post_draft", data=payload)
 
-        resp = await self._api_json(
-            "publish",
-            "POST",
-            f"/v1/blog/{self.blog_name}/post_draft/publish/",
-            data={"is_showcase_visible": "true"},
-        )
+    async def get_draft(self) -> dict | None:
+        """Черновик блога (``data.postDraft``) или None, если его нет."""
+        resp = await self._api_json("post_draft", "GET", f"/v1/blog/{self.blog_name}/post_draft")
+        data = resp.get("data")
+        draft = data.get("postDraft") if isinstance(data, dict) else None
+        return draft if isinstance(draft, dict) else None
+
+    async def _publish_draft(self, form: dict[str, str]) -> dict:
+        resp = await self._api_json("publish", "POST", f"/v1/blog/{self.blog_name}/post_draft/publish/", data=form)
         data_obj = resp.get("data")
         post = data_obj.get("post") if isinstance(data_obj, dict) else None
-        post_id = str(post.get("id") or post.get("int_id") or "") if isinstance(post, dict) else ""
+        return post if isinstance(post, dict) else {}
+
+    async def publish(self, post: PostContent) -> str:
+        """Публикует пост сразу. Возвращает id поста (uuid из ``data.post.id``).
+
+        Два шага (сверено с HAR клика «Опубликовать»): заполнить черновик и
+        ``POST post_draft/publish/``.
+        """
+        await self.save_draft(post)
+        published = await self._publish_draft({"is_showcase_visible": "true"})
+        post_id = _post_id(published)
         logger.success(f"Boosty post published (id={post_id or '?'})")
         return post_id
+
+    async def schedule(self, post: PostContent, publish_time: int, *, showcase: bool = True) -> dict:
+        """Создаёт отложенный пост: он появится у подписчиков в ``publish_time``.
+
+        Возвращает пост из ответа. Если Boosty проигнорировал время и
+        опубликовал пост сразу, поднимает :class:`BoostyPublishedNowError`:
+        пост уже виден, повторять шаг нельзя. ``showcase=False`` не выводит
+        пост на витрину блога, где видна карточка «ещё не опубликован».
+        """
+        if publish_time <= time.time():
+            raise ValueError("publish_time must be in the future")
+        await self.save_draft(post, publish_time=publish_time)
+        visible = "true" if showcase else "false"
+        scheduled = await self._publish_draft({"publish_time": str(publish_time), "is_showcase_visible": visible})
+        if scheduled.get("isPublished"):
+            raise BoostyPublishedNowError(_post_id(scheduled))
+        logger.success(f"Boosty post scheduled (id={_post_id(scheduled) or '?'}, publish_time={publish_time})")
+        return scheduled
+
+    async def delete_post(self, post_id: str) -> None:
+        """Удаляет пост блога (``DELETE /v1/blog/{blog}/post/{id}``)."""
+        await self._api_json("delete_post", "DELETE", f"/v1/blog/{self.blog_name}/post/{post_id}")
 
     async def close(self) -> None:
         close = getattr(self.transport, "close", None)

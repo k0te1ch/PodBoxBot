@@ -9,7 +9,7 @@ import json
 import time
 
 import pytest
-from app.publishers.Boosty.boosty_client import BoostyApiError, BoostyClient, Response
+from app.publishers.Boosty.boosty_client import BoostyApiError, BoostyClient, PostContent, Response
 from boosty_auth import AuthData, BoostyAuthError, load, save
 
 
@@ -118,16 +118,18 @@ async def test_publish_assembles_payload(auth_file):
     )
 
     post_id = await client.publish(
-        title="751. Послешоу",
-        body="описание\nвторой абзац",
-        chapters=[["00:00", "Intro"]],
-        audio_id="aud-1",
-        audio_size=555,
-        audio_title="ep.mp3",
-        cover_id="img-1",
-        subscription_level_id="407063",
-        price=10,
-        advertiser_info="",
+        PostContent(
+            title="751. Послешоу",
+            body="описание\nвторой абзац",
+            chapters=[["00:00", "Intro"]],
+            audio_id="aud-1",
+            audio_size=555,
+            audio_title="ep.mp3",
+            cover_id="img-1",
+            subscription_level_id="407063",
+            price=10,
+            advertiser_info="",
+        )
     )
 
     assert post_id == "post-9"
