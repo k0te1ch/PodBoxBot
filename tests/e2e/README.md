@@ -11,6 +11,15 @@ from the default `pytest` run** (`addopts = -m 'not e2e'` in
 - `test_full_pipeline.py` — full pipeline (no chat forwarding):
   - `test_full_pipeline_ftp` — start → choose type → upload MP3 → template → click **FTP menu → FTP upload**.
   - `test_full_pipeline_wordpress` — same flow ending in **WP menu → WP upload**.
+- `test_listener_topics.py` — listener topics, only with `E2E_TOPICS=1` and a
+  bot started with `TOPICS_ENABLED=true`:
+  - the private-chat form (`/start topic`) puts a topic into the queue, the
+    admin takes it from `/admin` and the author gets the notice;
+  - with `E2E_TOPICS_CHAT` (a group with the bot as admin and the test
+    account, equal to the bot's `TOPICS_CHAT`): `#тема` in the group shows up
+    in the queue.
+  The ephemeral form in a group and polls need a second person and are
+  checked by hand.
 
 Everything goes through tgtest (0.2+): the MP3 upload uses `chat.send_file`,
 menu edits are checked with `expect_edit` / `wait_until`, and the account
