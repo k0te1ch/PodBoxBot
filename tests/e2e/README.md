@@ -14,12 +14,16 @@ from the default `pytest` run** (`addopts = -m 'not e2e'` in
 - `test_listener_topics.py` — listener topics, only with `E2E_TOPICS=1` and a
   bot started with `TOPICS_ENABLED=true`:
   - the private-chat form (`/start topic`) puts a topic into the queue, the
-    admin takes it from `/admin` and the author gets the notice;
+    admin takes it from `/admin` into episode 999 and the author gets the
+    notice with that number;
+  - `/topic` and `/тема` in the private chat open the same form;
   - with `E2E_TOPICS_CHAT` (a group with the bot as admin and the test
     account, equal to the bot's `TOPICS_CHAT`): `#тема` in the group shows up
     in the queue.
   The ephemeral form in a group and polls need a second person and are
   checked by hand.
+  Set `TOPICS_DAILY_LIMIT=0` on the test bot: every run suggests several
+  topics from the same account.
 
 Everything goes through tgtest (0.2+): the MP3 upload uses `chat.send_file`,
 menu edits are checked with `expect_edit` / `wait_until`, and the account
