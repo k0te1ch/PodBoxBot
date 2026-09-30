@@ -395,6 +395,25 @@ services:
     networks:
       - monitoring
 
+  # Копия метрик бота и публишеров во вторую Prometheus (remote_write),
+  # конфиг configs/metrics/personal-forwarder.alloy. По умолчанию не
+  # запускается: включается COMPOSE_PROFILES=personal-metrics и адресом
+  # PERSONAL_METRICS_REMOTE_WRITE_URL в .env.
+  metrics-forwarder:
+    logging: *default-logging
+    container_name: podboxbot_metrics_forwarder
+    image: grafana/alloy:latest
+    profiles: ["personal-metrics"]
+    restart: always
+    environment:
+      PERSONAL_METRICS_REMOTE_WRITE_URL: ${PERSONAL_METRICS_REMOTE_WRITE_URL:-}
+    volumes:
+      - ./configs/metrics/personal-forwarder.alloy:/etc/alloy/config.alloy:ro
+      - metrics_forwarder_data:/var/lib/alloy/data
+    command: ["run", "--storage.path=/var/lib/alloy/data", "/etc/alloy/config.alloy"]
+    networks:
+      - monitoring
+
   kafdrop:
     logging: *default-logging
     image: obsidiandynamics/kafdrop:latest
@@ -532,6 +551,8 @@ volumes:
   grafana_data:
     driver: local
   prometheus_data:
+    driver: local
+  metrics_forwarder_data:
     driver: local
   loki_data:
     driver: local

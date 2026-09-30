@@ -1,0 +1,32 @@
+// Копия метрик бота и публишеров во вторую Prometheus по remote_write.
+//
+// Prometheus из этого compose скрейпит те же эндпоинты для Grafana на хосте,
+// пересыльщик ему не мешает: бот отдаёт /metrics любому скрейперу и о
+// приёмниках не знает. Сервис metrics-forwarder включается профилем
+// personal-metrics, адрес приёмника берётся из PERSONAL_METRICS_REMOTE_WRITE_URL.
+//
+// Метрики хоста (node-exporter, redis, kafka) сюда не входят: вторая
+// Prometheus получает только то, что относится к самому боту.
+
+prometheus.scrape "bot" {
+  targets         = [{ __address__ = "bot:8080" }]
+  job_name        = "podboxbot"
+  scrape_interval = "15s"
+  forward_to      = [prometheus.remote_write.personal.receiver]
+}
+
+// Публишеры пушат счётчики загрузок в Pushgateway; honor_labels сохраняет
+// их job (ftp_publisher, wordpress_publisher и т. д.).
+prometheus.scrape "publishers" {
+  targets         = [{ __address__ = "pushgateway:9091" }]
+  job_name        = "pushgateway"
+  honor_labels    = true
+  scrape_interval = "15s"
+  forward_to      = [prometheus.remote_write.personal.receiver]
+}
+
+prometheus.remote_write "personal" {
+  endpoint {
+    url = sys.env("PERSONAL_METRICS_REMOTE_WRITE_URL")
+  }
+}
