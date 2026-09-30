@@ -10,7 +10,24 @@ def test_sdk_installs_bot_modules():
     with patch.object(main, "ADMINS_ID", [1]):
         main._setup_sdk(dp)
 
-    assert set(dp.workflow_data["sdk"].modules) == {"metrics", "notify", "health", "status", "host_watch", "menus"}
+    assert set(dp.workflow_data["sdk"].modules) == {
+        "logging",
+        "metrics",
+        "notify",
+        "health",
+        "status",
+        "host_watch",
+        "menus",
+    }
+
+
+def test_sdk_keeps_the_bot_loguru_sinks():
+    dp = Dispatcher()
+    with patch.object(main, "ADMINS_ID", [1]), patch("sagenza_tgbot_sdk.logs.module.setup_logging") as setup_logging:
+        main._setup_sdk(dp)
+
+    setup_logging.assert_not_called()
+    assert dp.workflow_data["sdk"].modules["logging"].settings.configure is False
 
 
 def test_notify_is_skipped_without_admins():
