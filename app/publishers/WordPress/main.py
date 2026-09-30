@@ -34,6 +34,8 @@ class WordPressPublisher(BasePublisher):
     group_id = "wordpress_group"
     retry_attempts = config.WP_RETRY_ATTEMPTS
     retry_backoff = config.WP_RETRY_BACKOFF
+    # Пост уходит на сайт черновиком, публикует его редактор вручную.
+    publish_action = "draft"
 
     async def publish(self, event: WordPressEvent) -> None:  # type: ignore[override]
         info = {
@@ -59,14 +61,14 @@ class WordPressPublisher(BasePublisher):
 
         post_id, rest_path = await self.call_with_retry(event, "publish", lambda: asyncio.to_thread(_run))
 
-        metadata: dict[str, str] = {}
+        metadata = self.success_metadata()
         if post_id:
             metadata["post_id"] = post_id
             if WP_VERIFY:
                 path = rest_path if isinstance(rest_path, str) else f"/wp/v2/episodes/{post_id}"
                 metadata["url"] = await self._verify_draft(event, path)
 
-        result = event.model_copy(update={"event_type": "result", "status": "success", "metadata": metadata or None})
+        result = event.model_copy(update={"event_type": "result", "status": "success", "metadata": metadata})
         await self.producer.send(self.result_topic, result.model_dump())
         logger.success(f"WordPress upload completed for episode {event.number}")
 

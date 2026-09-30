@@ -83,6 +83,11 @@ class BasePublisher(ABC):
     supports_scheduled: bool = False
     """True если publisher умеет отложенную публикацию по расписанию."""
 
+    publish_action: str = "published"
+    """Что делает успешная публикация: ``published`` (сразу видна подписчикам),
+    ``draft`` (черновик) или ``scheduled`` (отложенный пост). Бот по нему
+    пишет итог в статус-сообщении."""
+
     # --- Retry policy ---
     retry_attempts: int = 3
     """Сколько раз всего пробовать внешний вызов (подкласс берёт из конфига)."""
@@ -179,6 +184,14 @@ class BasePublisher(ABC):
                 "error": error,
             }
         )
+
+    def success_metadata(self, **extra: str) -> dict[str, str]:
+        """``metadata`` success-события: площадка (``name``) и сделанное действие.
+
+        ``extra`` дописывает поля (``url``, ``post_id``) и может переопределить
+        ``action``, если оно зависит от события или настроек.
+        """
+        return {"platform": self.name, "action": self.publish_action, **extra}
 
     def build_retry_event(self, event, error: str, metadata: dict[str, str]):
         """Result-event о неудачной попытке, после которой будет повтор."""
