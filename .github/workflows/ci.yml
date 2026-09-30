@@ -7,6 +7,10 @@ on:
   pull_request:
     branches:
       - main
+  # The release PR is opened with GITHUB_TOKEN, so its pull_request runs
+  # wait for manual approval. release-please.yml dispatches this workflow on
+  # the release branch instead; see the comment there.
+  workflow_dispatch:
 
 jobs:
   lint:
@@ -31,10 +35,12 @@ jobs:
   # The release PR must carry Russian notes for its version: the bot sends
   # release-notes/ru/<version>.md to the show's admins after a deploy, and
   # without the file they only get the bare version number. The notes land
-  # in main through a normal PR; release-please rebases its branch onto it.
-  # Skipped (reported as success) on every other PR.
+  # in main through a normal PR; release-please rebuilds its branch on top of
+  # it ("always-update" in release-please-config.json). Runs for the release
+  # branch on any event (the release PR is checked via workflow_dispatch),
+  # skipped (reported as success) everywhere else.
   release-notes:
-    if: github.event_name == 'pull_request' && startsWith(github.head_ref, 'release-please--branches--')
+    if: startsWith(github.head_ref || github.ref_name, 'release-please--branches--')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

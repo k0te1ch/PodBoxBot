@@ -7,6 +7,11 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  # Lets the job dispatch CI on the release branch (see the last step).
+  actions: write
+
+env:
+  RELEASE_BRANCH: release-please--branches--main
 
 jobs:
   release-please:
@@ -19,3 +24,27 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+
+      # Pushes made with GITHUB_TOKEN don't start pull_request workflows the
+      # normal way: GitHub parks the release PR's CI as "action_required" until
+      # someone approves it. workflow_dispatch is the exception GITHUB_TOKEN is
+      # allowed to trigger, and a dispatched run on the release branch reports
+      # its checks (lint, test, release-notes, ...) on the PR's head commit, so
+      # the required checks of the main ruleset are met without approval.
+      - name: Run CI on the release PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          sha=$(gh pr list --head "$RELEASE_BRANCH" --state open --json headRefOid --jq '.[0].headRefOid // empty')
+          if [ -z "$sha" ]; then
+            echo "No open release PR"
+            exit 0
+          fi
+          dispatched=$(gh run list --workflow ci.yml --event workflow_dispatch --commit "$sha" --json databaseId --jq length)
+          if [ "$dispatched" -gt 0 ]; then
+            echo "CI already ran for $sha"
+            exit 0
+          fi
+          gh workflow run ci.yml --ref "$RELEASE_BRANCH"
+          echo "Dispatched CI for $RELEASE_BRANCH at $sha"
