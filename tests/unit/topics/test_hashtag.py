@@ -9,7 +9,7 @@ from aiogram.methods import SendMessage
 import config
 from handlers import topics_handler as th
 from services.i18n import t
-from services.topics import Author, Topic, TopicSource, TopicStatus
+from services.topics import Author, Refusal, Topic, TopicSource, TopicStatus
 from services.topics.delivery import notify_author
 from services.topics.runtime import is_topics_chat, message_link, topic_service
 
@@ -31,7 +31,7 @@ async def test_hashtag_message_becomes_topic_with_reaction(fake_redis, bot, grou
     assert topic.link == "https://t.me/test_group/100"
     assert topic.source is TopicSource.HASHTAG
     msg.react.assert_awaited_once()
-    metrics.event.assert_called_once_with("topic_suggested", source=TopicSource.HASHTAG)
+    metrics.event.assert_called_once_with("suggestion_submitted", source="hashtag")
     bot.send_message.assert_not_awaited()
 
 
@@ -47,6 +47,18 @@ async def test_over_the_limit_author_gets_ephemeral_reply(fake_redis, bot, group
     assert kwargs["reply_parameters"].message_id == 9
     assert kwargs["text"] == t("topics_refused_limit", limit=2)
     assert await topic_service().repository.count(TopicStatus.NEW) == 2
+
+
+@pytest.mark.asyncio
+async def test_banned_author_gets_ephemeral_refusal(fake_redis, bot, group_message):
+    await topic_service().repository.ban(7)
+    metrics = MagicMock()
+
+    await th.collect_from_chat(group_message("#тема а можно мне?"), bot, metrics)
+
+    assert bot.send_message.await_args.kwargs["text"] == t("topics_refused_banned")
+    metrics.event.assert_called_once_with("topic_refused", reason=Refusal.BANNED)
+    assert await topic_service().repository.count(TopicStatus.NEW) == 0
 
 
 @pytest.mark.asyncio
@@ -129,7 +141,7 @@ async def test_status_notice_goes_to_private_chat_first(bot):
 
     kwargs = bot.send_message.await_args.kwargs
     assert kwargs["chat_id"] == 7
-    assert kwargs["text"] == t("topics_notice_taken", topic="тема &lt;b&gt;с разметкой&lt;/b&gt;")
+    assert kwargs["text"] == t("suggest-notify-taken", text="тема &lt;b&gt;с разметкой&lt;/b&gt;")
 
 
 @pytest.mark.asyncio
@@ -149,3 +161,25 @@ async def test_status_notice_gives_up_quietly(bot):
 
     assert not await notify_author(bot, _saved_topic(), "текст")
     assert not await notify_author(bot, _saved_topic(user_id=None), "текст")
+
+
+@pytest.mark.asyncio
+async def test_status_notice_carries_episode_number(bot):
+    topic = _saved_topic()
+    topic.note = "42"
+
+    assert await th.notify_status(bot, topic)
+
+    text = bot.send_message.await_args.kwargs["text"]
+    assert text == t("suggest-notify-taken-note", text="тема &lt;b&gt;с разметкой&lt;/b&gt;", note="42")
+    assert "42" in text
+
+
+@pytest.mark.asyncio
+async def test_status_notice_follows_author_language(bot):
+    topic = _saved_topic()
+    topic.author.language = "en"
+
+    await th.notify_status(bot, topic)
+
+    assert bot.send_message.await_args.kwargs["text"].startswith("Your topic")

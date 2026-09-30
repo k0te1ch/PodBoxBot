@@ -1,5 +1,6 @@
-"""Вариант C: анкета «Предложить тему» эфемерно в группе и в личке."""
+"""Варианты B и C: анкета «Предложить тему» эфемерно в группе и в личке."""
 
+from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -9,7 +10,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.base import StorageKey
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.methods import SendMessage
-from aiogram.types import CallbackQuery, User
+from aiogram.types import CallbackQuery, Chat, Message, User
 from dialog_engine import ValidationError
 
 import config
@@ -116,7 +117,7 @@ async def test_private_form_puts_topic_into_queue(fake_redis, bot, state):
     assert topic.author.user_id == USER.id
     assert bot.edit_message_text.await_args.kwargs["text"] == t("topics_form_accepted")
     metrics.event.assert_any_call("topic_form", mode="private")
-    metrics.event.assert_any_call("topic_suggested", source=TopicSource.FORM)
+    metrics.event.assert_any_call("suggestion_submitted", source="form")
 
 
 @pytest.mark.asyncio
@@ -246,3 +247,42 @@ async def test_topic_command_is_registered_as_ephemeral(bot, monkeypatch):
     bot.set_my_commands.reset_mock()
     await fh.register_group_commands(bot)
     bot.set_my_commands.assert_not_awaited()
+
+
+def _private_text(text: str, chat_type: str = "private") -> Message:
+    chat_id = USER.id if chat_type == "private" else GROUP_ID
+    return Message(message_id=1, date=datetime.now(), chat=Chat(id=chat_id, type=chat_type), from_user=USER, text=text)
+
+
+async def _opens_private_form(text: str, bot, chat_type: str = "private") -> bool:
+    handlers = [h for h in fh.router.message.handlers if h.callback is fh.start_in_private]
+    return any([(await h.check(_private_text(text, chat_type), bot=bot))[0] for h in handlers])
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("text", ["/topic", "/тема", "/Тема", "/start topic"])
+async def test_private_commands_and_link_open_the_same_form(bot, text):
+    assert await _opens_private_form(text, bot)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("text", "chat_type"), [("/тема", "supergroup"), ("/start other", "private")])
+async def test_form_is_not_opened_by_other_messages(bot, text, chat_type):
+    assert not await _opens_private_form(text, bot, chat_type)
+
+
+@pytest.mark.asyncio
+async def test_private_command_starts_the_form(fake_redis, bot, state):
+    bot.send_message = AsyncMock(return_value=MagicMock(message_id=11))
+    metrics = MagicMock()
+
+    await fh.start_in_private(_message(bot, "/тема", chat_type=ChatType.PRIVATE), state, metrics)
+
+    assert bot.send_message.await_args.kwargs["text"] == t("topics_form_ask", min=5, max=50)
+    metrics.event.assert_called_once_with("topic_form", mode="private")
+
+
+def test_topic_command_is_in_private_menu_only_when_form_is_on(monkeypatch):
+    assert [c.command for c in fh.private_commands()] == ["topic"]
+    monkeypatch.setattr(config, "TOPICS_FORM_MODE", "off")
+    assert fh.private_commands() == []

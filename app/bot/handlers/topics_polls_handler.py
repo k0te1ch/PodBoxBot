@@ -237,11 +237,10 @@ async def finish(bot: Bot, poll: TopicPoll, metrics: Any = None) -> bool:
     winner = None
     if index is not None:
         poll.winner_id = poll.topic_ids[index]
-        change = await topic_service().set_status(poll.winner_id, TopicStatus.TAKEN)
+        change = await topic_service(bot, metrics).set_status(poll.winner_id, TopicStatus.TAKEN)
         if change is not None:
             winner = change.topic
             if change.changed:
-                count_event(metrics, "topic_status", status=TopicStatus.TAKEN)
                 await notify_status(bot, winner)
     await store.save(poll)
     count_event(metrics, "topic_poll", action="closed")

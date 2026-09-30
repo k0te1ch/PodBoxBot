@@ -1,68 +1,19 @@
+import itertools
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from fakeredis import FakeAsyncRedis as FakeRedis
 
 import config
 from services.topics import runtime
 
 
-class FakeRedis:
-    """Команды Redis, которые нужны очереди тем, лимиту и голосованиям, — в памяти."""
-
-    def __init__(self) -> None:
-        self.values: dict[str, str] = {}
-        self.zsets: dict[str, dict[str, float]] = {}
-        self.ttl: dict[str, int] = {}
-
-    async def set(self, key, value, nx=False, ex=None):
-        if nx and key in self.values:
-            return None
-        self.values[key] = str(value)
-        if ex is not None:
-            self.ttl[key] = ex
-        return True
-
-    async def get(self, key):
-        return self.values.get(key)
-
-    async def delete(self, key):
-        return int(self.values.pop(key, None) is not None)
-
-    async def incr(self, key):
-        self.values[key] = str(int(self.values.get(key, 0)) + 1)
-        return int(self.values[key])
-
-    async def decr(self, key):
-        self.values[key] = str(int(self.values.get(key, 0)) - 1)
-        return int(self.values[key])
-
-    async def expire(self, key, seconds):
-        self.ttl[key] = seconds
-        return True
-
-    async def zadd(self, key, mapping):
-        self.zsets.setdefault(key, {}).update(mapping)
-
-    async def zrem(self, key, member):
-        self.zsets.get(key, {}).pop(member, None)
-
-    async def zcard(self, key):
-        return len(self.zsets.get(key, {}))
-
-    async def zrevrange(self, key, start, end):
-        members = sorted(self.zsets.get(key, {}).items(), key=lambda kv: kv[1], reverse=True)
-        return [m for m, _ in members[start : end + 1]]
-
-    async def zrangebyscore(self, key, low, high):
-        members = sorted(self.zsets.get(key, {}).items(), key=lambda kv: kv[1])
-        return [m for m, score in members if low <= score <= high]
-
-
 @pytest.fixture
 def fake_redis(monkeypatch) -> FakeRedis:
+    """Redis в памяти: очередь тем SDK, голосования и заметки ведущих."""
     from handlers import collector_handler
 
-    fake = FakeRedis()
+    fake = FakeRedis(decode_responses=True)
     monkeypatch.setattr(runtime, "redis", fake)
     # Обход меню в тестах открывает и заметки ведущих, им тоже нужен Redis.
     monkeypatch.setattr(collector_handler, "redis", fake)
@@ -70,8 +21,22 @@ def fake_redis(monkeypatch) -> FakeRedis:
 
 
 @pytest.fixture(autouse=True)
+def ticking_clock(monkeypatch):
+    """Часы очереди SDK: каждый вызов на секунду позже, порядок тем без гонок."""
+    ticks = itertools.count(1_700_000_000)
+    build = runtime.suggestion_box
+
+    def box(*args, **kwargs):
+        built = build(*args, **kwargs)
+        built.clock = lambda: float(next(ticks))
+        return built
+
+    monkeypatch.setattr(runtime, "suggestion_box", box)
+
+
+@pytest.fixture(autouse=True)
 def topics_on(monkeypatch):
-    """Фича включена, чат тем — @test_group, лимит 2 темы в сутки."""
+    """Фича включена, чат тем @test_group, лимит 2 темы в сутки."""
     monkeypatch.setattr(config, "TOPICS_ENABLED", True)
     monkeypatch.setattr(config, "TOPICS_CHAT", "@test_group")
     monkeypatch.setattr(config, "TOPICS_HASHTAG", "тема")

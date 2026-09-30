@@ -1,16 +1,17 @@
-"""Тема от слушателя и её статусы."""
+"""Тема от слушателя и её статусы.
 
-import json
+Статусы те же, что у предложений модуля ``suggest`` из sagenza-tgbot-sdk:
+очередь тем хранится в нём (:mod:`.repository`), а хендлеры видят только
+:class:`Topic`.
+"""
+
 import time
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from enum import StrEnum
 
+from sagenza_tgbot_sdk.suggest import SuggestionStatus
 
-class TopicStatus(StrEnum):
-    NEW = "new"
-    LATER = "later"
-    TAKEN = "taken"
-    REJECTED = "rejected"
+TopicStatus = SuggestionStatus
 
 
 class TopicSource(StrEnum):
@@ -35,10 +36,11 @@ class Topic:
     status: TopicStatus = TopicStatus.NEW
     id: int = 0
     created_at: float = field(default_factory=time.time)
-    updated_at: float | None = None
     chat_id: int | None = None
     message_id: int | None = None
     link: str | None = None
+    note: str | None = None
+    """Номер выпуска, в который взяли тему; его же получает автор."""
 
     @property
     def origin(self) -> tuple[int, int] | None:
@@ -46,14 +48,3 @@ class Topic:
         if self.chat_id is None or self.message_id is None:
             return None
         return self.chat_id, self.message_id
-
-    def to_json(self) -> str:
-        return json.dumps(asdict(self), ensure_ascii=False)
-
-    @classmethod
-    def from_json(cls, raw: str) -> "Topic":
-        data = json.loads(raw)
-        data["author"] = Author(**data["author"])
-        data["source"] = TopicSource(data["source"])
-        data["status"] = TopicStatus(data["status"])
-        return cls(**data)

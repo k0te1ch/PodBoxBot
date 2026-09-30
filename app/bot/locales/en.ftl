@@ -148,12 +148,27 @@ topics_marked_taken = Taken for an episode
 topics_marked_rejected = Rejected
 topics_marked_later = Postponed
 topics_missing = This topic is already gone
-topics_notice_taken = Your topic "{ $topic }" was taken for an episode. Thank you!
-topics_notice_rejected = Your topic "{ $topic }" was not picked this time. Thanks for the idea!
-topics_notice_later = Your topic "{ $topic }" was postponed: the hosts will get back to it later.
+topics_card_episode = Episode: { $note }
+topics_card_banned = 🚷 The author is banned, new topics from them are not accepted
+topics_ask_episode =
+    Which episode takes topic #{ $id }?
+    Send the episode number as a message (up to { $max } characters), the author will see it. Or take the topic without a number.
+topics_take_without_episode = ✅ Take without a number
+topics_marked_taken_episode = The topic is taken for episode { $note }, the author has been notified.
+topics_ban = 🚷 Ban the author
+topics_unban = Unban the author
+topics_ban_done = The author is banned
+topics_unban_done = The author is unbanned
 topics_refused_too_short = The topic is too short: at least { $min } characters, please.
 topics_refused_too_long = The topic is too long: { $max } characters at most.
-topics_refused_limit = That's enough for today: up to { $limit } topics a day. Come back tomorrow!
+topics_refused_limit = That's enough for now: up to { $limit } topics a day. Try again later!
+topics_refused_banned = You cannot suggest topics right now.
+# Notices to the author: keys of the SDK suggest module, texts of this bot.
+# $text: start of the topic, $note: episode number (the -note variant).
+suggest-notify-taken = Your topic "{ $text }" was taken for an episode. Thank you!
+suggest-notify-taken-note = Your topic "{ $text }" was taken for episode { $note }. Thank you!
+suggest-notify-rejected = Your topic "{ $text }" was not picked this time. Thanks for the idea!
+suggest-notify-later = Your topic "{ $text }" was postponed: the hosts will get back to it later.
 topics_post_button = 📌 Post the "Suggest a topic" button
 topics_form_button = 💡 Suggest a topic
 topics_form_invite = Got an idea for an episode? Tap the button and suggest a topic to the hosts.

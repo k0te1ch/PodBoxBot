@@ -148,12 +148,27 @@ topics_marked_taken = Взята в выпуск
 topics_marked_rejected = Отклонена
 topics_marked_later = Отложена
 topics_missing = Этой темы уже нет
-topics_notice_taken = Твою тему «{ $topic }» взяли в выпуск. Спасибо!
-topics_notice_rejected = Твою тему «{ $topic }» в этот раз не взяли. Спасибо за идею!
-topics_notice_later = Твою тему «{ $topic }» отложили: ведущие вернутся к ней позже.
+topics_card_episode = Выпуск: { $note }
+topics_card_banned = 🚷 Автор в бан-листе, новые темы от него не принимаются
+topics_ask_episode =
+    В какой выпуск берём тему №{ $id }?
+    Пришли номер выпуска сообщением (до { $max } символов), автор его увидит. Или возьми тему без номера.
+topics_take_without_episode = ✅ Взять без номера
+topics_marked_taken_episode = Тема взята в выпуск { $note }, автору ушло уведомление.
+topics_ban = 🚷 Заблокировать автора
+topics_unban = Разблокировать автора
+topics_ban_done = Автор заблокирован
+topics_unban_done = Автор разблокирован
 topics_refused_too_short = Тема слишком короткая: нужно хотя бы { $min } символов.
 topics_refused_too_long = Тема слишком длинная: не больше { $max } символов.
-topics_refused_limit = На сегодня хватит: не больше { $limit } тем в сутки. Приходи завтра!
+topics_refused_limit = Пока хватит: не больше { $limit } тем за сутки. Попробуй позже!
+topics_refused_banned = Предлагать темы тебе сейчас нельзя.
+# Уведомления автору: ключи модуля suggest из SDK, тексты свои.
+# $text: начало темы, $note: номер выпуска (вариант -note).
+suggest-notify-taken = Твою тему «{ $text }» взяли в выпуск. Спасибо!
+suggest-notify-taken-note = Твою тему «{ $text }» взяли в выпуск { $note }. Спасибо!
+suggest-notify-rejected = Твою тему «{ $text }» в этот раз не взяли. Спасибо за идею!
+suggest-notify-later = Твою тему «{ $text }» отложили: ведущие вернутся к ней позже.
 topics_post_button = 📌 Кнопка «Предложить тему» в чат
 topics_form_button = 💡 Предложить тему
 topics_form_invite = Есть идея для выпуска? Нажми кнопку и предложи тему ведущим.

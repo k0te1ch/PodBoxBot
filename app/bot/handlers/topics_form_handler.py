@@ -1,4 +1,8 @@
-"""Вариант C: анкета «Предложить тему», которую видит только автор.
+"""Варианты B и C: анкета «Предложить тему».
+
+Анкета одна на всё: в группе она эфемерная (C), в личке бота обычная (B).
+Диалог ``suggest`` из SDK не подключается, чтобы у слушателя не было двух
+разных анкет.
 
 Как начать:
 
@@ -10,6 +14,9 @@
 * ``t.me/<бот>?start=topic`` — та же анкета в личке. Это запасной путь: туда
   ведёт кнопка, когда эфемерная отправка не удалась, и туда же всё идёт при
   ``TOPICS_FORM_MODE=private``.
+* ``/topic`` или ``/тема`` в личке бота: та же анкета, что по ссылке.
+  ``/topic`` есть в меню команд лички, ``/тема`` работает, если её набрать:
+  Telegram не пускает кириллицу в меню команд.
 
 Готовая тема попадает в ту же очередь, что и темы по хештегу.
 """
@@ -55,6 +62,8 @@ from services.topics import Topic, TopicSource
 from services.topics.runtime import author_from_user, count_event, is_topics_chat, topic_service, topics_enabled
 
 START_PAYLOAD = "topic"
+# Команды анкеты в личке; кириллическую Telegram в меню не пускает.
+PRIVATE_COMMANDS = ("topic", "тема")
 SUGGEST_CALLBACK = "topic:suggest"
 GROUP_TYPES = (ChatType.GROUP, ChatType.SUPERGROUP)
 
@@ -148,12 +157,14 @@ async def suggest_button(callback: CallbackQuery, state: FSMContext, bot: Bot, m
     await callback.answer(url=await start_link(bot))
 
 
+@router.message(form_enabled, F.chat.type == ChatType.PRIVATE, Command(*PRIVATE_COMMANDS, ignore_case=True))
 @router.message(
     form_enabled,
     F.chat.type == ChatType.PRIVATE,
     CommandStart(deep_link=True, magic=F.args == START_PAYLOAD),
 )
 async def start_in_private(msg: Message, state: FSMContext, metrics: Any = None):
+    """Анкета в личке: по ссылке ``?start=topic`` и по ``/topic``, ``/тема``."""
     await private_runner.start(state, DefaultSender(msg.bot, msg.chat.id), context=_context(msg.from_user, None))
     count_event(metrics, "topic_form", mode=PRIVATE)
 
@@ -179,13 +190,13 @@ async def on_button(callback: CallbackQuery, state: FSMContext, metrics: Any = N
     sender = _sender(callback)
     turn = await _runner(callback.message).on_callback(callback.data, state, sender)
     await callback.answer(text=turn.alert, show_alert=bool(turn.alert))
-    outcome = await _outcome(turn, callback.from_user, metrics)
+    outcome = await _outcome(turn, callback.from_user, callback.bot, metrics)
     anchor = _anchor(callback)
     if outcome is not None and anchor is not None:
         await sender.show(StepView(text=outcome), anchor)
 
 
-async def _outcome(turn: DialogTurn, user: User, metrics: Any) -> str | None:
+async def _outcome(turn: DialogTurn, user: User, bot: Bot, metrics: Any) -> str | None:
     """Текст итога анкеты или ``None``, если анкета ещё идёт."""
     language = turn.context.get("lang") or author_from_user(user).language
     if turn.cancelled and not turn.expired:
@@ -198,14 +209,11 @@ async def _outcome(turn: DialogTurn, user: User, metrics: Any) -> str | None:
         source=TopicSource.FORM,
         chat_id=turn.context.get("chat_id"),
     )
-    result = await topic_service().suggest(topic)
+    result = await topic_service(bot, metrics).suggest(topic)
     record_suggestion(result, TopicSource.FORM, metrics)
     if result.topic is not None:
         return t("topics_form_accepted", language)
     return refusal_text(result.refusal, language)
-
-
-# --- кнопка в чате ----------------------------------------------------------
 
 
 async def post_suggest_button(ctx: MenuContext) -> None:
@@ -243,3 +251,10 @@ async def register_group_commands(bot: Bot) -> None:
         await bot.set_my_commands([command], scope=BotCommandScopeChat(chat_id=bot_config.TOPICS_CHAT))
     except TelegramAPIError as error:
         logger.warning(f"could not set /topic for {bot_config.TOPICS_CHAT}: {error!r}")
+
+
+def private_commands() -> list[BotCommand]:
+    """``/topic`` для меню команд лички, когда анкета включена."""
+    if not form_enabled():
+        return []
+    return [BotCommand(command=PRIVATE_COMMANDS[0], description=t("topics_form_command"))]
