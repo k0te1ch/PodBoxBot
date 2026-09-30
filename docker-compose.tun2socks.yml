@@ -422,21 +422,30 @@ services:
       - monitoring
 
   # Копия метрик бота и публишеров во вторую Prometheus (remote_write),
-  # конфиг configs/metrics/personal-forwarder.alloy. По умолчанию не
-  # запускается: включается COMPOSE_PROFILES=personal-metrics и адресом
-  # PERSONAL_METRICS_REMOTE_WRITE_URL в .env.
+  # конфиг configs/metrics/personal-forwarder.alloy. Сервис поднимается всегда,
+  # а пересылает, только когда в .env задан PERSONAL_METRICS_REMOTE_WRITE_URL.
+  # Без адреса он пишет одну строку в лог и ждёт: без перезапусков и ошибок
+  # remote_write. После правки адреса: docker compose up -d metrics-forwarder.
   metrics-forwarder:
     logging: *default-logging
     container_name: podboxbot_metrics_forwarder
     image: grafana/alloy:latest
-    profiles: ["personal-metrics"]
     restart: always
+    init: true
     environment:
       PERSONAL_METRICS_REMOTE_WRITE_URL: ${PERSONAL_METRICS_REMOTE_WRITE_URL:-}
+      PERSONAL_METRICS_SOURCE: ${PERSONAL_METRICS_SOURCE:-podboxbot}
     volumes:
       - ./configs/metrics/personal-forwarder.alloy:/etc/alloy/config.alloy:ro
       - metrics_forwarder_data:/var/lib/alloy/data
-    command: ["run", "--storage.path=/var/lib/alloy/data", "/etc/alloy/config.alloy"]
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        if [ -z "$$PERSONAL_METRICS_REMOTE_WRITE_URL" ]; then
+          echo "metrics-forwarder: PERSONAL_METRICS_REMOTE_WRITE_URL is not set, nothing to forward"
+          exec sleep infinity
+        fi
+        exec /bin/alloy run --storage.path=/var/lib/alloy/data /etc/alloy/config.alloy
     networks:
       - monitoring
 
