@@ -50,7 +50,7 @@ class PaywalledPublisher(BasePublisher):
                 "event_type": "result",
                 "status": "success",
                 "post_id": post_id,
-                "metadata": {"url": url},
+                "metadata": self.success_metadata(url=url),
             }
         )
         await self.producer.send(self.result_topic, result.model_dump())

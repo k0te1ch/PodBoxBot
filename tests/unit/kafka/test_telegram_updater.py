@@ -90,17 +90,48 @@ class TestUpdateUploadProgress:
 
 class TestUpdateUploadResult:
     @pytest.mark.asyncio
-    async def test_success_with_episode_number(self, updater, mock_bot):
-        event = {
-            "chat_id": "123",
-            "message_id": "456",
-            "number": "100",
-        }
+    @pytest.mark.parametrize(
+        ("metadata", "expected"),
+        [
+            (
+                {"platform": "wp", "action": "draft"},
+                "✅ Эпизод <b>100</b>: пост сохранён в черновики на сайте, подписчики его пока не видят",
+            ),
+            ({"platform": "boosty", "action": "published"}, "✅ Эпизод <b>100</b> опубликован на Boosty"),
+            ({"platform": "vk", "action": "published"}, "✅ Эпизод <b>100</b> опубликован в VK Donut"),
+            ({"platform": "patreon", "action": "published"}, "✅ Эпизод <b>100</b> опубликован на Patreon"),
+            (
+                {"platform": "boosty", "action": "scheduled", "publish_at": "01.10.2027 12:00"},
+                "✅ Эпизод <b>100</b>: отложенная публикация на Boosty запланирована на 01.10.2027 12:00",
+            ),
+        ],
+        ids=["wp-draft", "boosty", "vk", "patreon", "boosty-scheduled"],
+    )
+    async def test_success_text_matches_what_the_platform_did(self, updater, mock_bot, metadata, expected):
+        event = {**IDS, "number": "100", "metadata": metadata}
+
         await updater.update_upload_result(event, success=True)
 
-        call_kwargs = mock_bot.edit_message_text.call_args.kwargs
-        assert "100" in call_kwargs["text"]
-        assert "черновики" in call_kwargs["text"]
+        assert mock_bot.edit_message_text.call_args.kwargs["text"] == expected
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("platform", ["boosty", "vk", "patreon"])
+    async def test_published_platforms_are_not_called_drafts(self, updater, mock_bot, platform):
+        # Раньше любой успех с номером эпизода назывался «сохранён в черновики»,
+        # хотя Boosty, VK и Patreon публикуют пост сразу.
+        event = {**IDS, "number": "100", "metadata": {"platform": platform, "action": "published"}}
+
+        await updater.update_upload_result(event, success=True)
+
+        assert "черновик" not in mock_bot.edit_message_text.call_args.kwargs["text"]
+
+    @pytest.mark.asyncio
+    async def test_success_without_action_promises_nothing(self, updater, mock_bot):
+        event = {**IDS, "number": "100"}
+
+        await updater.update_upload_result(event, success=True)
+
+        assert mock_bot.edit_message_text.call_args.kwargs["text"] == "✅ Эпизод <b>100</b>: публикация завершена"
 
     @pytest.mark.asyncio
     async def test_success_with_file_name(self, updater, mock_bot):
