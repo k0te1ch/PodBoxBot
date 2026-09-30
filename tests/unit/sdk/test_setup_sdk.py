@@ -1,8 +1,13 @@
+import io
 from unittest.mock import patch
 
-from aiogram import Dispatcher
+import pytest
+from aiogram import Bot, Dispatcher
+from aiogram.types import Update
+from loguru import logger
 
 import main
+from config import FILE_LOG_FORMAT, with_context
 
 
 def test_sdk_installs_bot_modules():
@@ -19,6 +24,37 @@ def test_sdk_installs_bot_modules():
         "host_watch",
         "menus",
     }
+
+
+@pytest.mark.asyncio
+async def test_update_context_reaches_the_log_line():
+    dp = Dispatcher()
+    with patch.object(main, "ADMINS_ID", [1]):
+        main._setup_sdk(dp)
+    bot = Bot("42:TEST")
+    update = Update.model_validate(
+        {
+            "update_id": 7,
+            "message": {
+                "message_id": 1,
+                "date": 0,
+                "chat": {"id": 100, "type": "private"},
+                "from": {"id": 100, "is_bot": False, "first_name": "A"},
+                "text": "hi",
+            },
+        }
+    )
+    sink = io.StringIO()
+    handler_id = logger.add(sink, format=with_context(FILE_LOG_FORMAT), level="DEBUG")
+    try:
+        await dp.feed_update(bot, update)
+    finally:
+        logger.remove(handler_id)
+        await bot.session.close()
+
+    line = next(line for line in sink.getvalue().splitlines() if "update handled" in line)
+    assert "'update_id': 7" in line
+    assert "'chat_id': 100" in line
 
 
 def test_sdk_keeps_the_bot_loguru_sinks():
