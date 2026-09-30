@@ -3065,8 +3065,8 @@
     },
     {
       "type": "stat",
-      "title": "Темы от слушателей",
-      "description": "Появится вместе с функцией тем от слушателей: бот будет считать событие listener_topic. Пока функции нет, здесь пусто.",
+      "title": "Тем предложено",
+      "description": "Темы, которые слушатели прислали хештегом или анкетой. Счётчики появятся вместе с функцией тем от слушателей (флаг TOPICS_ENABLED).",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -3084,7 +3084,7 @@
               }
             ]
           },
-          "noValue": "функция ещё не выпущена",
+          "noValue": "функция ещё не включена",
           "decimals": 0
         },
         "overrides": []
@@ -3112,7 +3112,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(increase(sagenza_event_listener_topic_total[$__range]))",
+          "expr": "sum(increase(sagenza_event_topic_suggested_total[$__range]))",
           "refId": "A",
           "legendFormat": "",
           "instant": true,
@@ -3123,8 +3123,326 @@
       "gridPos": {
         "x": 0,
         "y": 68,
-        "w": 24,
-        "h": 4
+        "w": 6,
+        "h": 6
+      }
+    },
+    {
+      "type": "bargauge",
+      "title": "Откуда темы",
+      "description": "Хештег в чате или анкета. Счётчики появятся вместе с функцией тем от слушателей (флаг TOPICS_ENABLED).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "hashtag"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Хештег в чате"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "form"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Анкета"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "showUnfilled": true,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "valueMode": "color",
+        "namePlacement": "left",
+        "sizing": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (source) (increase(sagenza_event_topic_suggested_total[$__range]))",
+          "refId": "A",
+          "legendFormat": "{{source}}",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "id": 42,
+      "gridPos": {
+        "x": 6,
+        "y": 68,
+        "w": 6,
+        "h": 6
+      }
+    },
+    {
+      "type": "bargauge",
+      "title": "Решения по темам",
+      "description": "Что админы сделали с темами за период. Счётчики появятся вместе с функцией тем от слушателей (флаг TOPICS_ENABLED).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "new"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Новые"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "later"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Отложены"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "taken"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Взяты в выпуск"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "rejected"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Отклонены"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "showUnfilled": true,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "valueMode": "color",
+        "namePlacement": "left",
+        "sizing": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (status) (increase(sagenza_event_topic_status_total[$__range]))",
+          "refId": "A",
+          "legendFormat": "{{status}}",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "id": 43,
+      "gridPos": {
+        "x": 12,
+        "y": 68,
+        "w": 6,
+        "h": 6
+      }
+    },
+    {
+      "type": "bargauge",
+      "title": "Не принято",
+      "description": "Почему бот не принял тему. Счётчики появятся вместе с функцией тем от слушателей (флаг TOPICS_ENABLED).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "orange",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "too_short"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Слишком коротко"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "too_long"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Слишком длинно"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "limit"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Лимит в день"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "duplicate"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Повтор"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "showUnfilled": true,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "valueMode": "color",
+        "namePlacement": "left",
+        "sizing": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (reason) (increase(sagenza_event_topic_refused_total[$__range]))",
+          "refId": "A",
+          "legendFormat": "{{reason}}",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "id": 44,
+      "gridPos": {
+        "x": 18,
+        "y": 68,
+        "w": 6,
+        "h": 6
       }
     }
   ]
