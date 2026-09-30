@@ -127,3 +127,30 @@ collector_marked_used = Отмечено как использованное
 collector_deleted = Удалено
 collector_missing = Запись уже удалена
 collector_open_message = Открыть сообщение
+
+## Topics from listeners
+
+admin_topics = 💡 Темы слушателей
+topics_panel = Темы от слушателей. Выбери, какие показать.
+topics_entries = Темы. Нажми на тему, чтобы открыть карточку.
+topics_status_new = 🆕 Новые
+topics_status_later = ⏳ Отложенные
+topics_status_taken = ✅ Взяты в выпуск
+topics_status_rejected = 🚫 Отклонённые
+topics_source_hashtag = из чата
+topics_source_form = из анкеты
+topics_card_title = Тема №{ $id }
+topics_open_message = Открыть сообщение
+topics_take = ✅ Взять в выпуск
+topics_reject = 🚫 Отклонить
+topics_later = ⏳ Позже
+topics_marked_taken = Взята в выпуск
+topics_marked_rejected = Отклонена
+topics_marked_later = Отложена
+topics_missing = Этой темы уже нет
+topics_notice_taken = Твою тему «{ $topic }» взяли в выпуск. Спасибо!
+topics_notice_rejected = Твою тему «{ $topic }» в этот раз не взяли. Спасибо за идею!
+topics_notice_later = Твою тему «{ $topic }» отложили: ведущие вернутся к ней позже.
+topics_refused_too_short = Тема слишком короткая: нужно хотя бы { $min } символов.
+topics_refused_too_long = Тема слишком длинная: не больше { $max } символов.
+topics_refused_limit = На сегодня хватит: не больше { $limit } тем в сутки. Приходи завтра!

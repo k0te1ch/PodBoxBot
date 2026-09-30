@@ -127,3 +127,30 @@ collector_marked_used = Marked as used
 collector_deleted = Deleted
 collector_missing = The entry is already gone
 collector_open_message = Open message
+
+## Topics from listeners
+
+admin_topics = 💡 Listener topics
+topics_panel = Topics from listeners. Pick which ones to show.
+topics_entries = Topics. Tap one to open its card.
+topics_status_new = 🆕 New
+topics_status_later = ⏳ Postponed
+topics_status_taken = ✅ Taken for an episode
+topics_status_rejected = 🚫 Rejected
+topics_source_hashtag = from the chat
+topics_source_form = from the form
+topics_card_title = Topic #{ $id }
+topics_open_message = Open message
+topics_take = ✅ Take for an episode
+topics_reject = 🚫 Reject
+topics_later = ⏳ Later
+topics_marked_taken = Taken for an episode
+topics_marked_rejected = Rejected
+topics_marked_later = Postponed
+topics_missing = This topic is already gone
+topics_notice_taken = Your topic "{ $topic }" was taken for an episode. Thank you!
+topics_notice_rejected = Your topic "{ $topic }" was not picked this time. Thanks for the idea!
+topics_notice_later = Your topic "{ $topic }" was postponed: the hosts will get back to it later.
+topics_refused_too_short = The topic is too short: at least { $min } characters, please.
+topics_refused_too_long = The topic is too long: { $max } characters at most.
+topics_refused_limit = That's enough for today: up to { $limit } topics a day. Come back tomorrow!

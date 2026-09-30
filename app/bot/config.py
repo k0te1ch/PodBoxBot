@@ -69,6 +69,17 @@ class Settings(BaseSettings):
     PATREON_ENABLED: bool = False
     SPONSR_ENABLED: bool = False
 
+    # Темы от слушателей. По умолчанию выключено.
+    # TOPICS_CHAT — где слушатели предлагают темы (@username или числовой id),
+    # пусто — чат форварда. TOPICS_HASHTAG пустой отключает сбор по хештегу.
+    # TOPICS_DAILY_LIMIT 0 — без лимита.
+    TOPICS_ENABLED: bool = False
+    TOPICS_CHAT: str | None = None
+    TOPICS_HASHTAG: str = "тема"
+    TOPICS_DAILY_LIMIT: int = 3
+    TOPICS_MIN_LENGTH: int = 10
+    TOPICS_MAX_LENGTH: int = 500
+
     # DEBUG
     DEBUG: bool = False
 
@@ -184,6 +195,12 @@ BOOSTY_ENABLED = settings.BOOSTY_ENABLED
 VK_ENABLED = settings.VK_ENABLED
 PATREON_ENABLED = settings.PATREON_ENABLED
 SPONSR_ENABLED = settings.SPONSR_ENABLED
+TOPICS_ENABLED = settings.TOPICS_ENABLED
+TOPICS_CHAT = (settings.TOPICS_CHAT or "").strip() or FORWARD_CHAT_USERNAME
+TOPICS_HASHTAG = settings.TOPICS_HASHTAG.strip().lstrip("#").lower()
+TOPICS_DAILY_LIMIT = settings.TOPICS_DAILY_LIMIT
+TOPICS_MIN_LENGTH = settings.TOPICS_MIN_LENGTH
+TOPICS_MAX_LENGTH = settings.TOPICS_MAX_LENGTH
 API_ID = settings.TELEGRAM_SERVER_API_ID
 API_HASH = settings.TELEGRAM_SERVER_API_HASH
 
