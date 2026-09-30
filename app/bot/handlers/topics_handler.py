@@ -227,11 +227,11 @@ def build_topics_menu(extra_items: tuple = ()) -> ListMenu:
     )
 
 
-def topics_submenu(visible_if) -> Submenu:
+def topics_submenu(visible_if, extra_items: tuple = ()) -> Submenu:
     """Пункт админ-панели: виден админам, когда фича включена."""
     return Submenu(
         "admin_topics",
-        build_topics_menu(),
+        build_topics_menu(extra_items),
         id="topics",
         visible_if=lambda ctx: topics_enabled() and visible_if(ctx),
     )

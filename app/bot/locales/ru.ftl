@@ -154,3 +154,20 @@ topics_notice_later = Твою тему «{ $topic }» отложили: вед�
 topics_refused_too_short = Тема слишком короткая: нужно хотя бы { $min } символов.
 topics_refused_too_long = Тема слишком длинная: не больше { $max } символов.
 topics_refused_limit = На сегодня хватит: не больше { $limit } тем в сутки. Приходи завтра!
+topics_post_button = 📌 Кнопка «Предложить тему» в чат
+topics_form_button = 💡 Предложить тему
+topics_form_invite = Есть идея для выпуска? Нажми кнопку и предложи тему ведущим.
+topics_form_posted = Кнопка отправлена в { $chat }
+topics_form_post_failed = Не удалось отправить кнопку в чат. Бот состоит в нём и может писать?
+topics_form_command = Предложить тему для выпуска
+topics_form_ask =
+    Какую тему обсудить в выпуске?
+    Напиши её ответом на это сообщение, от { $min } до { $max } символов.
+topics_form_confirm =
+    Предложить ведущим эту тему?
+    «{ $topic }»
+topics_form_accepted = Спасибо! Тема в очереди, ведущие её увидят.
+topics_form_cancelled = Хорошо, в другой раз.
+topics_form_expired = Анкета устарела. Начни заново: /topic или кнопка «Предложить тему».
+topics_form_open_private = Открыть анкету в личке
+topics_form_go_private = Показать анкету здесь не получилось. Открой её в личке бота:

@@ -154,3 +154,20 @@ topics_notice_later = Your topic "{ $topic }" was postponed: the hosts will get 
 topics_refused_too_short = The topic is too short: at least { $min } characters, please.
 topics_refused_too_long = The topic is too long: { $max } characters at most.
 topics_refused_limit = That's enough for today: up to { $limit } topics a day. Come back tomorrow!
+topics_post_button = 📌 Post the "Suggest a topic" button
+topics_form_button = 💡 Suggest a topic
+topics_form_invite = Got an idea for an episode? Tap the button and suggest a topic to the hosts.
+topics_form_posted = Button posted to { $chat }
+topics_form_post_failed = Could not post the button. Is the bot in the chat and allowed to write there?
+topics_form_command = Suggest a topic for an episode
+topics_form_ask =
+    What should the hosts talk about?
+    Reply to this message with your topic, { $min } to { $max } characters.
+topics_form_confirm =
+    Suggest this topic to the hosts?
+    "{ $topic }"
+topics_form_accepted = Thank you! The topic is in the queue, the hosts will see it.
+topics_form_cancelled = OK, maybe next time.
+topics_form_expired = The form has expired. Start again: /topic or the "Suggest a topic" button.
+topics_form_open_private = Open the form in private chat
+topics_form_go_private = Could not show the form here. Open it in a private chat with the bot:

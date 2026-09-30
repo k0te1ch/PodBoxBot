@@ -16,6 +16,7 @@ from config import (
     SKIP_UPDATES,
 )
 from handlers import COMMANDS
+from handlers.topics_form_handler import register_group_commands
 from services.scheduler import init_scheduler_jobs, scheduler
 
 
@@ -83,6 +84,7 @@ async def _run():
         commands=COMMANDS,
         scope=BotCommandScopeAllPrivateChats(),
     )
+    await register_group_commands(main.bot)
 
     logger.success("Bot polling started!")
     await main.dp.start_polling(main.bot, skip_updates=SKIP_UPDATES)
