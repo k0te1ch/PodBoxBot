@@ -224,7 +224,11 @@ async def test_draft_mode_saves_draft_without_publishing(publisher, event_dict, 
     result = _result(producer)
     assert result["status"] == "success"
     assert result["post_id"] is None
-    assert result["metadata"] == {"platform": "boosty", "action": "draft", "url": "https://boosty.to/razgovorny/new-post"}
+    assert result["metadata"] == {
+        "platform": "boosty",
+        "action": "draft",
+        "url": "https://boosty.to/razgovorny/new-post",
+    }
 
 
 @pytest.mark.asyncio
