@@ -162,6 +162,17 @@ docker compose version   # должно показать v2.x
 | Kafdrop | `http://<host>:9000` | UI для Kafka — посмотреть топики, оффсеты, сообщения |
 | Telegram бот | в Telegram | пишешь боту, проверяешь сценарии |
 
+### Вторая Prometheus для метрик
+
+Бот отдаёт метрики на `bot:8080/metrics`, публишеры пушат свои в Pushgateway;
+оттуда их скрейпит Prometheus этого стека. Чтобы те же метрики бота и
+публишеров уходили ещё в одну Prometheus, в `.env` задаются
+`COMPOSE_PROFILES=personal-metrics` и `PERSONAL_METRICS_REMOTE_WRITE_URL`
+(адрес `.../api/v1/write` приёмника с включённым remote-write receiver).
+Поднимается сервис `metrics-forwarder` (Alloy,
+`configs/metrics/personal-forwarder.alloy`). Метрики хоста, Redis и Kafka во
+вторую Prometheus не уходят.
+
 ### Апгрейд
 
 `bootstrap.sh` рассчитан на **первый** деплой. На горячий апгрейд:

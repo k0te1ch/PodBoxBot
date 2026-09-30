@@ -3,13 +3,17 @@
 
 import json
 import sys
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytz
 from loguru import logger
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+if TYPE_CHECKING:
+    from loguru import Record
 
 
 class Settings(BaseSettings):
@@ -282,13 +286,34 @@ COVER_PS_PATH = _cover_path(COVER_PS_NAME or "pscover.jpg")
 # Без retention loguru только ротирует: файлы копятся бесконечно и забивают диск.
 LOG_RETENTION = "14 days"
 
+STDOUT_LOG_FORMAT = (
+    "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level}</level>::<blue>{module}</blue>"
+    "::<cyan>{function}</cyan>::<cyan>{line}</cyan> | <level>{message}</level>"
+)
+FILE_LOG_FORMAT = "{time:YYYY-MM-DD HH:mm:ss} | {level}::{module}::{function}::{line} | {message}"
+
+
+def with_context(log_format: str) -> Callable[["Record"], str]:
+    """Дописывает к строке лога привязанный контекст, если он есть.
+
+    Контекст апдейта (``update_id``, ``user_id``, ``chat_id``) кладёт
+    ``LoggingModule`` из sagenza-tgbot-sdk, ``username`` — хендлеры через
+    ``logger.bind``. Строки без контекста остаются прежними.
+    """
+
+    def render(record: "Record") -> str:
+        context = " | {extra}" if record["extra"] else ""
+        return f"{log_format}{context}\n{{exception}}"
+
+    return render
+
 
 def set_up_logger(log_level: str, logs_path: Path):
     logger.remove()
     logger.add(
         sys.stdout,
         colorize=True,
-        format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level}</level>::<blue>{module}</blue>::<cyan>{function}</cyan>::<cyan>{line}</cyan> | <level>{message}</level>",
+        format=with_context(STDOUT_LOG_FORMAT),
         level=log_level,
         backtrace=True,
         diagnose=True,
@@ -298,7 +323,7 @@ def set_up_logger(log_level: str, logs_path: Path):
         rotation="5 MB",
         retention=LOG_RETENTION,
         compression="gz",
-        format="{time:YYYY-MM-DD HH:mm:ss} | {level}::{module}::{function}::{line} | {message}",
+        format=with_context(FILE_LOG_FORMAT),
         level="TRACE",
         backtrace=True,
         diagnose=True,
