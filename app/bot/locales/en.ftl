@@ -6,6 +6,9 @@ error_occurred = An error occurred! Please try again
 invalid_input = Invalid input!
 invalid_recording_date = Could not read the recording date. Use DD.MM.YYYY, e.g. 26.07.2026, no later than today.
 download_failed = ❌ MP3 was not uploaded. Check the file and try again.
+episode_number_failed = ❌ Could not get the episode number: FTP did not respond.
+    <code>{ $error }</code>
+    Upload cancelled, start again with /start.
 
 ## Episode upload (DialogEngine dialog)
 
@@ -61,10 +64,17 @@ de-alert-expired = The dialog has expired, start again: /start
 audio_ftp = FTP
 audio_site = Website
 audio_boosty = Boosty
+audio_vk = VK Donut
+audio_patreon = Patreon
+audio_sponsr = Sponsr
 audio_forward = Forward to chat
 ftp_upload = Upload the podcast to FTP
 wp_upload = Upload the podcast to the website
 boosty_upload = Publish the aftershow on Boosty
+vk_upload = Publish the aftershow for VK Donut
+patreon_upload = Publish the aftershow on Patreon
+sponsr_upload = Publish the aftershow on Sponsr
+paywalled_publishing = ⏳ Publishing the aftershow on { $platform }...
 forwarded = Forwarded to the chat!
 forward_failed = Forwarding failed, try again later
 
@@ -104,16 +114,12 @@ rss_choice = { $user }: { $result }
 rss_expired = This notification is outdated
 rss_feed_down = RSS feed failed { $count } times in a row: { $url }
 
-## Host notes and listener questions
+## Host notes
 
 admin_notes = Host notes
-admin_questions = Listener questions
 notes_groups = Host notes by group. Add one: /note #topic text
-questions_groups = Listener questions and topics by hashtag
 notes_entries = Notes in group
-questions_entries = Questions in group
 notes_usage = Write the note after the command: /note #topic text. Groups: { $tags }
-questions_usage = Write your question after the command: /ask text. You may add a hashtag: { $tags }
 collector_saved = Saved to #{ $tag }
 collector_used = ✅ Used
 collector_delete = 🗑 Delete

@@ -15,6 +15,7 @@ from loguru import logger
 from sagenza_tgbot_sdk import SdkSettings, setup_sdk
 from sagenza_tgbot_sdk.health import HealthModule
 from sagenza_tgbot_sdk.host_watch import HostWatchModule, HostWatchSettings
+from sagenza_tgbot_sdk.logs import LoggingModule, LoggingSettings
 from sagenza_tgbot_sdk.metrics import MetricsModule, MetricsSettings
 from sagenza_tgbot_sdk.notify import NotifyModule
 from sagenza_tgbot_sdk.status import StatusModule
@@ -131,6 +132,9 @@ async def on_startup():
         ("publisher.ftp.result", "publisher.ftp.result.group"),
         ("publisher.wordpress.result", "publisher.wordpress.result.group"),
         ("publisher.boosty.result", "publisher.boosty.result.group"),
+        ("publisher.vk.result", "publisher.vk.result.group"),
+        ("publisher.patreon.result", "publisher.patreon.result.group"),
+        ("publisher.sponsr.result", "publisher.sponsr.result.group"),
     ]
     for topic, group_id in result_topics:
         consumer = KafkaConsumer(
@@ -182,12 +186,15 @@ def _add_middlewares_to_observers(observers: list[TelegramEventObserver], middle
 
 
 def _setup_sdk(dp: Dispatcher) -> None:
-    # Бот держит свой loguru и обработчик ошибок, поэтому из SDK берутся только
-    # метрики, /healthz и /metrics (порт 8080), /status, notify, меню и сторож
-    # диска (предупреждение админам в личку).
+    # Синки loguru настраивает config.py, поэтому logging из SDK ставится с
+    # configure=False: только контекст апдейта в логах и предупреждение о
+    # медленных апдейтах. Ошибки остаются на своём обработчике
+    # (utils/error_reporting.py): он шлёт разработчику полный трейсбек без
+    # токена бота, а errors из SDK шлёт всем админам только текст исключения.
     settings = SdkSettings(bot_token=API_TOKEN, admin_ids=frozenset(ADMINS_ID))
     host_watch = HostWatchSettings(threshold_percent=DISK_ALERT_PERCENT, interval_seconds=DISK_CHECK_INTERVAL)
     modules = [
+        LoggingModule(LoggingSettings(configure=False)),
         MetricsModule(MetricsSettings(bot_name="podboxbot")),
         HealthModule(),
         StatusModule(),

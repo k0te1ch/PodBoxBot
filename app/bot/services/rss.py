@@ -213,7 +213,11 @@ class RssWatcher:
             if await self.redis.sismember(SEEN_KEY, episode.guid):
                 continue
             await self.redis.sadd(SEEN_KEY, episode.guid)
-            if episode.type_episode and episode.number in published:
+            # Чужие шоу из общей ленты (Outcast и т.п.) админам не показываем.
+            if episode.type_episode is None:
+                logger.info(f"rss: {episode.title!r} is not a PodBox episode, skipping")
+                continue
+            if episode.number in published:
                 logger.info(f"rss: episode {episode.number} was published by the bot, skipping")
                 continue
             fresh.append(episode)

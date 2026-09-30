@@ -26,3 +26,30 @@ topics:
   - name: publisher.boosty.result
     partitions: 1
     replication_factor: 1
+  - name: publisher.vk.upload
+    partitions: 1
+    replication_factor: 1
+    config:
+      cleanup.policy: delete
+      retention.ms: 604800000  # 7 дней
+  - name: publisher.vk.result
+    partitions: 1
+    replication_factor: 1
+  - name: publisher.patreon.upload
+    partitions: 1
+    replication_factor: 1
+    config:
+      cleanup.policy: delete
+      retention.ms: 604800000  # 7 дней
+  - name: publisher.patreon.result
+    partitions: 1
+    replication_factor: 1
+  - name: publisher.sponsr.upload
+    partitions: 1
+    replication_factor: 1
+    config:
+      cleanup.policy: delete
+      retention.ms: 604800000  # 7 дней
+  - name: publisher.sponsr.result
+    partitions: 1
+    replication_factor: 1

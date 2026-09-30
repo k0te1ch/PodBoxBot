@@ -3,9 +3,11 @@
 Кнопка несёт свой хендлер, callback_data и «Назад» генерирует SDK, а при
 старте ``Menus.setup`` валит бота, если какая-то кнопка ведёт в никуда.
 
-* Админ-панель (``/admin``): Бот → выключить / перезапустить / логи;
+* Админ-панель (``/admin``): Бот → перезапустить / логи; сервисное сообщение;
   заметки ведущих и вопросы слушателей (:mod:`handlers.collector_handler`).
-* Меню аудио висит под готовым MP3: FTP, сайт, Boosty, пересылка в чат.
+* Меню аудио висит под готовым MP3: FTP, сайт, пересылка в чат, а у
+  послешоу — платные площадки (Boosty, VK Donut, Patreon, Sponsr), каждая
+  видна, только когда включена флагом ``<ПЛОЩАДКА>_ENABLED``.
   Основной эпизод и послешоу — разные корни, чтобы «Назад» из FTP вёл
   в своё меню.
 """
@@ -29,6 +31,7 @@ from handlers.audio_handler import forward_to_chat
 from handlers.boosty_handler import upload_Boosty
 from handlers.collector_handler import collection_submenus
 from handlers.ftp_handler import upload_FTP
+from handlers.paywalled_handler import PATREON, SPONSR, VK, Platform, upload_to
 from handlers.service_handler import open_from_menu as open_service_message
 from handlers.wordpress_handler import upload_WP
 from services.i18n import DEFAULT_LOCALE, translator
@@ -99,6 +102,15 @@ def _platform_visible(flag: str):
     return visible
 
 
+def _platform_submenu(platform: Platform) -> Submenu:
+    return Submenu(
+        f"audio_{platform.key}",
+        _publish_menu(platform.key, f"{platform.key}_upload", upload_to(platform)),
+        id=platform.key,
+        visible_if=_platform_visible(f"{platform.key.upper()}_ENABLED"),
+    )
+
+
 def build_menus() -> BotMenus:
     bot_menu = Menu(
         "bot",
@@ -147,6 +159,9 @@ def build_menus() -> BotMenus:
                 id="boosty",
                 visible_if=_platform_visible("BOOSTY_ENABLED"),
             ),
+            _platform_submenu(VK),
+            _platform_submenu(PATREON),
+            _platform_submenu(SPONSR),
         ],
     )
     return BotMenus(admin_menu, audio_main, audio_post, translator=translator, locale_getter=_locale)

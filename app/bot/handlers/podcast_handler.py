@@ -2,6 +2,7 @@ import asyncio
 import os
 import re
 import shutil
+from html import escape
 from pathlib import Path
 from typing import Any
 
@@ -40,7 +41,7 @@ from services.i18n import t
 from services.none_module import _NoneModule
 from services.redis import redis
 from services.rss import mark_published
-from utils.ftp_methods import get_last_post_id
+from utils.ftp_methods import EpisodeNumberError, get_last_post_id
 from utils.mp3_methods import audio_tag, read_duration_and_artist
 from utils.podcast_methods import generate_file_name
 from utils.progress_callbacks import (
@@ -191,7 +192,16 @@ async def get_MP3(msg: Message, state: FSMContext, bot: Bot, language: str, user
         return
 
     type_episode = session.answers[TYPE_EPISODE]
-    number = int(await get_last_post_id(type_episode, FTP_SERVER, FTP_LOGIN, FTP_PASSWORD)) + 1
+    try:
+        number = int(await get_last_post_id(type_episode, FTP_SERVER, FTP_LOGIN, FTP_PASSWORD)) + 1
+    except EpisodeNumberError as e:
+        # Без номера шаблон не собрать: говорим, что случилось, и закрываем
+        # диалог, иначе он висит на шаге MP3 без ответа.
+        logger.error(f"[{username}]: номер эпизода не получен с FTP: {e}")
+        await download_msg.edit_text(t("episode_number_failed", language, error=escape(str(e))))
+        await runner.cancel(state)
+        await _drop_keyboard(bot, ui.anchor)
+        return
 
     # Шаблон уходит новым сообщением под скачанным файлом: старое сообщение
     # шага осталось выше по чату, с него снимаются кнопки.

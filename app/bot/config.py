@@ -3,13 +3,17 @@
 
 import json
 import sys
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytz
 from loguru import logger
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+if TYPE_CHECKING:
+    from loguru import Record
 
 
 class Settings(BaseSettings):
@@ -61,6 +65,9 @@ class Settings(BaseSettings):
     # Платные площадки для послешоу. Кнопка площадки появляется в меню, только
     # когда её publisher настроен и есть доступ к аккаунту.
     BOOSTY_ENABLED: bool = False
+    VK_ENABLED: bool = False
+    PATREON_ENABLED: bool = False
+    SPONSR_ENABLED: bool = False
 
     # DEBUG
     DEBUG: bool = False
@@ -106,9 +113,8 @@ class Settings(BaseSettings):
     LANGUAGES: list[str] = Field(default_factory=list)
     # Группы заметок ведущих (/note) и хештеги, по которым бот собирает
     # вопросы слушателей в чате FORWARD_CHAT_USERNAME. Без «#», JSON-списком.
-    # Заметка без хештега попадает в последнюю группу, /ask без хештега — в первую.
+    # Заметка без хештега попадает в последнюю группу.
     NOTE_TAGS: list[str] = Field(default_factory=lambda: ["тема", "вопрос", "комментарий"])
-    LISTENER_TAGS: list[str] = Field(default_factory=lambda: ["вопрос", "тема"])
 
     # FILES
     COVER_RZ_NAME: str | None = None
@@ -136,7 +142,6 @@ class Settings(BaseSettings):
         "HANDLERS",
         "LANGUAGES",
         "NOTE_TAGS",
-        "LISTENER_TAGS",
         mode="before",
     )
     @classmethod
@@ -176,6 +181,9 @@ SKIP_UPDATES = settings.SKIP_UPDATES
 FORWARD_CHAT_USERNAME = settings.FORWARD_CHAT_USERNAME
 FORWARD_PIN_SILENT = settings.FORWARD_PIN_SILENT
 BOOSTY_ENABLED = settings.BOOSTY_ENABLED
+VK_ENABLED = settings.VK_ENABLED
+PATREON_ENABLED = settings.PATREON_ENABLED
+SPONSR_ENABLED = settings.SPONSR_ENABLED
 API_ID = settings.TELEGRAM_SERVER_API_ID
 API_HASH = settings.TELEGRAM_SERVER_API_HASH
 
@@ -236,7 +244,6 @@ ADMINS_ID = settings.ADMINS_ID
 HANDLERS = settings.HANDLERS
 LANGUAGES = settings.LANGUAGES
 NOTE_TAGS = [tag.lstrip("#").lower() for tag in settings.NOTE_TAGS]
-LISTENER_TAGS = [tag.lstrip("#").lower() for tag in settings.LISTENER_TAGS]
 
 # Podcast
 PODCAST_NAME = settings.PODCAST_NAME
@@ -279,13 +286,34 @@ COVER_PS_PATH = _cover_path(COVER_PS_NAME or "pscover.jpg")
 # Без retention loguru только ротирует: файлы копятся бесконечно и забивают диск.
 LOG_RETENTION = "14 days"
 
+STDOUT_LOG_FORMAT = (
+    "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level}</level>::<blue>{module}</blue>"
+    "::<cyan>{function}</cyan>::<cyan>{line}</cyan> | <level>{message}</level>"
+)
+FILE_LOG_FORMAT = "{time:YYYY-MM-DD HH:mm:ss} | {level}::{module}::{function}::{line} | {message}"
+
+
+def with_context(log_format: str) -> Callable[["Record"], str]:
+    """Дописывает к строке лога привязанный контекст, если он есть.
+
+    Контекст апдейта (``update_id``, ``user_id``, ``chat_id``) кладёт
+    ``LoggingModule`` из sagenza-tgbot-sdk, ``username`` — хендлеры через
+    ``logger.bind``. Строки без контекста остаются прежними.
+    """
+
+    def render(record: "Record") -> str:
+        context = " | {extra}" if record["extra"] else ""
+        return f"{log_format}{context}\n{{exception}}"
+
+    return render
+
 
 def set_up_logger(log_level: str, logs_path: Path):
     logger.remove()
     logger.add(
         sys.stdout,
         colorize=True,
-        format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level}</level>::<blue>{module}</blue>::<cyan>{function}</cyan>::<cyan>{line}</cyan> | <level>{message}</level>",
+        format=with_context(STDOUT_LOG_FORMAT),
         level=log_level,
         backtrace=True,
         diagnose=True,
@@ -295,7 +323,7 @@ def set_up_logger(log_level: str, logs_path: Path):
         rotation="5 MB",
         retention=LOG_RETENTION,
         compression="gz",
-        format="{time:YYYY-MM-DD HH:mm:ss} | {level}::{module}::{function}::{line} | {message}",
+        format=with_context(FILE_LOG_FORMAT),
         level="TRACE",
         backtrace=True,
         diagnose=True,

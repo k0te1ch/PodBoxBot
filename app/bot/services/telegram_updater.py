@@ -30,6 +30,15 @@ STAGE_TITLES = {
 
 EPISODE_TITLES = {"main": "основной эпизод", "aftershow": "послешоу", "postshow": "послешоу"}
 
+# ``metadata.platform`` success-события (имя publisher'а) -> где опубликовано.
+PLATFORM_PLACES = {
+    "wp": "на сайте",
+    "boosty": "на Boosty",
+    "vk": "в VK Donut",
+    "patreon": "на Patreon",
+    "sponsr": "на Sponsr",
+}
+
 # Сколько раз переждать flood-лимит Telegram для итогового сообщения.
 FINAL_EDIT_ATTEMPTS = 3
 
@@ -58,6 +67,33 @@ def _subject(event: dict) -> str:
     if kind := EPISODE_TITLES.get(event.get("type_episode") or ""):
         subject += f" ({kind})"
     return subject
+
+
+def _success_text(event: dict) -> str:
+    """Итог успешной публикации словами того, что площадка сделала на самом деле.
+
+    Publisher кладёт в ``metadata`` площадку (``platform``) и действие
+    (``action``: ``published``, ``draft``, ``scheduled`` с ``publish_at``).
+    Без действия (старый publisher) текст ничего не обещает.
+    """
+    number = event.get("number")
+    if not number:
+        return f"✅ {_subject(event)} успешно загружен!"
+
+    metadata = event.get("metadata") or {}
+    episode = f"<b>{escape(str(number))}</b>"
+    platform = metadata.get("platform")
+    where = f" {PLATFORM_PLACES.get(platform, f'на {escape(platform)}')}" if platform else ""
+
+    action = metadata.get("action")
+    if action == "published":
+        return f"✅ Эпизод {episode} опубликован{where}"
+    if action == "draft":
+        return f"✅ Эпизод {episode}: пост сохранён в черновики{where}, подписчики его пока не видят"
+    if action == "scheduled":
+        when = f" на {escape(publish_at)}" if (publish_at := metadata.get("publish_at")) else ""
+        return f"✅ Эпизод {episode}: отложенная публикация{where} запланирована{when}"
+    return f"✅ Эпизод {episode}: публикация{where} завершена"
 
 
 def _percent(progress) -> float:
@@ -104,10 +140,7 @@ class TelegramUpdater:
 
         number = event.get("number")
         if success:
-            if number:
-                text = f"✅ Пост для эпизода <b>{escape(str(number))}</b> успешно сохранён в черновики!"
-            else:
-                text = f"✅ {_subject(event)} успешно загружен!"
+            text = _success_text(event)
             url = (event.get("metadata") or {}).get("url")
             if url:
                 text += f"\n{escape(url)}"

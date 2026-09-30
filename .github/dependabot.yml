@@ -1,4 +1,4 @@
-# Каталогов пять только потому, что каждый сервис — отдельный poetry-проект.
+# Каталогов восемь только потому, что каждый сервис — отдельный poetry-проект.
 # Корня в списке нет: pyproject.toml/poetry.lock в корне репозитория не
 # существует, и алерты, которые Dependabot заводил на "/", относились к
 # файлу, удалённому ещё раньше.
@@ -10,6 +10,9 @@ updates:
       - /app/publishers/FTP
       - /app/publishers/WordPress
       - /app/publishers/Boosty
+      - /app/publishers/VK
+      - /app/publishers/Patreon
+      - /app/publishers/Sponsr
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
@@ -41,6 +44,9 @@ updates:
       - /app/publishers/FTP
       - /app/publishers/WordPress
       - /app/publishers/Boosty
+      - /app/publishers/VK
+      - /app/publishers/Patreon
+      - /app/publishers/Sponsr
     schedule:
       interval: monthly
     commit-message:

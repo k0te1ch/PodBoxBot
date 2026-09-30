@@ -24,5 +24,4 @@ ROUTERS = [
 # menu и feedback, стоявшие тут закомментированными, обработчиков не имеют.
 COMMANDS = [
     BotCommand(command="start", description="Оформить эпизод"),
-    BotCommand(command="ask", description="Задать вопрос ведущим"),
 ]

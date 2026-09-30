@@ -1,11 +1,6 @@
-"""Заметки ведущих и вопросы слушателей: приём сообщений и просмотр в меню.
+"""Заметки ведущих: приём сообщений и просмотр в меню.
 
 * ``/note #тема текст`` — ведущий (админ) пишет заметку боту в личку.
-* Сообщение в чате FORWARD_CHAT_USERNAME с хештегом из LISTENER_TAGS
-  сохраняется со ссылкой на оригинал. Нужен privacy mode off у бота
-  (BotFather → /setprivacy → Disable) или права админа в группе, иначе
-  Telegram не присылает боту обычные сообщения чата.
-* ``/ask текст`` — запасной путь: слушатель пишет вопрос боту в личку.
 
 Просмотр — из /admin: группа (хештег) → список записей постранично → карточка
 с кнопками «Использовано» и «Удалить». Использованные уходят из списка в архив.
@@ -17,7 +12,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from aiogram import F, Router
+from aiogram import Router
 from aiogram.filters import Command, CommandObject
 from aiogram.filters.callback_data import CallbackData
 from aiogram.fsm.context import FSMContext
@@ -26,10 +21,10 @@ from loguru import logger
 from sagenza_tgbot_sdk.menus import ListItem, ListMenu, MenuContext, Submenu
 from sagenza_tgbot_sdk.menus.callback import Action, MenuCallback
 
-from config import FORWARD_CHAT_USERNAME, LISTENER_TAGS, NOTE_TAGS, TIMEZONE
+from config import NOTE_TAGS, TIMEZONE
 from filters.dispatcher_filters import IsAdmin, IsPrivate
 from services import redis
-from services.collector import Entry, EntryStore, message_link, pick_tag, strip_hashtags
+from services.collector import Entry, EntryStore, pick_tag, strip_hashtags
 from services.i18n import t
 
 PREVIEW_CHARS = 40
@@ -61,8 +56,7 @@ class Collection:
 
 
 NOTES = Collection("notes", NOTE_TAGS, NOTE_TAGS[-1] if NOTE_TAGS else "note")
-QUESTIONS = Collection("questions", LISTENER_TAGS, LISTENER_TAGS[0] if LISTENER_TAGS else "question")
-COLLECTIONS = {c.name: c for c in (NOTES, QUESTIONS)}
+COLLECTIONS = {c.name: c for c in (NOTES,)}
 
 
 class EntryCallback(CallbackData, prefix="col"):
@@ -173,23 +167,12 @@ def _author(message: Message) -> str:
     return f"@{user.username}" if user.username else user.full_name
 
 
-def from_listener_chat(msg: Message) -> bool:
-    """Сообщение из чата подкаста (FORWARD_CHAT_USERNAME)."""
-    username = msg.chat.username
-    return username is not None and username.lower() == FORWARD_CHAT_USERNAME.lstrip("@").lower()
-
-
 router = Router(name=os.path.splitext(os.path.basename(__file__))[0])
 
 
 @router.message(Command("note"), IsPrivate, IsAdmin)
 async def add_note(msg: Message, command: CommandObject, language: str):
     await _save_from_command(msg, command, NOTES, language)
-
-
-@router.message(Command("ask"), IsPrivate)
-async def add_question(msg: Message, command: CommandObject, language: str):
-    await _save_from_command(msg, command, QUESTIONS, language)
 
 
 async def _save_from_command(msg: Message, command: CommandObject, collection: Collection, language: str) -> None:
@@ -206,21 +189,6 @@ async def _save_from_command(msg: Message, command: CommandObject, collection: C
 
 def _tags_hint(collection: Collection) -> str:
     return " ".join(f"#{tag}" for tag in collection.tags)
-
-
-@router.message(from_listener_chat, F.text | F.caption)
-async def collect_from_chat(msg: Message):
-    """Вопросы и темы слушателей из чата подкаста по хештегам."""
-    raw = msg.text or msg.caption
-    tag = pick_tag(raw, QUESTIONS.tags)
-    if tag is None:
-        return
-    text = strip_hashtags(raw, [tag]) or raw or ""
-    link = message_link(msg.chat.username, msg.chat.id, msg.message_id)
-    entry = Entry(tag=tag, text=text, author=_author(msg), link=link)
-    saved = await QUESTIONS.store.add(entry, source=(msg.chat.id, msg.message_id))
-    if saved is not None:
-        logger.info(f"Collected listener question #{saved.id} in #{tag}")
 
 
 @router.callback_query(EntryCallback.filter(), IsAdmin)

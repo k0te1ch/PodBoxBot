@@ -1,0 +1,23 @@
+apiVersion: 1
+
+# Алерты из alerting.yaml уходят в Telegram через того же бота.
+# Токен и чат приходят переменными окружения контейнера grafana (см. compose).
+contactPoints:
+  - orgId: 1
+    name: telegram-admins
+    receivers:
+      - uid: telegram-admins
+        type: telegram
+        settings:
+          bottoken: $GRAFANA_ALERT_BOT_TOKEN
+          chatid: $GRAFANA_ALERT_CHAT_ID
+          parse_mode: HTML
+          disable_web_page_preview: true
+
+policies:
+  - orgId: 1
+    receiver: telegram-admins
+    group_by: [grafana_folder, alertname]
+    group_wait: 30s
+    group_interval: 5m
+    repeat_interval: 4h

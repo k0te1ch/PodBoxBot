@@ -294,6 +294,81 @@ services:
       - ./secrets/boosty:/app/data
       - files:/app/files
 
+  publisher_vk:
+    logging: *default-logging
+    container_name: podboxbot_publisher_vk
+    build:
+      context: .
+      dockerfile: ./app/publishers/VK/Dockerfile
+      secrets:
+        - sdk_deploy_key
+    restart: always
+    # Площадка выключена, пока нет доступа: сервис поднимается профилем paywalled.
+    profiles: ["paywalled"]
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+      schema-registry:
+        condition: service_healthy
+      pushgateway:
+        condition: service_started
+    networks:
+      - podboxbot_network
+    volumes:
+      - .env:/app/.env
+      - ./secrets/vk:/app/data
+      - files:/app/files
+
+  publisher_patreon:
+    logging: *default-logging
+    container_name: podboxbot_publisher_patreon
+    build:
+      context: .
+      dockerfile: ./app/publishers/Patreon/Dockerfile
+      secrets:
+        - sdk_deploy_key
+    restart: always
+    # Площадка выключена, пока нет доступа: сервис поднимается профилем paywalled.
+    profiles: ["paywalled"]
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+      schema-registry:
+        condition: service_healthy
+      pushgateway:
+        condition: service_started
+    networks:
+      - podboxbot_network
+    volumes:
+      - .env:/app/.env
+      - ./secrets/patreon:/app/data
+      - files:/app/files
+
+  publisher_sponsr:
+    logging: *default-logging
+    container_name: podboxbot_publisher_sponsr
+    build:
+      context: .
+      dockerfile: ./app/publishers/Sponsr/Dockerfile
+      secrets:
+        - sdk_deploy_key
+    restart: always
+    # Площадка выключена, пока нет доступа: сервис поднимается профилем paywalled.
+    profiles: ["paywalled"]
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+      schema-registry:
+        condition: service_healthy
+      pushgateway:
+        condition: service_started
+    networks:
+      - podboxbot_network
+    volumes:
+      - .env:/app/.env
+      - ./secrets/sponsr:/app/data
+      - files:/app/files
+
   # METRICS AND MONITORING
 
   pushgateway:
@@ -317,6 +392,25 @@ services:
       - prometheus_data:/prometheus
     expose:
       - 9090
+    networks:
+      - monitoring
+
+  # Копия метрик бота и публишеров во вторую Prometheus (remote_write),
+  # конфиг configs/metrics/personal-forwarder.alloy. По умолчанию не
+  # запускается: включается COMPOSE_PROFILES=personal-metrics и адресом
+  # PERSONAL_METRICS_REMOTE_WRITE_URL в .env.
+  metrics-forwarder:
+    logging: *default-logging
+    container_name: podboxbot_metrics_forwarder
+    image: grafana/alloy:latest
+    profiles: ["personal-metrics"]
+    restart: always
+    environment:
+      PERSONAL_METRICS_REMOTE_WRITE_URL: ${PERSONAL_METRICS_REMOTE_WRITE_URL:-}
+    volumes:
+      - ./configs/metrics/personal-forwarder.alloy:/etc/alloy/config.alloy:ro
+      - metrics_forwarder_data:/var/lib/alloy/data
+    command: ["run", "--storage.path=/var/lib/alloy/data", "/etc/alloy/config.alloy"]
     networks:
       - monitoring
 
@@ -358,10 +452,14 @@ services:
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin
+      # Доставка алертов в Telegram (configs/grafana/notifications.yaml)
+      - GRAFANA_ALERT_BOT_TOKEN=${TELEGRAM_API_TOKEN}
+      - GRAFANA_ALERT_CHAT_ID=${GRAFANA_ALERT_CHAT_ID:-0}
     volumes:
       - ./configs/grafana/datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
       - ./configs/grafana/dashboards.yaml:/etc/grafana/provisioning/dashboards/dashboards.yaml
       - ./configs/grafana/alerting.yaml:/etc/grafana/provisioning/alerting/alerting.yaml
+      - ./configs/grafana/notifications.yaml:/etc/grafana/provisioning/alerting/notifications.yaml
       - ./configs/grafana/dashbords:/etc/grafana/dashboards
       - grafana_data:/var/lib/grafana
     networks:
@@ -453,6 +551,8 @@ volumes:
   grafana_data:
     driver: local
   prometheus_data:
+    driver: local
+  metrics_forwarder_data:
     driver: local
   loki_data:
     driver: local

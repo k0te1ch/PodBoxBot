@@ -21,7 +21,7 @@ scrape_configs:
 
   - job_name: 'redis'
     static_configs:
-      - targets: ['redis-exporter:9121']
+      - targets: ['redis_exporter:9121']
 
   - job_name: 'podboxbot'
     static_configs:

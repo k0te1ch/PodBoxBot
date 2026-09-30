@@ -5,7 +5,7 @@
 Так его можно перенести в sagenza-tgbot-sdk целиком, поменяв только импорт.
 """
 
-from services.collector.hashtags import extract_hashtags, message_link, pick_tag, strip_hashtags
+from services.collector.hashtags import extract_hashtags, pick_tag, strip_hashtags
 from services.collector.store import Entry, EntryStore
 
-__all__ = ["Entry", "EntryStore", "extract_hashtags", "message_link", "pick_tag", "strip_hashtags"]
+__all__ = ["Entry", "EntryStore", "extract_hashtags", "pick_tag", "strip_hashtags"]

@@ -6,6 +6,9 @@ error_occurred = Произошла ошибка! Пожалуйста, попр
 invalid_input = Ошибка при вводе!
 invalid_recording_date = Не понял дату записи. Укажи её как ДД.ММ.ГГГГ, например 26.07.2026, и не позже сегодняшнего дня.
 download_failed = ❌ MP3 не загружен. Проверь файл и попробуй ещё раз.
+episode_number_failed = ❌ Не удалось узнать номер эпизода: FTP не ответил.
+    <code>{ $error }</code>
+    Загрузка отменена, начни заново через /start.
 
 ## Загрузка эпизода (диалог DialogEngine)
 
@@ -61,10 +64,17 @@ de-alert-expired = Диалог устарел, начни заново: /start
 audio_ftp = FTP
 audio_site = Сайт
 audio_boosty = Boosty
+audio_vk = VK Donut
+audio_patreon = Patreon
+audio_sponsr = Sponsr
 audio_forward = Переслать в чат
 ftp_upload = Загрузить подкаст на FTP
 wp_upload = Загрузить подкаст на сайт
 boosty_upload = Опубликовать aftershow на Boosty
+vk_upload = Опубликовать aftershow для донов VK
+patreon_upload = Опубликовать aftershow на Patreon
+sponsr_upload = Опубликовать aftershow на Sponsr
+paywalled_publishing = ⏳ Публикация aftershow на { $platform }...
 forwarded = Переслали в чат!
 forward_failed = Ошибка при пересылке, попробуйте позже
 
@@ -104,16 +114,12 @@ rss_choice = { $user }: { $result }
 rss_expired = Уведомление устарело
 rss_feed_down = RSS не читается уже { $count } раз подряд: { $url }
 
-## Заметки ведущих и вопросы слушателей
+## Заметки ведущих
 
 admin_notes = Заметки ведущих
-admin_questions = Вопросы слушателей
 notes_groups = Заметки ведущих по группам. Добавить: /note #тема текст
-questions_groups = Вопросы и темы слушателей по хештегам
 notes_entries = Заметки группы
-questions_entries = Вопросы группы
 notes_usage = Напиши заметку после команды: /note #тема текст. Группы: { $tags }
-questions_usage = Напиши вопрос после команды: /ask текст. Можно указать хештег: { $tags }
 collector_saved = Сохранено в #{ $tag }
 collector_used = ✅ Использовано
 collector_delete = 🗑 Удалить
