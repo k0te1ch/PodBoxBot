@@ -48,8 +48,9 @@ async def upload_WP(ctx: MenuContext) -> None:
             number=info["number"],
             title=info["title"],
             comment=info["comment"],
-            chapters=info["chapters"],
-            tags=info["tags"],
+            # Tags и Chapters в шаблоне необязательны (см. validate_template).
+            chapters=info.get("chapters") or [],
+            tags=info.get("tags") or [],
             slug=info["slug"],
             duration=info["duration"],
             recording_date=info.get("recording_date"),
