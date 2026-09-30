@@ -30,6 +30,10 @@ class SharedSettings(BaseSettings):
         env_file=_find_env_file(),
         env_file_encoding="utf-8",
         extra="ignore",
+        # Пустое значение (`VK_GROUP_ID = ""` из .env.example) — «не задано», а
+        # не строка для разбора: иначе одна выключенная площадка роняет
+        # конфиг всех publisher'ов.
+        env_ignore_empty=True,
     )
 
     # Logger
