@@ -247,6 +247,18 @@ Schema Registry. Защита выстроена в три слоя:
 - `!` / `BREAKING CHANGE:` → major (пока версия `0.x` и включён
   `bump-minor-pre-major`, ломающее идёт в minor)
 
+Ветку release-PR release-please пересобирает поверх свежего `main` после
+каждого push (`always-update` в `release-please-config.json`), так что она не
+отстаёт от `main` даже после коммитов, которые не попадают в changelog.
+Проверки на release-PR запускает сам workflow release-please через
+`workflow_dispatch`: PR открыт от `GITHUB_TOKEN`, и обычный запуск по
+`pull_request` GitHub оставляет ждать ручного одобрения («action_required»).
+Одобрять его не нужно: запуск по dispatch копирует результаты обязательных
+джоб в статусы коммита с теми же именами (джоба `report-required-checks`), и
+правило `main` принимает их. Сами check runs запуска по `workflow_dispatch`
+GitHub в обязательные проверки PR не засчитывает. Если меняется список
+обязательных проверок в правиле, его же надо поправить в `needs` этой джобы.
+
 Накопились изменения — смержи release-PR: release-please создаст тег
 `vX.Y.Z`, GitHub Release и обновит `CHANGELOG.md`. Единственный рычаг
 версии — типы Conventional Commits, попадающих в `main`.
