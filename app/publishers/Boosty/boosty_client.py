@@ -157,6 +157,11 @@ class BoostyClient:
         self._auth: AuthData | None = None
         self._refresh_lock = asyncio.Lock()
 
+    @property
+    def expires_at(self) -> int | None:
+        """Когда истекает текущий access_token (unix-время); None, если неизвестно."""
+        return self._auth.expires_at if self._auth else None
+
     async def ensure_auth(self) -> None:
         """Грузит токены из файла и обновляет их, если скоро истекут."""
         if not self.blog_name:
