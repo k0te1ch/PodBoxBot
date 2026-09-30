@@ -1,4 +1,9 @@
-"""Разбор CHANGELOG.md и рассылка релиз-ноута админам.
+"""Релиз-ноут для админов: русские заметки к версии из ``release-notes/ru``.
+
+Версию последнего релиза берём из верхнего блока CHANGELOG.md (его ведёт
+release-please), а текст для админов из ``release-notes/ru/<версия>.md``:
+CHANGELOG собран из английских заголовков коммитов и людям заказчика не
+подходит. Нет файла заметок, шлём только номер версии.
 
 Выделено из ``bot_methods`` вместе с :mod:`utils.messaging`.
 """
@@ -25,160 +30,87 @@ async def send_release_note() -> None:
     if not parts:
         return
 
-    # parts уже HTML-escaped и разбиты по секциям, каждая < 4096 байт.
+    # parts уже HTML-escaped и разбиты на части, каждая < 4096 байт.
     # broadcast_message_to_users -> send_message_to_user умеет принимать
     # list[str] и отправляет каждую часть отдельным сообщением, минуя
     # split_into_messages.
     await broadcast_message_to_users(parts, ADMINS_ID, True, parse_mode=ParseMode.HTML)
 
 
-def _markdown_inline_to_html(text: str) -> str:
-    """HTML-escape text and convert inline `code` spans to <code>…</code>.
-
-    Покрывает CHANGELOG-форматирование (бэктики вокруг идентификаторов).
-    Звёздочки/подчёркивания CHANGELOG не использует, так что не трогаем.
-    """
-    parts = []
-    in_code = False
-    buf: list[str] = []
-    for ch in text:
-        if ch == "`":
-            parts.append(("code" if in_code else "text", "".join(buf)))
-            buf = []
-            in_code = not in_code
-        else:
-            buf.append(ch)
-    parts.append(("code" if in_code else "text", "".join(buf)))
-
-    out: list[str] = []
-    for kind, chunk in parts:
-        escaped = html.escape(chunk, quote=False)
-        if kind == "code" and chunk:
-            out.append(f"<code>{escaped}</code>")
-        else:
-            out.append(escaped)
-    return "".join(out)
-
-
-# --- release-please CHANGELOG parsing ---
-# release-please пишет CHANGELOG в таком виде:
-#   ## [0.4.0](compare-url) (2026-06-01)
-#   ### Features
-#   * **scope:** summary ([#19](url)) ([hash](url))
-# Версию/дату берём из заголовка верхнего (самого свежего) релизного блока,
-# секции — из "### ..."-подзаголовков. Старый ручной формат
-# (# 0.3.0 / ## Добавлено / дата ДД.ММ.ГГГГ) больше не используется.
+# release-please пишет заголовок релиза как ``## [0.4.0](compare-url) (2026-06-01)``;
+# нужен только номер версии верхнего (самого свежего) блока.
 _VERSION_HEADING = re.compile(r"^##\s+\[?(\d+\.\d+\.\d+)\]?", re.MULTILINE)
-_DATE_IN_HEADING = re.compile(r"\((\d{4}-\d{2}-\d{2})\)")
-_SECTION_HEADING = re.compile(r"^###\s+(.+?)\s*$", re.MULTILINE)
-_MD_LINK = re.compile(r"\[([^\]]+)\]\([^)]+\)")
-
-# Английские заголовки секций release-please → русские подписи.
-# Неизвестные секции показываем как есть (как в changelog).
-_SECTION_LABELS = {
-    "Features": "Добавлено",
-    "Bug Fixes": "Исправлено",
-    "Performance Improvements": "Производительность",
-    "Code Refactoring": "Рефакторинг",
-    "Reverts": "Откаты",
-    "Documentation": "Документация",
-    "Tests": "Тесты",
-    "Build System": "Сборка",
-    "Continuous Integration": "CI",
-    "Miscellaneous Chores": "Прочее",
-    "Styles": "Стиль",
-}
+_BULLET_PREFIXES = ("- ", "* ")
+_NOTES_DIR = Path("release-notes") / "ru"
 
 
-def _format_bullet(text: str) -> str:
-    """Очищает один пункт changelog для показа в Telegram (HTML).
-
-    Markdown-ссылки `[text](url)` сворачиваем в `text` (убираем url-шум от
-    хэшей коммитов и PR), маркеры жирного `**` отбрасываем, дальше отдаём
-    в `_markdown_inline_to_html` — он экранирует HTML и переводит inline
-    `code` в <code>.
-    """
-    text = _MD_LINK.sub(r"\1", text)
-    text = text.replace("**", "")
-    return _markdown_inline_to_html(text)
-
-
-async def get_release_note() -> list[str] | None:
-    """Read CHANGELOG.md and format the latest release block as HTML chunks.
-
-    Returns a list of HTML-formatted message parts (header + one or more
-    per-section messages), each safe to send as a single Telegram message
-    in HTML parse-mode. Returns None when CHANGELOG.md is missing,
-    unreadable, or has no release block — the broadcast is a courtesy and
-    must never crash on_startup.
-
-    Why HTML and not MarkdownV2: changelog entries contain plenty of
-    punctuation MarkdownV2 reserves (`!`, `(`, `)`, `.`, `-`, `:`, etc).
-    Escaping all of them by hand is error-prone; HTML only requires
-    escaping `<`, `>`, `&`, which html.escape() handles for us.
-    """
-    # CHANGELOG ships at /app/CHANGELOG.md (see Dockerfile COPY), but be
-    # forgiving about cwd to keep local dev runs working.
-    candidates = [Path("CHANGELOG.md"), Path("/app/CHANGELOG.md")]
-    path = next((p for p in candidates if p.is_file()), None)
-    if path is None:
-        logger.warning("CHANGELOG.md not found; skipping release-note broadcast")
-        return None
-
+async def _read_text(path: Path) -> str | None:
     try:
-        async with aiofiles.open(path) as f:
-            content = await f.read()
+        async with aiofiles.open(path, encoding="utf-8") as f:
+            return await f.read()
     except OSError as e:
         logger.warning(f"Failed to read {path}: {e!r}")
         return None
 
-    # Верхний релизный блок: от первого версия-заголовка до следующего.
-    headings = list(_VERSION_HEADING.finditer(content))
-    if not headings:
-        logger.warning("No release block found in CHANGELOG.md; skipping broadcast")
+
+def _note_lines(content: str) -> list[str]:
+    """Строки файла заметок как HTML: пункты списка с «•», прочие как есть.
+
+    Пустые строки и markdown-заголовки (``# ...``) пропускаем, всё
+    остальное экранируем: в заметках пишут обычный текст, не разметку.
+    """
+    lines: list[str] = []
+    for raw in content.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith(_BULLET_PREFIXES):
+            lines.append(f"• {html.escape(line[2:].strip(), quote=False)}")
+        else:
+            lines.append(html.escape(line, quote=False))
+    return lines
+
+
+async def get_release_note() -> list[str] | None:
+    """Release note for the latest CHANGELOG version as TG-sized HTML parts.
+
+    Text comes from ``release-notes/ru/<version>.md`` next to CHANGELOG.md.
+    When that file is missing or empty the admins get a one-line
+    "updated to version X" message instead of raw English changelog lines.
+    Returns None when CHANGELOG.md is missing, unreadable, or has no release
+    block: the broadcast is a courtesy and must never crash on_startup.
+
+    HTML parse-mode only needs ``<``, ``>``, ``&`` escaped, which
+    html.escape() handles; MarkdownV2 would reserve half the punctuation.
+    """
+    # CHANGELOG and release-notes ship under /app (see Dockerfile COPY), but
+    # be forgiving about cwd to keep local dev runs working.
+    candidates = [Path("CHANGELOG.md"), Path("/app/CHANGELOG.md")]
+    changelog = next((p for p in candidates if p.is_file()), None)
+    if changelog is None:
+        logger.warning("CHANGELOG.md not found; skipping release-note broadcast")
         return None
 
-    first = headings[0]
-    block_end = headings[1].start() if len(headings) > 1 else len(content)
-    line_end = content.find("\n", first.start())
-    heading_line = content[first.start() : line_end if line_end != -1 else len(content)]
-    block = content[first.end() : block_end]
+    content = await _read_text(changelog)
+    if content is None:
+        return None
 
-    version = first.group(1)
-    date_match = _DATE_IN_HEADING.search(heading_line)
-    date = date_match.group(1) if date_match else "неизвестно"
+    heading = _VERSION_HEADING.search(content)
+    if heading is None:
+        logger.warning("No release block found in CHANGELOG.md; skipping broadcast")
+        return None
+    version = heading.group(1)  # только цифры и точки, экранировать нечего
 
-    parts: list[str] = [
-        f"<b>Бот обновлён!</b>\n\n<b>Список изменений (версия {html.escape(version)}, от {html.escape(date)}):</b>"
-    ]
+    notes_path = changelog.parent / _NOTES_DIR / f"{version}.md"
+    notes = await _read_text(notes_path) if notes_path.is_file() else None
+    lines = _note_lines(notes) if notes else []
+    if not lines:
+        logger.warning(f"No release notes at {notes_path}; sending the version only")
+        return [f"Бот обновлён до версии {version}."]
 
-    # Cyrillic в UTF-8 — по 2 байта, так что 4096-байтовый лимит TG
-    # достигается раньше, чем кажется по числу символов. Шлём каждую
-    # секцию отдельным сообщением; если секция перерастает лимит — режем
-    # её по пунктам (см. _pack_html_chunks).
-    section_matches = list(_SECTION_HEADING.finditer(block))
-    for i, section in enumerate(section_matches):
-        name = section.group(1).strip()
-        sec_end = section_matches[i + 1].start() if i + 1 < len(section_matches) else len(block)
-        body = block[section.end() : sec_end]
-
-        bullets: list[str] = []
-        for raw in body.split("\n"):
-            line = raw.strip()
-            if not line.startswith("* "):
-                continue
-            item = line[2:].strip()
-            if item:
-                bullets.append(f"• {_format_bullet(item)}")
-
-        if not bullets:
-            continue
-
-        label = _SECTION_LABELS.get(name, name)
-        heading = f"<i>{html.escape(label)}</i>:"
-        parts.extend(_pack_html_chunks(heading, bullets))
-
-    return parts
+    # Cyrillic в UTF-8 по 2 байта, так что 4096-байтовый лимит TG
+    # достигается раньше, чем кажется по числу символов: режем по пунктам.
+    return _pack_html_chunks(f"<b>Бот обновлён до версии {version}</b>\n\nЧто изменилось:", lines)
 
 
 # Запас под HTML-теги и небольшой буфер; реальный TG-лимит — 4096 байт.
