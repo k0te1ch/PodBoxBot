@@ -5,6 +5,7 @@
 """
 
 from collections import Counter
+from collections.abc import Collection
 from typing import Any
 
 from aiogram import Bot
@@ -117,12 +118,19 @@ def marked_text(view: ListView, locale: str) -> str:
     return text if len(text) <= MAX_TOAST_CHARS else t("topics_marked_count", locale, count=len(view.marked))
 
 
-async def send_list(bot: Bot, chat_id: int, locale: str, *, private: bool) -> ListView:
-    """Показать список и запомнить его: номера следующей команды «удали» — отсюда."""
+async def send_list(
+    bot: Bot, chat_id: int, locale: str, *, private: bool, marked_ids: Collection[int] = ()
+) -> ListView:
+    """Показать список и запомнить его: номера следующей команды «удали» — отсюда.
+
+    Пункты *marked_ids* показываются сразу отмеченными к удалению: так бот
+    предлагает убрать то, что, похоже, обсудили в выпуске.
+    """
     items = await topic_list().repository.items()
     views = view_store()
-    view = views.new_view([item.id for item in items])
-    pages = list_pages(items, locale)
+    marked = [number for number, item in enumerate(items, start=1) if item.id in marked_ids]
+    view = views.new_view([item.id for item in items], marked)
+    pages = list_pages(items, locale, view.marked)
     for index, page in enumerate(pages):
         markup = page_markup(view, page, locale, last=index == len(pages) - 1, private=private)
         sent = await bot.send_message(

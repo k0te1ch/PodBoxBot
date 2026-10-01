@@ -34,6 +34,10 @@ dialog-engine = { git = "https://github.com/k0te1ch/DialogEngine.git", tag = "v0
 # Shared bot SDK (private repo): Docker builds pass a read token as a
 # BuildKit secret, see app/bot/Dockerfile.
 sagenza-tgbot-sdk = { git = "https://github.com/k0te1ch/sagenza-tgbot-sdk.git", tag = "v0.2.0", extras = ["aiogram", "redis"] }
+# Lemmas of Russian words for the experimental episode transcript hints
+# (keywords, matching the transcript against the topics list). Offline, with
+# its own dictionary; imported only when TRANSCRIBE_ENABLED is on.
+pymorphy3 = "^2.0.6"
 
 
 [tool.poetry.group.testing.dependencies]

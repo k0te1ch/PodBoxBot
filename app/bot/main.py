@@ -22,6 +22,7 @@ from sagenza_tgbot_sdk.notify import NotifyModule
 from sagenza_tgbot_sdk.status import StatusModule
 
 from handlers import ROUTERS, bot_menus
+from handlers.transcript_handler import watch_transcripts
 from middlewares.base.admin_activity_middleware import AdminActivityMiddleware
 from middlewares.base.user_context_middleware import UserContextMiddleware
 from services import init_services, redis
@@ -30,6 +31,7 @@ from services.metrics import bot_metrics
 from services.none_module import _NoneModule
 from services.rss import RssWatcher
 from services.topics.runtime import refresh_list_size, topics_enabled
+from services.transcripts.requests import transcribe_enabled
 from utils.error_reporting import register_error_handler
 from utils.release_notes import get_version, send_release_note
 
@@ -206,6 +208,20 @@ async def report_topics_list_size() -> None:
         logger.warning(f"could not read the topics list size: {e!r}")
 
 
+async def start_transcript_watcher(bot: Bot) -> None:
+    """Ждёт готовые расшифровки выпусков от сервиса transcriber. Нужен Redis:
+    через него идёт очередь."""
+    if not transcribe_enabled():
+        return
+    if isinstance(redis, _NoneModule):
+        logger.warning("TRANSCRIBE_ENABLED is set but Redis is not configured: transcripts disabled")
+        return
+    _transcript_tasks.add(asyncio.create_task(watch_transcripts(bot, redis)))
+
+
+_transcript_tasks: set[asyncio.Task] = set()
+
+
 def _add_middlewares_to_observers(observers: list[TelegramEventObserver], middlewares: list[BaseMiddleware]) -> None:
     for observer in observers:
         for middleware in middlewares:
@@ -256,6 +272,7 @@ def _get_dp_obj(bot, redis):
     dp.startup.register(on_startup)
     dp.startup.register(start_rss_watcher)
     dp.startup.register(report_topics_list_size)
+    dp.startup.register(start_transcript_watcher)
 
     logger.debug("Dispatcher is configured")
     return dp

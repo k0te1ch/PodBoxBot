@@ -92,6 +92,14 @@ class Settings(BaseSettings):
     # и чистить список. Пусто — только в личке бота.
     TOPICS_HOSTS_CHAT: str | None = None
 
+    # Эксперимент: расшифровка выпуска. После загрузки mp3 бот ставит задание
+    # сервису transcriber (отдельный контейнер, профиль transcribe), а по
+    # готовому тексту предлагает админам ключевые слова для хештегов и пункты
+    # списка тем, которые, похоже, обсудили. По умолчанию выключено.
+    # TRANSCRIBE_EPISODES: main — только основной выпуск, all — и послешоу.
+    TRANSCRIBE_ENABLED: bool = False
+    TRANSCRIBE_EPISODES: Literal["main", "all"] = "main"
+
     # DEBUG
     DEBUG: bool = False
 
@@ -224,6 +232,8 @@ TOPICS_MIN_LENGTH = settings.TOPICS_MIN_LENGTH
 TOPICS_MAX_LENGTH = settings.TOPICS_MAX_LENGTH
 TOPICS_FORM_MODE = settings.TOPICS_FORM_MODE
 TOPICS_HOSTS_CHAT = (settings.TOPICS_HOSTS_CHAT or "").strip() or None
+TRANSCRIBE_ENABLED = settings.TRANSCRIBE_ENABLED
+TRANSCRIBE_EPISODES = settings.TRANSCRIBE_EPISODES
 API_ID = settings.TELEGRAM_SERVER_API_ID
 API_HASH = settings.TELEGRAM_SERVER_API_HASH
 

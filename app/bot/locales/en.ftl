@@ -209,3 +209,14 @@ topics_form_cancelled = OK, maybe next time.
 topics_form_expired = The form has expired. Start again: /topic or /question.
 topics_form_open_private = Open the form in private chat
 topics_form_go_private = Could not show the form here. Open it in a private chat with the bot:
+
+## Episode transcript (experimental)
+
+transcript_done = Transcribed episode { $episode }: { $audio } min of audio in { $minutes } min. The text is attached.
+transcript_keywords = Keywords for hashtags: { $hashtags }
+transcript_no_keywords = No keywords found: no word in the episode stands out by frequency.
+transcript_failed = Could not transcribe episode { $episode }: { $reason }
+transcript_discussed = It looks like the episode covered items { $numbers }: they are ticked in the list above. Delete them from the list?
+transcript_remove = Delete ticked
+transcript_keep = Keep
+transcript_kept = OK, nothing is deleted. Here is the list without ticks.

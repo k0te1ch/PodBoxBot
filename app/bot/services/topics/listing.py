@@ -9,6 +9,7 @@
 
 import html
 import re
+from collections.abc import Collection
 from dataclasses import dataclass
 
 from services.i18n import DEFAULT_LOCALE, t
@@ -51,18 +52,24 @@ def item_text(item: Item, locale: str = DEFAULT_LOCALE) -> str:
     return f"{kind_label(item, locale)} - {html.escape(item.text)}"
 
 
-def item_line(number: int, item: Item, locale: str = DEFAULT_LOCALE) -> str:
-    return f"{number}) {item_text(item, locale)}"
+def _numbered(number: int | str, body: str, marked: bool) -> str:
+    """Строка пункта в HTML: обычная или отмеченная к удалению."""
+    return f"{MARK}{number}) <s>{body}</s>" if marked else f"{number}) {body}"
 
 
-def list_pages(items: list[Item], locale: str = DEFAULT_LOCALE) -> list[Page]:
+def item_line(number: int, item: Item, locale: str = DEFAULT_LOCALE, *, marked: bool = False) -> str:
+    return _numbered(number, item_text(item, locale), marked)
+
+
+def list_pages(items: list[Item], locale: str = DEFAULT_LOCALE, marked: Collection[int] = ()) -> list[Page]:
     """Список по сообщениям; заголовок только в первом. Пустой список: одна
-    страница с фразой о том, что он пуст."""
+    страница с фразой о том, что он пуст. Пункты с номерами из *marked*
+    показываются уже отмеченными к удалению."""
     if not items:
         return [Page(t("topics_list_empty", locale), [])]
     pages = [Page(t("topics_list_title", locale), [])]
     for number, item in enumerate(items, start=1):
-        line = item_line(number, item, locale)
+        line = item_line(number, item, locale, marked=number in marked)
         page = pages[-1]
         if page.numbers and (len(page.text) + len(line) + 1 > MAX_PAGE_CHARS or len(page.numbers) >= MAX_PAGE_ITEMS):
             page = Page("", [])
@@ -87,7 +94,7 @@ def mark_lines(shown: str, marked: list[int]) -> str:
             lines.append(html.escape(line))
             continue
         number, body = found.group(1), html.escape(found.group(2))
-        lines.append(f"{MARK}{number}) <s>{body}</s>" if int(number) in marked else f"{number}) {body}")
+        lines.append(_numbered(number, body, int(number) in marked))
     return "\n".join(lines)
 
 

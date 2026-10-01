@@ -10,6 +10,7 @@ from .service_handler import router as service_handler_router
 from .topics_form_handler import router as topics_form_handler_router
 from .topics_handler import router as topics_handler_router
 from .topics_list_handler import router as topics_list_handler_router
+from .transcript_handler import router as transcript_handler_router
 
 # Кнопки меню (админка, FTP/сайт/Boosty, пересылка) роутит модуль menus SDK —
 # он ставится в main._setup_sdk, здесь только команды и диалог загрузки.
@@ -19,6 +20,7 @@ ROUTERS = [
     topics_handler_router,
     topics_list_handler_router,
     topics_form_handler_router,
+    transcript_handler_router,
     podcast_handler_router,
     service_handler_router,
     rss_handler_router,

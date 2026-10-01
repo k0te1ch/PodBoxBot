@@ -43,6 +43,7 @@ from services.metrics import bot_metrics
 from services.none_module import _NoneModule
 from services.redis import redis
 from services.rss import mark_published
+from services.transcripts.requests import request_transcript
 from utils.ftp_methods import EpisodeNumberError, get_last_post_id
 from utils.mp3_methods import audio_tag, read_duration_and_artist
 from utils.podcast_methods import generate_file_name
@@ -277,6 +278,16 @@ async def set_template(msg: Message, state: FSMContext, bot: Bot, language: str,
     await publish_episode(msg, turn, language, username)
 
 
+async def _queue_transcript(file: Path, number: Any, type_episode: str) -> None:
+    """Эксперимент: расшифровка выпуска в фоне. Сбой очереди загрузке не мешает."""
+    if isinstance(redis, _NoneModule):
+        return
+    try:
+        await request_transcript(redis, file, number, type_episode)
+    except Exception as error:
+        logger.warning(f"could not queue the transcript of {file.name}: {error!r}")
+
+
 async def publish_episode(msg: Message, turn: DialogTurn, language: str, username: str) -> None:
     """Теги, переименование и отправка готового MP3 с меню публикации."""
     type_episode: str = turn.answers[TYPE_EPISODE]
@@ -315,6 +326,7 @@ async def publish_episode(msg: Message, turn: DialogTurn, language: str, usernam
 
     await save_template_info(new_file_name, info, type_episode)
     await mark_published(None if isinstance(redis, _NoneModule) else redis, info["number"])
+    await _queue_transcript(file, info["number"], type_episode)
 
     await msg.reply_audio(
         CustomFSInputFile(file, new_file_name, progress_callback=progress_callback),

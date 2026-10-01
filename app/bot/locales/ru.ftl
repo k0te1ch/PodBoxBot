@@ -209,3 +209,14 @@ topics_form_cancelled = Хорошо, в другой раз.
 topics_form_expired = Анкета устарела. Начни заново: /topic или /question.
 topics_form_open_private = Открыть анкету в личке
 topics_form_go_private = Показать анкету здесь не получилось. Открой её в личке бота:
+
+## Episode transcript (experimental)
+
+transcript_done = Расшифровал выпуск { $episode }: { $audio } мин аудио за { $minutes } мин. Текст во вложении.
+transcript_keywords = Ключевые слова для хештегов: { $hashtags }
+transcript_no_keywords = Ключевых слов не нашёл: в выпуске нет слов, которые звучат заметно чаще других.
+transcript_failed = Не удалось расшифровать выпуск { $episode }: { $reason }
+transcript_discussed = Похоже, в выпуске обсудили пункты { $numbers }: в списке выше они отмечены. Удалить из списка?
+transcript_remove = Удалить отмеченные
+transcript_keep = Оставить
+transcript_kept = Хорошо, ничего не удаляю. Вот список без отметок.

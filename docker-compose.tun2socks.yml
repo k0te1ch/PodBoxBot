@@ -395,6 +395,32 @@ services:
       - ./secrets/sponsr:/app/data
       - files:/app/files
 
+  # Эксперимент: расшифровка выпусков (faster-whisper на CPU). По умолчанию не
+  # запускается: поднимается профилем transcribe, а задания бот ставит только
+  # с TRANSCRIBE_ENABLED=true. Одна расшифровка за раз, память и ядра
+  # ограничены, чтобы сервис не задавил остальной стек.
+  transcriber:
+    logging: *default-logging
+    container_name: podboxbot_transcriber
+    build:
+      context: .
+      dockerfile: ./app/transcriber/Dockerfile
+    restart: unless-stopped
+    profiles: ["transcribe"]
+    depends_on:
+      redis:
+        condition: service_healthy
+    mem_limit: ${TRANSCRIBER_MEM_LIMIT:-2500m}
+    cpus: ${TRANSCRIBER_CPUS:-2}
+    environment:
+      WHISPER_MODELS_DIR: /models
+    networks:
+      - podboxbot_network
+    volumes:
+      - .env:/app/.env
+      - files:/app/files
+      - whisper_models:/models
+
   # METRICS AND MONITORING
 
   pushgateway:
@@ -597,6 +623,8 @@ volumes:
   loki_data:
     driver: local
   kafka_data:
+    driver: local
+  whisper_models:
     driver: local
   files:
     driver: local
