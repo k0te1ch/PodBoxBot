@@ -51,6 +51,13 @@ class StepFailedError(Exception):
         self.attempts = attempts
 
 
+def error_class(error: BaseException) -> str:
+    """Класс исключения для метрики; у StepFailedError это исходная ошибка шага."""
+    if isinstance(error, StepFailedError) and error.__cause__ is not None:
+        error = error.__cause__
+    return type(error).__name__
+
+
 class BasePublisher(ABC):
     """Общая обёртка Kafka-loop'а для всех publisher'ов."""
 
@@ -294,13 +301,16 @@ class BasePublisher(ABC):
         logger.info(f"Received {self.name} upload request from {event.username} for {key}")
 
         start = time.time()
+        stage = "auth"
         try:
             await self._ensure_auth()
+            stage = "publish"
             await self.publish(event)
             self.metrics.success({"target": str(key)})
         except Exception as e:
             logger.exception(f"Failed to publish {self.name}/{key}: {e}")
             self.metrics.failure({"target": str(key)})
+            self.metrics.error(getattr(e, "stage", stage), error_class(e))
             try:
                 failure = self.build_failure_event(event, str(e))
                 if isinstance(e, StepFailedError) and "metadata" in type(failure).model_fields:
@@ -310,10 +320,7 @@ class BasePublisher(ABC):
             except Exception as e2:
                 logger.error(f"Failed to emit failure result for {self.name}/{key}: {e2!r}")
         finally:
-            self.metrics.duration(
-                {"target": str(key), "user": event.username},
-                time.time() - start,
-            )
+            self.metrics.duration({"target": str(key)}, time.time() - start)
             await self.metrics.push()
 
     async def run(self) -> None:

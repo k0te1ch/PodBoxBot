@@ -54,4 +54,6 @@ async def upload_Boosty(ctx: MenuContext) -> None:
         logger.error(f"Ошибка валидации BoostyEvent: {e.json()}")
         return await ctx.answer("Ошибка валидации данных", alert=True)
 
-    await publish_request(ctx, BOOSTY_UPLOAD_TOPIC, "boosty_event.avsc", event, status=msg, title="Boosty")
+    await publish_request(
+        ctx, BOOSTY_UPLOAD_TOPIC, "boosty_event.avsc", event, status=msg, title="Boosty", platform="boosty"
+    )

@@ -10,6 +10,7 @@
 """
 
 import os
+import time
 from pathlib import Path
 
 import aiofiles
@@ -22,6 +23,7 @@ from config import COVER_PS_PATH, COVER_RZ_PATH, FILES_PATH, FORWARD_CHAT_USERNA
 from filters.dispatcher_filters import IsAdmin
 from handlers.menus import audio_menu_markup
 from services.i18n import t
+from services.metrics import bot_metrics
 from services.redis import redis
 from services.rss import ACTION_CHAT, ACTION_PREPARE, ACTION_SKIP, Episode, load_episode
 from utils.podcast_methods import generate_file_name
@@ -60,6 +62,7 @@ async def _prepare(callback: CallbackQuery, bot: Bot, episode: Episode, locale: 
         return t("rss_cannot_prepare", locale)
     file_name = generate_file_name(episode.number, episode.type_episode)
     target = FILES_PATH / file_name
+    received_at = time.time()
     try:
         await download_enclosure(episode.enclosure_url, target)
     except Exception as e:
@@ -75,6 +78,8 @@ async def _prepare(callback: CallbackQuery, bot: Bot, episode: Episode, locale: 
         "tags": [],
     }
     await save_template_info(file_name, info, episode.type_episode)
+    size = target.stat().st_size if target.exists() else None
+    await bot_metrics.episode_prepared(episode.number, episode.type_episode, "rss", received_at, size_bytes=size)
     await bot.send_audio(
         callback.message.chat.id,
         FSInputFile(target, file_name),
@@ -95,6 +100,8 @@ async def on_rss_button(callback: CallbackQuery, bot: Bot, language: str, userna
         return
     await callback.answer()
     logger.info(f"[{username}]: rss {action} for episode {episode.number}")
+    if action in (ACTION_CHAT, ACTION_PREPARE, ACTION_SKIP):
+        bot_metrics.admin_action(f"rss_{action}")
 
     if action == ACTION_CHAT:
         result = await _to_chat(bot, episode, language)
