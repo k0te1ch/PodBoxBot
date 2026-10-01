@@ -5,7 +5,7 @@ import json
 import sys
 from collections.abc import Callable
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 import pytz
 from loguru import logger
@@ -79,6 +79,9 @@ class Settings(BaseSettings):
     TOPICS_DAILY_LIMIT: int = 3
     TOPICS_MIN_LENGTH: int = 10
     TOPICS_MAX_LENGTH: int = 500
+    # Анкета «Предложить тему»: ephemeral — в группе, видна только автору
+    # (запасной путь — личка); private — сразу в личке бота; off — без анкеты.
+    TOPICS_FORM_MODE: Literal["ephemeral", "private", "off"] = "ephemeral"
 
     # DEBUG
     DEBUG: bool = False
@@ -201,6 +204,7 @@ TOPICS_HASHTAG = settings.TOPICS_HASHTAG.strip().lstrip("#").lower()
 TOPICS_DAILY_LIMIT = settings.TOPICS_DAILY_LIMIT
 TOPICS_MIN_LENGTH = settings.TOPICS_MIN_LENGTH
 TOPICS_MAX_LENGTH = settings.TOPICS_MAX_LENGTH
+TOPICS_FORM_MODE = settings.TOPICS_FORM_MODE
 API_ID = settings.TELEGRAM_SERVER_API_ID
 API_HASH = settings.TELEGRAM_SERVER_API_HASH
 

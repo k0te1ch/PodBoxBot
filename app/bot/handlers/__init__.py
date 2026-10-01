@@ -7,6 +7,7 @@ from .menus import router as menus_router
 from .podcast_handler import router as podcast_handler_router
 from .rss_handler import router as rss_handler_router
 from .service_handler import router as service_handler_router
+from .topics_form_handler import router as topics_form_handler_router
 from .topics_handler import router as topics_handler_router
 
 # Кнопки меню (админка, FTP/сайт/Boosty, пересылка) роутит модуль menus SDK —
@@ -15,6 +16,7 @@ ROUTERS = [
     menus_router,
     collector_handler_router,
     topics_handler_router,
+    topics_form_handler_router,
     podcast_handler_router,
     service_handler_router,
     rss_handler_router,

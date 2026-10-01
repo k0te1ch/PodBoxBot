@@ -6,7 +6,7 @@
 
 from typing import Any
 
-from aiogram.types import Chat, Message
+from aiogram.types import Chat, Message, User
 
 import config as bot_config
 from services import redis
@@ -53,12 +53,15 @@ def message_link(chat: Chat, message_id: int) -> str | None:
     return None
 
 
-def author_of(message: Message) -> Author:
-    """Автор сообщения; от имени канала или анонимного админа — без id."""
-    user = message.from_user
-    if message.sender_chat is not None or user is None:
-        title = message.sender_chat.title if message.sender_chat else message.chat.title
-        return Author(name=title or "?")
+def author_from_user(user: User) -> Author:
     name = f"@{user.username}" if user.username else user.full_name
     language = user.language_code if user.language_code in bot_config.LANGUAGES else "ru"
     return Author(name=name, user_id=user.id, language=language)
+
+
+def author_of(message: Message) -> Author:
+    """Автор сообщения; от имени канала или анонимного админа — без id."""
+    if message.sender_chat is not None or message.from_user is None:
+        title = message.sender_chat.title if message.sender_chat else message.chat.title
+        return Author(name=title or "?")
+    return author_from_user(message.from_user)

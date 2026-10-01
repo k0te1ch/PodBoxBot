@@ -34,6 +34,7 @@ from handlers.collector_handler import collection_submenus
 from handlers.ftp_handler import upload_FTP
 from handlers.paywalled_handler import PATREON, SPONSR, VK, Platform, upload_to
 from handlers.service_handler import open_from_menu as open_service_message
+from handlers.topics_form_handler import form_enabled, post_suggest_button
 from handlers.topics_handler import topics_submenu
 from handlers.wordpress_handler import upload_WP
 from services.i18n import DEFAULT_LOCALE, translator
@@ -131,7 +132,18 @@ def build_menus() -> BotMenus:
             Submenu("admin_bot", bot_menu, id="bot", visible_if=is_admin),
             Button("admin_service", id="service", handler=open_service_message, visible_if=is_admin),
             *collection_submenus(is_admin),
-            topics_submenu(is_admin),
+            topics_submenu(
+                is_admin,
+                extra_items=(
+                    Button(
+                        "topics_post_button",
+                        id="post_button",
+                        handler=post_suggest_button,
+                        confirm=True,
+                        visible_if=form_enabled,
+                    ),
+                ),
+            ),
         ],
     )
     audio_main = Menu(
