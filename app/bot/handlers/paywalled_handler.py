@@ -73,7 +73,7 @@ def upload_to(platform: Platform):
             log.error(f"Ошибка валидации {platform.event_cls.__name__}: {e.json()}")
             return await ctx.answer("Ошибка валидации данных", alert=True)
 
-        await publish_request(ctx, platform.topic, platform.schema, event)
+        await publish_request(ctx, platform.topic, platform.schema, event, platform=platform.key)
 
     upload.__name__ = f"upload_{platform.key}"
     return upload

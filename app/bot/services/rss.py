@@ -32,6 +32,7 @@ from loguru import logger
 from redis.asyncio import Redis
 
 from services.i18n import t
+from services.metrics import bot_metrics
 
 SEEN_KEY = "rss:seen"
 INITIALIZED_KEY = "rss:initialized"
@@ -216,10 +217,13 @@ class RssWatcher:
             # Чужие шоу из общей ленты (Outcast и т.п.) админам не показываем.
             if episode.type_episode is None:
                 logger.info(f"rss: {episode.title!r} is not a PodBox episode, skipping")
+                bot_metrics.rss_episode(None, "other_show")
                 continue
             if episode.number in published:
                 logger.info(f"rss: episode {episode.number} was published by the bot, skipping")
+                bot_metrics.rss_episode(episode.type_episode, "bot")
                 continue
+            bot_metrics.rss_episode(episode.type_episode, "feed")
             fresh.append(episode)
         return fresh
 
@@ -238,8 +242,10 @@ class RssWatcher:
     async def poll_once(self) -> list[Episode]:
         body = await self.fetch()
         if body is None:
+            bot_metrics.rss_polled("not_modified", 0)
             return []
         fresh = await self.process(parse_feed(body))
+        bot_metrics.rss_polled("ok", 0)
         for episode in fresh:
             logger.info(f"rss: new episode {episode.number}: {episode.title}")
             await self.notify(episode)
@@ -252,6 +258,7 @@ class RssWatcher:
         except Exception as e:
             self.failures += 1
             logger.warning(f"rss: poll #{self.failures} failed: {e!r}")
+            bot_metrics.rss_polled("error", self.failures)
             if self.failures == self.failure_alert:
                 await self._alert(t("rss_feed_down", self.locale, count=self.failures, url=self.feed_url))
             return

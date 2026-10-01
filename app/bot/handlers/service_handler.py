@@ -19,6 +19,7 @@ from config import FORWARD_CHAT_USERNAME
 from filters.dispatcher_filters import IsAdmin, IsPrivate
 from forms.service_message import DIALOG_ID, TEXT, service_message_runner
 from services.i18n import t
+from services.metrics import bot_metrics
 
 runner = service_message_runner
 storage = runner.storage
@@ -46,6 +47,7 @@ async def send_to_chat(bot: Bot, text: str, language: str) -> str:
         logger.error(f"service message to {FORWARD_CHAT_USERNAME} failed: {e!r}")
         return t("service_failed", language)
     logger.info(f"service message sent to {FORWARD_CHAT_USERNAME}")
+    bot_metrics.admin_action("service_message")
     return t("service_sent", language, chat=FORWARD_CHAT_USERNAME)
 
 

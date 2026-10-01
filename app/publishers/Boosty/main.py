@@ -76,7 +76,12 @@ class BoostyPublisher(BasePublisher):
         self.client = BoostyClient(BOOSTY_BLOG or "", BOOSTY_AUTH_FILE)
 
     async def _ensure_auth(self) -> None:  # type: ignore[override]
-        await self.client.ensure_auth()
+        try:
+            await self.client.ensure_auth()
+        except Exception:
+            self.metrics.session(ok=False, expires_at=self.client.expires_at)
+            raise
+        self.metrics.session(ok=True, expires_at=self.client.expires_at)
 
     async def publish(self, event: BoostyEvent) -> None:  # type: ignore[override]
         if not event.path:
@@ -199,13 +204,28 @@ class BoostyPublisher(BasePublisher):
 
     async def _refresh_loop(self) -> None:
         """Ежечасно прогревает сессию: либа рефрешит токен только по 401,
-        а долгие простои между публикациями могут пережить истечение."""
+        а долгие простои между публикациями могут пережить истечение.
+
+        Первая проверка сразу при старте (без принудительного refresh), чтобы
+        срок жизни токена был виден в метриках до первой публикации.
+        """
+        await self._check_session()
         while True:
             await asyncio.sleep(_REFRESH_INTERVAL)
             try:
                 await self.client.refresh()
+                self.metrics.session(ok=True, expires_at=self.client.expires_at)
             except Exception as e:
                 logger.warning(f"Boosty hourly token refresh failed: {e!r}")
+                self.metrics.session(ok=False, expires_at=self.client.expires_at)
+            await self.metrics.push()
+
+    async def _check_session(self) -> None:
+        try:
+            await self._ensure_auth()
+        except Exception as e:
+            logger.warning(f"Boosty session check at startup failed: {e!r}")
+        await self.metrics.push()
 
     async def run(self) -> None:  # type: ignore[override]
         """Consumer-цикл + фоновый прогрев сессии.
