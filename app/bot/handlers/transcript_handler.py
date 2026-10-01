@@ -69,6 +69,13 @@ def summary_text(result: Result, keywords: list[str], locale: str = DEFAULT_LOCA
     return "\n".join(lines)
 
 
+def reason_text(code: str, locale: str = DEFAULT_LOCALE) -> str:
+    """Причина сбоя словами; незнакомая причина показывается как есть."""
+    key = f"transcript_reason_{code}"
+    text = t(key, locale)
+    return code if text == key else text
+
+
 async def discussed_item_ids(transcript: list[Lemma]) -> list[int]:
     """Пункты списка тем и вопросов, которые похожи на обсуждённые в выпуске."""
     if not topics_enabled():
@@ -108,7 +115,7 @@ async def report(bot: Bot, result: Result) -> bool:
     if result.error is not None or not result.text.strip():
         bot_metrics.event("transcript", result="failed" if result.error else "empty")
         if result.error is not None:
-            text = t("transcript_failed", locale, episode=_episode(result), reason=result.error)
+            text = t("transcript_failed", locale, episode=_episode(result), reason=reason_text(result.error, locale))
         else:
             # Пустой файл Telegram не примет: говорим словами.
             text = t("transcript_empty", locale, episode=_episode(result))

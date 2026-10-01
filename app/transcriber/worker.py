@@ -161,7 +161,8 @@ async def handle(redis: Any, raw: str | bytes, transcribe: Transcribe, files_dir
             raise
         except Exception as error:
             logger.exception(f"transcribe {job.id}: failed: {error!r}")
-            result = Result(job, error=type(error).__name__, seconds=time.monotonic() - started)
+            code = getattr(error, "code", type(error).__name__)
+            result = Result(job, error=str(code), seconds=time.monotonic() - started)
         else:
             seconds = time.monotonic() - started
             logger.info(f"transcribe {job.id}: {transcript.audio_seconds:.0f}s of audio in {seconds:.0f}s")

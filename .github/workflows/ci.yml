@@ -294,7 +294,7 @@ jobs:
         env:
           PYTHONPATH: ${{ github.workspace }}/app
         run: |
-          python -c "import main, bench, faster_whisper"
+          python -c "import main, bench, transcribe_one, faster_whisper"
           # Decoding goes through PyAV, whose API faster-whisper depends on:
           # a second of silence is enough to catch an incompatible pair.
           python - <<'PY'

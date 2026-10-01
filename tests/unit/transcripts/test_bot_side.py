@@ -195,6 +195,16 @@ async def test_failed_transcription_is_reported_to_admins(redis, bot):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("code", ["out_of_memory", "timeout", "interrupted", "missing_file", "expired", "failed"])
+async def test_known_failures_are_explained_in_words(redis, bot, code):
+    await th.report(bot, _result("", error=code))
+
+    [text] = _texts(bot)
+    assert code not in text
+    assert text == t("transcript_failed", episode="767", reason=t(f"transcript_reason_{code}"))
+
+
+@pytest.mark.asyncio
 async def test_unreachable_admin_does_not_stop_the_others(redis, bot, monkeypatch):
     monkeypatch.setattr(config, "ADMINS_ID", [5, ADMIN_ID])
     blocked = TelegramForbiddenError(method=SendMessage(chat_id=5, text="x"), message="bot was blocked by the user")

@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 from app.transcriber import worker
+from app.transcriber.child import OutOfMemoryError
 from app.transcriber.worker import Transcript, handle, requeue_unfinished
 from fakeredis import FakeAsyncRedis
 from redis.exceptions import ConnectionError as RedisConnectionError
@@ -122,6 +123,20 @@ async def test_failed_transcription_is_reported_not_raised(redis, files):
     assert (result.error, result.text) == ("MemoryError", "")
     assert await redis.llen(PROCESSING) == 0
     assert not audio.exists()
+
+
+@pytest.mark.asyncio
+async def test_known_failure_is_reported_by_its_code(redis, files):
+    job = _job()
+    _audio(files, job)
+    raw = await _taken(redis, job)
+
+    def killed(_path: Path) -> Transcript:
+        raise OutOfMemoryError("the transcription process was killed")
+
+    await handle(redis, raw, killed, files)
+
+    assert (await _result(redis, job)).error == "out_of_memory"
 
 
 @pytest.mark.asyncio

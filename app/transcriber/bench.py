@@ -14,7 +14,8 @@ import sys
 import time
 from pathlib import Path
 
-from main import Settings, transcriber
+from settings import Settings
+from transcribe_one import transcribe
 
 
 def peak_memory_mb() -> int | None:
@@ -30,18 +31,18 @@ def peak_memory_mb() -> int | None:
 def measure(path: Path) -> dict[str, object]:
     settings = Settings()
     started = time.perf_counter()
-    transcript = transcriber(settings)(path)
+    transcript = transcribe(settings, path)
     seconds = time.perf_counter() - started
     return {
         "model": settings.WHISPER_MODEL,
         "compute_type": settings.WHISPER_COMPUTE_TYPE,
         "cpu_threads": settings.WHISPER_CPU_THREADS,
         "beam_size": settings.WHISPER_BEAM_SIZE,
-        "audio_seconds": round(transcript.audio_seconds),
+        "audio_seconds": round(transcript["audio_seconds"]),
         "seconds": round(seconds),
-        "speed_x_realtime": round(transcript.audio_seconds / seconds, 2),
+        "speed_x_realtime": round(transcript["audio_seconds"] / seconds, 2),
         "peak_memory_mb": peak_memory_mb(),
-        "words": len(transcript.text.split()),
+        "words": len(transcript["text"].split()),
     }
 
 
