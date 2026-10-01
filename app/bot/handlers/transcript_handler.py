@@ -35,10 +35,11 @@ from services.transcripts.keywords import as_hashtags, suggest_keywords
 from services.transcripts.lemmas import Lemma, lemmatize
 from services.transcripts.matching import match_items
 from services.transcripts.requests import transcribe_enabled
-from shared.transcribe import DONE, Result, result_key
+from shared.transcribe import DELIVERY_TRIES, DONE, REPORTING, RESULT_TTL_SECONDS, Result, result_key
 
 POLL_SECONDS = 30
-RETRY_SECONDS = 15
+RETRY_SECONDS = 60
+MAX_DELIVERY_ATTEMPTS = 5
 KEEP = "k"
 
 
@@ -101,14 +102,17 @@ async def _suggest_removal(bot: Bot, chat_id: int, item_ids: list[int], locale: 
     )
 
 
-async def report(bot: Bot, result: Result) -> None:
-    """Рассказать админам об итоге расшифровки."""
+async def report(bot: Bot, result: Result) -> bool:
+    """Рассказать админам об итоге расшифровки; ``False``, если не дошло ни до кого."""
     locale = DEFAULT_LOCALE
-    if result.error is not None:
-        bot_metrics.event("transcript", result="failed")
-        text = t("transcript_failed", locale, episode=_episode(result), reason=result.error)
-        await _to_admins(bot, lambda chat_id: bot.send_message(chat_id=chat_id, text=text))
-        return
+    if result.error is not None or not result.text.strip():
+        bot_metrics.event("transcript", result="failed" if result.error else "empty")
+        if result.error is not None:
+            text = t("transcript_failed", locale, episode=_episode(result), reason=result.error)
+        else:
+            # Пустой файл Telegram не примет: говорим словами.
+            text = t("transcript_empty", locale, episode=_episode(result))
+        return await _to_admins(bot, lambda chat_id: bot.send_message(chat_id=chat_id, text=text))
     bot_metrics.event("transcript", result="done")
     transcript = await asyncio.to_thread(lemmatize, result.text)
     summary = summary_text(result, suggest_keywords(transcript), locale)
@@ -120,39 +124,80 @@ async def report(bot: Bot, result: Result) -> None:
         if item_ids:
             await _suggest_removal(bot, chat_id, item_ids, locale)
 
-    await _to_admins(bot, tell)
+    return await _to_admins(bot, tell)
 
 
-async def _to_admins(bot: Bot, send: Any) -> None:
-    if not bot_config.ADMINS_ID:
-        logger.warning("transcript: ADMINS_ID is empty, nobody to tell about the result")
+async def _to_admins(bot: Bot, send: Any) -> bool:
+    """Отправить каждому админу; ``True``, если дошло хотя бы до одного."""
+    delivered = False
     for chat_id in bot_config.ADMINS_ID:
+        if chat_id <= 0:
+            continue
         try:
             await send(chat_id)
+            delivered = True
         except TelegramAPIError as error:
-            logger.warning(f"transcript: admin {chat_id} is not reachable: {error!r}")
+            logger.warning(f"transcript: could not tell admin {chat_id}: {error!r}")
+    return delivered
 
 
-async def handle_done(bot: Bot, redis: Any, job_id: str) -> None:
+async def handle_done(bot: Bot, redis: Any, job_id: str) -> bool:
+    """Отчитаться по готовому заданию; ``False``, если стоит попробовать ещё раз."""
     raw = await redis.get(result_key(job_id))
     if not raw:
         logger.warning(f"transcribe {job_id}: the result is gone")
-        return
-    await report(bot, Result.from_json(raw))
+        return True
+    return await report(bot, Result.from_json(raw))
+
+
+async def _settle(bot: Bot, redis: Any, job_id: str) -> None:
+    """Одно готовое задание из ``transcribe:reporting``: отчитаться и убрать его
+    оттуда. Если не дошло ни до кого (сеть, лимиты Telegram), задание
+    возвращается в хвост очереди готовых, но не больше
+    :data:`MAX_DELIVERY_ATTEMPTS` раз."""
+    try:
+        delivered = await handle_done(bot, redis, job_id)
+    except asyncio.CancelledError:
+        raise
+    except Exception as error:
+        logger.exception(f"transcribe {job_id}: could not report the result: {error!r}")
+        delivered = False
+    tries_key = f"{DELIVERY_TRIES}:{job_id}"
+    if delivered:
+        await redis.delete(tries_key)
+    elif await redis.incr(tries_key) < MAX_DELIVERY_ATTEMPTS:
+        await redis.expire(tries_key, RESULT_TTL_SECONDS)
+        await asyncio.sleep(RETRY_SECONDS)
+        await redis.rpush(DONE, job_id)
+    else:
+        logger.error(f"transcribe {job_id}: nobody got the result after {MAX_DELIVERY_ATTEMPTS} attempts")
+        await redis.delete(tries_key)
+    await redis.lrem(REPORTING, 1, job_id)
 
 
 async def watch_transcripts(bot: Bot, redis: Any, *, poll_seconds: int = POLL_SECONDS) -> None:
-    """Фоновая задача бота: ждать готовые расшифровки и рассказывать о них."""
+    """Фоновая задача бота: ждать готовые расшифровки и рассказывать о них.
+
+    Готовое задание переносится в ``transcribe:reporting`` и уходит оттуда
+    после отчёта. Если бот упал посреди отчёта, при старте оно вернётся в
+    очередь готовых: итог расшифровки, на которую ушёл час, не теряется.
+    """
     logger.info("transcripts: waiting for results")
+    recovered = False
     while True:
         try:
-            popped = await redis.blpop(DONE, timeout=poll_seconds)
-            if popped is not None:
-                await handle_done(bot, redis, popped[1])
+            if not recovered:
+                while await redis.lmove(REPORTING, DONE, "RIGHT", "LEFT") is not None:
+                    pass
+                recovered = True
+            job_id = await redis.blmove(DONE, REPORTING, poll_seconds, "LEFT", "RIGHT")
+            if job_id is not None:
+                await _settle(bot, redis, job_id)
         except asyncio.CancelledError:
             raise
         except Exception as error:
-            logger.exception(f"transcripts: could not handle a result: {error!r}")
+            logger.exception(f"transcripts: the result queue is not available: {error!r}")
+            recovered = False
             await asyncio.sleep(RETRY_SECONDS)
 
 

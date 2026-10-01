@@ -7,6 +7,9 @@ authors = ["k0te1ch <khvostov40@gmail.com>"]
 [tool.poetry.dependencies]
 python = ">=3.12,<3.14"
 faster-whisper = "^1.2.1"
+# faster-whisper allows any tokenizers below 1.0, and the resolver then picks
+# 0.13, which has no wheel for Python 3.12 and needs a Rust toolchain.
+tokenizers = ">=0.20,<1"
 redis = "^4.6.0"
 loguru = "^0.7.3"
 pydantic-settings = "^2.9.1"

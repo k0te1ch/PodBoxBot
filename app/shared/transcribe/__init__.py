@@ -7,7 +7,11 @@
 * ``transcribe:processing`` (список): задание, которое сервис взял в работу.
   Он там один, поэтому и задание одно: расшифровка идёт по одной за раз;
 * ``transcribe:result:<id>`` (строка, живёт две недели): итог, текст или ошибка;
-* ``transcribe:done`` (список): id готовых заданий, их забирает бот.
+* ``transcribe:done`` (список): id готовых заданий, их забирает бот;
+* ``transcribe:reporting`` (список): готовое задание, о котором бот сейчас
+  рассказывает админам. После отчёта оно уходит, после падения бота
+  возвращается в ``done``;
+* ``transcribe:tries:<id>`` (счётчик): сколько раз отчёт не дошёл ни до кого.
 
 Сам mp3 лежит в общем каталоге ``files``, в подкаталоге :data:`INBOX_DIR`,
 под именем задания: бот кладёт его туда, сервис удаляет после работы.
@@ -21,7 +25,12 @@ from dataclasses import asdict, dataclass, field
 JOBS = "transcribe:jobs"
 PROCESSING = "transcribe:processing"
 DONE = "transcribe:done"
+REPORTING = "transcribe:reporting"
+DELIVERY_TRIES = "transcribe:tries"
 INBOX_DIR = "transcribe"
+# Больше заданий бот в очередь не кладёт: если сервис не запущен, выпуски не
+# должны копиться на диске без конца.
+MAX_QUEUED = 5
 RESULT_TTL_SECONDS = 14 * 24 * 3600
 
 
@@ -45,7 +54,12 @@ class Job:
 
     @classmethod
     def from_json(cls, raw: str | bytes) -> "Job":
-        return cls(**json.loads(raw))
+        """Задание из Redis. Незнакомые поля пропускаются: бот и сервис
+        обновляются не одновременно."""
+        data = json.loads(raw)
+        if not isinstance(data, dict):
+            raise ValueError("a job must be a JSON object")
+        return cls(**{name: data[name] for name in cls.__dataclass_fields__ if name in data})
 
 
 @dataclass
@@ -64,4 +78,5 @@ class Result:
     @classmethod
     def from_json(cls, raw: str | bytes) -> "Result":
         data = json.loads(raw)
-        return cls(**{**data, "job": Job(**data["job"])})
+        known = {name: data[name] for name in cls.__dataclass_fields__ if name in data}
+        return cls(**{**known, "job": Job.from_json(json.dumps(data["job"]))})

@@ -15,10 +15,16 @@ docker-compose) и по умолчанию не стартует. Бот кла�
 
 Модель загружается на время задания и выгружается после: между выпусками
 сервис памяти почти не занимает.
+
+``docker stop`` посреди расшифровки задание не теряет и не штрафует: по
+SIGTERM оно возвращается в очередь и начнётся заново при следующем запуске.
 """
 
 import asyncio
+import contextlib
 import gc
+import os
+import signal
 from pathlib import Path
 from urllib.parse import quote
 
@@ -91,8 +97,22 @@ async def main() -> None:
         f"transcriber: model {settings.WHISPER_MODEL} ({settings.WHISPER_COMPUTE_TYPE}), "
         f"{settings.WHISPER_CPU_THREADS} threads, beam {settings.WHISPER_BEAM_SIZE}"
     )
-    await run(redis, transcriber(settings), Path(settings.FILES_PATH))
+    service = asyncio.ensure_future(run(redis, transcriber(settings), Path(settings.FILES_PATH)))
+    loop = asyncio.get_running_loop()
+    for stop in (signal.SIGTERM, signal.SIGINT):
+        try:
+            loop.add_signal_handler(stop, service.cancel)
+        except NotImplementedError:
+            # Windows: сигналы в цикл не заводятся, штатная остановка там не нужна.
+            break
+    # Отмена здесь и есть штатная остановка: задание уже вернулось в очередь.
+    with contextlib.suppress(asyncio.CancelledError):
+        await service
+    logger.info("transcriber has stopped")
 
 
 if __name__ == "__main__":
     asyncio.run(main())
+    # Поток с расшифровкой прервать нельзя: задание уже вернулось в очередь,
+    # ждать его конца незачем.
+    os._exit(0)

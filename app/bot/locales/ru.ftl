@@ -216,6 +216,7 @@ transcript_done = Расшифровал выпуск { $episode }: { $audio } �
 transcript_keywords = Ключевые слова для хештегов: { $hashtags }
 transcript_no_keywords = Ключевых слов не нашёл: в выпуске нет слов, которые звучат заметно чаще других.
 transcript_failed = Не удалось расшифровать выпуск { $episode }: { $reason }
+transcript_empty = В выпуске { $episode } не удалось разобрать ни слова: расшифровка пустая.
 transcript_discussed = Похоже, в выпуске обсудили пункты { $numbers }: в списке выше они отмечены. Удалить из списка?
 transcript_remove = Удалить отмеченные
 transcript_keep = Оставить

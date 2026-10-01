@@ -31,7 +31,7 @@ from services.metrics import bot_metrics
 from services.none_module import _NoneModule
 from services.rss import RssWatcher
 from services.topics.runtime import refresh_list_size, topics_enabled
-from services.transcripts.requests import transcribe_enabled
+from services.transcripts.requests import has_recipients, transcribe_enabled
 from utils.error_reporting import register_error_handler
 from utils.release_notes import get_version, send_release_note
 
@@ -216,6 +216,8 @@ async def start_transcript_watcher(bot: Bot) -> None:
     if isinstance(redis, _NoneModule):
         logger.warning("TRANSCRIBE_ENABLED is set but Redis is not configured: transcripts disabled")
         return
+    if not has_recipients():
+        logger.warning("TRANSCRIBE_ENABLED is set but ADMINS_ID has no real id: episodes will not be queued")
     _transcript_tasks.add(asyncio.create_task(watch_transcripts(bot, redis)))
 
 

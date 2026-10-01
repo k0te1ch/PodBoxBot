@@ -129,3 +129,30 @@ def test_names_and_places_rank_higher_at_equal_counts():
 def test_hashtags_are_built_from_keywords():
     assert as_hashtags(["отпуск", "санкт-петербург"]) == "#отпуск #санкт_петербург"
     assert as_hashtags([]) == ""
+
+
+def test_latin_names_are_matched_and_suggested():
+    transcript = lemmatize(
+        "Сегодня про ChatGPT. Я спросил у ChatGPT рецепт супа, и ChatGPT ответил. "
+        "А потом ChatGPT написал мне скрипт на Python."
+    )
+
+    assert _ids(match_items(transcript, [(1, "Что думаете про ChatGPT и Python?")])) == [1]
+    assert suggest_keywords(transcript) == ["chatgpt"]
+
+
+def test_dense_transcript_is_matched_in_one_pass():
+    """Слово пункта звучит тысячи раз: окно не пересчитывается заново на каждом упоминании."""
+    transcript = lemmatize("небо голубой отпуск " * 20_000)
+    items = [(index, "Почему небо голубое?") for index in range(50)]
+
+    assert len(match_items(transcript, items)) == 50
+
+
+def test_best_window_counts_each_word_once():
+    transcript = lemmatize("небо небо небо небо и больше ничего про цвет")
+
+    [match] = match_items(transcript, [(1, "Небо")])
+
+    assert (match.score, match.words) == (1.0, ("небо",))
+    assert match_items(transcript, [(1, "Почему небо голубое и высокое")]) == []

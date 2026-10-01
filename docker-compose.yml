@@ -385,6 +385,9 @@ services:
       redis:
         condition: service_healthy
     mem_limit: ${TRANSCRIBER_MEM_LIMIT:-2500m}
+    # Без своппинга: расшифровка, которой не хватило памяти, должна
+    # упасть, а не затормозить всю машину.
+    memswap_limit: ${TRANSCRIBER_MEM_LIMIT:-2500m}
     cpus: ${TRANSCRIBER_CPUS:-2}
     environment:
       WHISPER_MODELS_DIR: /models

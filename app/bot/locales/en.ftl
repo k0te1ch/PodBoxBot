@@ -216,6 +216,7 @@ transcript_done = Transcribed episode { $episode }: { $audio } min of audio in {
 transcript_keywords = Keywords for hashtags: { $hashtags }
 transcript_no_keywords = No keywords found: no word in the episode stands out by frequency.
 transcript_failed = Could not transcribe episode { $episode }: { $reason }
+transcript_empty = Not a single word could be made out in episode { $episode }: the transcript is empty.
 transcript_discussed = It looks like the episode covered items { $numbers }: they are ticked in the list above. Delete them from the list?
 transcript_remove = Delete ticked
 transcript_keep = Keep

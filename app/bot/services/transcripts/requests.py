@@ -5,6 +5,10 @@
 дожил бы до расшифровки: каталог ``files`` чистится при следующей загрузке
 выпуска, а очередь на слабой машине может идти час. Копию после работы
 удаляет сервис.
+
+Сервис может быть не запущен (он поднимается отдельным профилем compose).
+Чтобы выпуски при этом не копились на диске, очередь ограничена: сверх
+:data:`shared.transcribe.MAX_QUEUED` заданий бот новые не кладёт.
 """
 
 import asyncio
@@ -16,16 +20,21 @@ from typing import Any
 from loguru import logger
 
 import config as bot_config
-from shared.transcribe import INBOX_DIR, JOBS, Job
+from shared.transcribe import INBOX_DIR, JOBS, MAX_QUEUED, Job
 
 
 def transcribe_enabled(*_args: Any) -> bool:
     return bool(bot_config.TRANSCRIBE_ENABLED)
 
 
+def has_recipients() -> bool:
+    """Есть ли кому отправить итог: в ``ADMINS_ID`` должен быть настоящий id."""
+    return any(admin_id > 0 for admin_id in bot_config.ADMINS_ID)
+
+
 def wanted(type_episode: str | None) -> bool:
     """Нужна ли расшифровка выпуску этого типа."""
-    if not transcribe_enabled():
+    if not transcribe_enabled() or not has_recipients():
         return False
     return bot_config.TRANSCRIBE_EPISODES == "all" or type_episode == "main"
 
@@ -43,9 +52,18 @@ async def request_transcript(redis: Any, file: Path, number: Any, type_episode: 
     """Поставить mp3 в очередь расшифровки; ``None``, если она не нужна."""
     if not wanted(type_episode):
         return None
+    if await redis.llen(JOBS) >= MAX_QUEUED:
+        logger.warning(f"transcribe: {MAX_QUEUED} jobs are waiting, is the transcriber running? {file.name} skipped")
+        return None
     job = Job(file="", number=str(number) if number not in (None, "") else None, type_episode=type_episode)
     job.file = f"{job.id}{file.suffix or '.mp3'}"
-    await asyncio.to_thread(_place, file, file.parent / INBOX_DIR / job.file)
-    await redis.rpush(JOBS, job.to_json())
+    copy = file.parent / INBOX_DIR / job.file
+    await asyncio.to_thread(_place, file, copy)
+    try:
+        await redis.rpush(JOBS, job.to_json())
+    except Exception:
+        # Задания нет: копию некому будет удалить.
+        copy.unlink(missing_ok=True)
+        raise
     logger.info(f"transcribe {job.id}: {file.name} is queued")
     return job

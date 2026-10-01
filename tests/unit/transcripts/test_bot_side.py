@@ -14,12 +14,13 @@ from fakeredis import FakeAsyncRedis
 
 import config
 import main
+from handlers import topics_list_handler as lh
 from handlers import transcript_handler as th
 from handlers.topics_list_view import MARKED_PREFIX, REMOVE, ListCallback
 from services.i18n import t
 from services.topics import Author, Item, Kind, Source, runtime
 from services.transcripts.requests import request_transcript, wanted
-from shared.transcribe import DONE, INBOX_DIR, JOBS, Job, Result, result_key
+from shared.transcribe import DONE, INBOX_DIR, JOBS, MAX_QUEUED, REPORTING, Job, Result, result_key
 
 FIXTURES = Path(__file__).parent / "fixtures"
 ADMIN_ID = 1
@@ -64,8 +65,13 @@ async def _add(text: str, kind: Kind = Kind.TOPIC) -> Item:
     return await runtime.topic_list().repository.add(item, check_limits=False)
 
 
+@pytest.fixture(autouse=True)
+def no_pauses(monkeypatch):
+    monkeypatch.setattr(th, "RETRY_SECONDS", 0)
+
+
 def _result(text: str = EPISODE, **kwargs) -> Result:
-    job = Job(file="abc.mp3", number="767", type_episode="main")
+    job = Job(file="0123456789ab.mp3", number="767", type_episode="main")
     return Result(job, text=text, audio_seconds=3720.0, seconds=2880.0, model="small", **kwargs)
 
 
@@ -269,3 +275,133 @@ async def test_watcher_starts_only_when_enabled(redis, monkeypatch):
     monkeypatch.setattr(config, "TRANSCRIBE_ENABLED", True)
     await main.start_transcript_watcher(MagicMock())
     started.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_failed_queue_push_leaves_no_copy_behind(tmp_path):
+    mp3 = tmp_path / "0767_rz_01102026.mp3"
+    mp3.write_bytes(b"audio")
+    broken = MagicMock()
+    broken.llen = AsyncMock(return_value=0)
+    broken.rpush = AsyncMock(side_effect=ConnectionError("redis is down"))
+
+    with pytest.raises(ConnectionError):
+        await request_transcript(broken, mp3, 767, "main")
+
+    assert list((tmp_path / INBOX_DIR).iterdir()) == []
+
+
+@pytest.mark.asyncio
+async def test_queue_does_not_grow_when_the_service_is_not_running(redis, tmp_path):
+    mp3 = tmp_path / "0767_rz_01102026.mp3"
+    mp3.write_bytes(b"audio")
+    for _ in range(MAX_QUEUED):
+        assert await request_transcript(redis, mp3, 767, "main") is not None
+
+    assert await request_transcript(redis, mp3, 768, "main") is None
+    assert await redis.llen(JOBS) == MAX_QUEUED
+    assert len(list((tmp_path / INBOX_DIR).iterdir())) == MAX_QUEUED
+
+
+@pytest.mark.parametrize("admins", [[], [0]])
+def test_nothing_is_queued_when_there_is_nobody_to_tell(monkeypatch, admins):
+    monkeypatch.setattr(config, "ADMINS_ID", admins)
+
+    assert not wanted("main")
+
+
+@pytest.mark.asyncio
+async def test_empty_transcript_is_said_in_words(redis, bot):
+    assert await th.report(bot, _result("  "))
+
+    assert _texts(bot) == [t("transcript_empty", episode="767")]
+    bot.send_document.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_delete_button_under_the_question_removes_the_ticked_items(redis, bot):
+    await _add("Почему небо голубое?", Kind.QUESTION)
+    birds = await _add("Почему птицы летают?", Kind.QUESTION)
+    await _add("Как съездили в отпуск")
+    await th.report(bot, _result())
+    remove = bot.send_message.await_args_list[-1].kwargs["reply_markup"].inline_keyboard[0][0]
+    bot.send_message.reset_mock()
+    question = MagicMock(spec=Message)
+    question.chat = MagicMock()
+    question.chat.id = ADMIN_ID
+    question.chat.type = ChatType.PRIVATE
+    press = MagicMock(spec=CallbackQuery)
+    press.bot = bot
+    press.message = question
+    press.from_user = MagicMock()
+    press.from_user.id = ADMIN_ID
+    press.from_user.username = "admin"
+    press.from_user.language_code = "ru"
+    press.answer = AsyncMock()
+
+    assert lh._hosts_place(press)
+    await lh.on_list_button(press, ListCallback.unpack(remove.callback_data), MagicMock(), bot)
+
+    removed, rest = _texts(bot)
+    assert "1) ВОПРОС - Почему небо голубое?" in removed and "3) ТЕМА - Как съездили в отпуск" in removed
+    assert rest == "Список тем и вопросов:\n1) ВОПРОС - Почему птицы летают?"
+    assert [item.id for item in await runtime.topic_list().repository.items()] == [birds.id]
+
+
+@pytest.mark.asyncio
+async def test_undelivered_result_is_retried_and_then_given_up(redis, bot, monkeypatch):
+    result = _result("", error="MemoryError")
+    await redis.set(result_key(result.job.id), result.to_json())
+    await redis.rpush(REPORTING, result.job.id)
+    down = TelegramForbiddenError(method=SendMessage(chat_id=1, text="x"), message="bot was blocked by the user")
+    bot.send_message.side_effect = down
+
+    for attempt in range(1, th.MAX_DELIVERY_ATTEMPTS):
+        await th._settle(bot, redis, result.job.id)
+        # Не дошло: задание снова в очереди готовых.
+        assert await redis.lrange(DONE, 0, -1) == [result.job.id], attempt
+        assert await redis.llen(REPORTING) == 0
+        await redis.lmove(DONE, REPORTING, "LEFT", "RIGHT")
+
+    await th._settle(bot, redis, result.job.id)
+    assert (await redis.llen(DONE), await redis.llen(REPORTING)) == (0, 0)
+    assert bot.send_message.await_count == th.MAX_DELIVERY_ATTEMPTS
+
+
+@pytest.mark.asyncio
+async def test_result_reported_after_a_failed_attempt_is_not_repeated(redis, bot):
+    result = _result("", error="MemoryError")
+    await redis.set(result_key(result.job.id), result.to_json())
+    await redis.rpush(REPORTING, result.job.id)
+    down = TelegramForbiddenError(method=SendMessage(chat_id=1, text="x"), message="bot was blocked by the user")
+    bot.send_message.side_effect = [down, None]
+
+    await th._settle(bot, redis, result.job.id)
+    await redis.lmove(DONE, REPORTING, "LEFT", "RIGHT")
+    await th._settle(bot, redis, result.job.id)
+
+    assert (await redis.llen(DONE), await redis.llen(REPORTING)) == (0, 0)
+    assert bot.send_message.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_result_caught_by_a_bot_restart_is_reported_after_it(redis, bot, monkeypatch):
+    result = _result()
+    await redis.set(result_key(result.job.id), result.to_json())
+    # Бот упал посреди отчёта: задание осталось в reporting.
+    await redis.rpush(REPORTING, result.job.id)
+    reported = AsyncMock(return_value=True)
+    monkeypatch.setattr(th, "report", reported)
+
+    watcher = asyncio.create_task(th.watch_transcripts(bot, redis, poll_seconds=1))
+    try:
+        async with asyncio.timeout(10):
+            while not reported.await_count:
+                await asyncio.sleep(0.05)
+            while await redis.llen(REPORTING):
+                await asyncio.sleep(0.05)
+    finally:
+        watcher.cancel()
+
+    assert reported.await_args.args[1] == result
+    assert await redis.llen(DONE) == 0

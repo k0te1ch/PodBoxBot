@@ -14,6 +14,7 @@
   выпуске несколько раз: «птица», мелькнувшая однажды, темой не была.
 """
 
+from collections import Counter
 from dataclasses import dataclass
 
 from services.transcripts.lemmas import ADJECTIVE, NOUN, VERB, Lemma, lemmatize
@@ -41,17 +42,28 @@ def content_weights(text: str) -> dict[str, float]:
 
 
 def _best_window(positions: dict[str, list[int]], weights: dict[str, float], window: int) -> tuple[float, set[str]]:
-    """Окно расшифровки, в котором собралось больше всего веса слов пункта."""
+    """Окно расшифровки, в котором собралось больше всего веса слов пункта.
+
+    Окно скользит по упоминаниям слов пункта: каждое упоминание входит в него
+    и выходит из него один раз.
+    """
     hits = sorted((position, word) for word, places in positions.items() for position in places)
-    best_weight, best_words = 0.0, set()
+    inside: Counter[str] = Counter()
+    weight = best_weight = 0.0
+    best_words: set[str] = set()
     start = 0
-    for end, (position, _word) in enumerate(hits):
+    for position, word in hits:
+        if not inside[word]:
+            weight += weights[word]
+        inside[word] += 1
         while position - hits[start][0] >= window:
+            left = hits[start][1]
+            inside[left] -= 1
+            if not inside[left]:
+                weight -= weights[left]
             start += 1
-        words = {word for _position, word in hits[start : end + 1]}
-        weight = sum(weights[word] for word in words)
-        if weight > best_weight:
-            best_weight, best_words = weight, words
+        if weight > best_weight + 1e-9:
+            best_weight, best_words = weight, {found for found, count in inside.items() if count}
     return best_weight, best_words
 
 
