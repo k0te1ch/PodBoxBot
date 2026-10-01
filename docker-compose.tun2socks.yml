@@ -490,6 +490,8 @@ services:
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin
+      # Интерфейс Grafana на русском для всех, кто не выбрал язык в профиле.
+      - GF_USERS_DEFAULT_LANGUAGE=ru-RU
       # Доставка алертов в Telegram (configs/grafana/notifications.yaml)
       - GRAFANA_ALERT_BOT_TOKEN=${TELEGRAM_API_TOKEN}
       - GRAFANA_ALERT_CHAT_ID=${GRAFANA_ALERT_CHAT_ID:-0}
