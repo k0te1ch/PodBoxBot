@@ -18,12 +18,20 @@ from the default `pytest` run** (`addopts = -m 'not e2e'` in
     notice with that number;
   - `/topic` and `/тема` in the private chat open the same form;
   - with `E2E_TOPICS_CHAT` (a group with the bot as admin and the test
-    account, equal to the bot's `TOPICS_CHAT`): `#тема` in the group shows up
-    in the queue.
-  The ephemeral form in a group and polls need a second person and are
-  checked by hand.
-  Set `TOPICS_DAILY_LIMIT=0` on the test bot: every run suggests several
-  topics from the same account.
+    account, equal to the bot's `TOPICS_CHAT`, `@username` or numeric id):
+    - `#тема` in the group gets a reaction and shows up in the queue;
+    - the ephemeral form (`/topic` sent as an ephemeral command, the topic as
+      an ephemeral reply, the confirm button) puts a topic into the queue;
+    - a poll of three topics is published from `/admin`, gets a vote and is
+      closed with the button: the winner is taken and both the author and
+      the hosts are told.
+  Ephemeral messages go through raw Telethon requests, tgtest has no helper
+  for them. What other members of the group see, and how a client without
+  ephemeral messages behaves, is still checked by hand. A poll that closes
+  on its timer takes at least an hour (`TOPICS_POLL_HOURS=1`) and is not in
+  the suite.
+  Set `TOPICS_DAILY_LIMIT=0` on the test bot: every run suggests more than
+  three topics from the same account.
 
 Everything goes through tgtest (0.2+): the MP3 upload uses `chat.send_file`,
 menu edits are checked with `expect_edit` / `wait_until`, and the account
