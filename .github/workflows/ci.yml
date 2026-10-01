@@ -306,7 +306,7 @@ jobs:
               audio.setnchannels(1)
               audio.setsampwidth(2)
               audio.setframerate(16000)
-              audio.writeframes(b"  " * 16000)
+              audio.writeframes(bytes(2 * 16000))
           assert len(decode_audio("silence.wav")) == 16000
           PY
       - name: Install test tooling
