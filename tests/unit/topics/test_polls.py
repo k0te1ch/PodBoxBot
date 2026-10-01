@@ -1,5 +1,6 @@
 """Вариант D: опрос по темам, голоса, закрытие и победитель."""
 
+import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -185,6 +186,83 @@ async def test_zero_hours_means_no_auto_close(fake_redis, bot, monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_store_lists_timed_polls_once_their_time_is_up(fake_redis):
+    store = PollStore(fake_redis)
+    timed = await store.add(TopicPoll([1], ["a"], chat_id=1, message_id=1, poll_id="x", closes_at=100.0))
+    await store.add(TopicPoll([2], ["b"], chat_id=1, message_id=2, poll_id="y", closes_at=500.0))
+    await store.add(TopicPoll([3], ["c"], chat_id=1, message_id=3, poll_id="z"))
+
+    assert await store.due(99.0) == []
+    assert [poll.id for poll in await store.due(100.0)] == [timed.id]
+
+    assert await store.claim_close(timed.id)
+    assert await store.due(100.0) == []
+
+
+@pytest.mark.asyncio
+async def test_published_poll_remembers_when_it_closes(fake_redis, bot, monkeypatch):
+    monkeypatch.setattr(config, "TOPICS_POLL_HOURS", 2)
+    monkeypatch.setattr(ph.time, "time", lambda: 1000.0)
+
+    poll, _topics = await _published(bot)
+
+    assert poll.closes_at == 1000.0 + 2 * 3600
+    assert [due.id for due in await poll_store().due(1000.0 + 2 * 3600)] == [poll.id]
+
+
+def _already_closed():
+    return TelegramBadRequest(method=StopPoll(chat_id=1, message_id=1), message="poll has already been closed")
+
+
+@pytest.mark.asyncio
+async def test_expired_poll_is_summed_up_by_the_bot_itself(fake_redis, bot, monkeypatch):
+    """Telegram закрывает опрос по таймеру молча: апдейта с is_closed нет,
+    итог подводит бот по голосам, которые успел получить."""
+    monkeypatch.setattr(config, "TOPICS_POLL_HOURS", 1)
+    poll, topics = await _published(bot)
+    await ph.on_poll_update(_poll_update([0, 3, 1]), bot)
+    bot.stop_poll = AsyncMock(side_effect=_already_closed())
+    metrics = MagicMock()
+
+    assert await ph.close_due_polls(bot, metrics) == 0
+    bot.stop_poll.assert_not_awaited()
+
+    monkeypatch.setattr(ph.time, "time", lambda: poll.closes_at + 1)
+    assert await ph.close_due_polls(bot, metrics) == 1
+
+    stored = await poll_store().get(poll.id)
+    assert stored.closed and stored.winner_id == topics[1].id and stored.votes == [0, 3, 1]
+    assert (await topic_service().repository.get(topics[1].id)).status is TopicStatus.TAKEN
+    assert [call.kwargs["chat_id"] for call in bot.send_message.await_args_list] == [7, 100]
+    metrics.event.assert_any_call("topic_poll", action="closed")
+
+    assert await ph.close_due_polls(bot, metrics) == 0
+    assert bot.send_message.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_poll_without_timer_is_left_open(fake_redis, bot, monkeypatch):
+    monkeypatch.setattr(config, "TOPICS_POLL_HOURS", 0)
+    poll, _topics = await _published(bot)
+    bot.stop_poll = AsyncMock()
+    monkeypatch.setattr(ph.time, "time", lambda: poll.created_at + 10**9)
+
+    assert await ph.close_due_polls(bot) == 0
+    assert not (await poll_store().get(poll.id)).closed
+
+
+@pytest.mark.asyncio
+async def test_watcher_survives_a_failed_round(bot, monkeypatch):
+    rounds = AsyncMock(side_effect=[RuntimeError("redis is away"), 0, asyncio.CancelledError()])
+    monkeypatch.setattr(ph, "close_due_polls", rounds)
+
+    with pytest.raises(asyncio.CancelledError):
+        await ph.watch_polls(bot, interval=0)
+
+    assert rounds.await_count == 3
+
+
+@pytest.mark.asyncio
 async def test_votes_are_tracked_and_closed_poll_picks_winner(fake_redis, bot):
     poll, topics = await _published(bot)
     metrics = MagicMock()
@@ -246,11 +324,7 @@ async def test_admin_closes_poll_with_stop_poll(fake_redis, bot):
 async def test_close_uses_last_votes_when_poll_already_stopped(fake_redis, bot):
     poll, topics = await _published(bot)
     await ph.on_poll_update(_poll_update([0, 0, 2]), bot)
-    bot.stop_poll = AsyncMock(
-        side_effect=TelegramBadRequest(
-            method=StopPoll(chat_id=1, message_id=1), message="poll has already been closed"
-        )
-    )
+    bot.stop_poll = AsyncMock(side_effect=_already_closed())
 
     with patch.object(menus.menus, "context", return_value=_ctx(bot)):
         await ph.close_poll(MagicMock(), ph.PollCallback(a="close", id=poll.id), MagicMock(), bot)

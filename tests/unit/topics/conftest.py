@@ -53,6 +53,10 @@ class FakeRedis:
         members = sorted(self.zsets.get(key, {}).items(), key=lambda kv: kv[1], reverse=True)
         return [m for m, _ in members[start : end + 1]]
 
+    async def zrangebyscore(self, key, low, high):
+        members = sorted(self.zsets.get(key, {}).items(), key=lambda kv: kv[1])
+        return [m for m, score in members if low <= score <= high]
+
 
 @pytest.fixture
 def fake_redis(monkeypatch) -> FakeRedis:

@@ -7,13 +7,16 @@
   анонимный и открыт ``TOPICS_POLL_HOURS`` часов (0 — до закрытия вручную).
 * Карточка голосования: варианты с голосами и кнопка «Закрыть опрос».
 
-Telegram присылает боту апдейт ``poll`` о каждом изменении его опросов:
-по нему обновляются голоса, а при ``is_closed`` (сам истёк или закрыт через
-``stopPoll``) подводится итог. Победитель переходит в «Взята в выпуск»,
+Telegram присылает боту апдейт ``poll`` о каждом голосе в его опросах и о
+закрытии через ``stopPoll``: по нему обновляются голоса и подводится итог.
+Об опросе, который истёк сам (``open_period``), Telegram боту не сообщает,
+поэтому бот раз в минуту сам ищет такие опросы (:func:`watch_polls`) и
+подводит итог по последним голосам. Победитель переходит в «Взята в выпуск»,
 автору уходит уведомление, админам — итог. Ничья решается в пользу темы,
 которая стоит в опросе выше; без голосов победителя нет.
 """
 
+import asyncio
 import html
 import os
 import time
@@ -46,6 +49,8 @@ MAX_OPTIONS = 5
 OPTION_CHARS = 100
 MAX_OPEN_SECONDS = 2_628_000
 CANDIDATES_LIMIT = 50
+# Как часто бот ищет опросы, у которых вышло время.
+WATCH_SECONDS = 60
 
 
 class PollCallback(CallbackData, prefix="tpp"):
@@ -127,13 +132,14 @@ async def publish(ctx: MenuContext) -> None:
         return
     bot: Bot = ctx.data["bot"]
     options = [preview(topic.text, OPTION_CHARS) for topic in topics]
+    period = _open_period()
     try:
         message = await bot.send_poll(
             chat_id=bot_config.TOPICS_POLL_CHAT,
             question=t("topics_poll_question"),
             options=[InputPollOption(text=option) for option in options],
             is_anonymous=True,
-            open_period=_open_period(),
+            open_period=period,
         )
     except TelegramAPIError as error:
         logger.error(f"topic poll to {bot_config.TOPICS_POLL_CHAT} failed: {error!r}")
@@ -147,6 +153,7 @@ async def publish(ctx: MenuContext) -> None:
             message_id=message.message_id,
             poll_id=message.poll.id,
             votes=[0] * len(options),
+            closes_at=time.time() + period if period else None,
         )
     )
     logger.info(f"topic poll #{poll.id} published: topics {poll.topic_ids}")
@@ -240,6 +247,35 @@ async def finish(bot: Bot, poll: TopicPoll, metrics: Any = None) -> bool:
     return True
 
 
+async def _stop(bot: Bot, poll: TopicPoll) -> None:
+    """Закрыть опрос в Telegram и взять из ответа окончательные голоса."""
+    try:
+        final = await bot.stop_poll(chat_id=poll.chat_id, message_id=poll.message_id)
+        poll.votes = [option.voter_count for option in final.options]
+    except TelegramBadRequest as error:
+        # Уже закрыт (истёк) или сообщение удалили — итог по последним голосам.
+        logger.info(f"stop topic poll #{poll.id}: {error!r}")
+
+
+async def close_due_polls(bot: Bot, metrics: Any = None) -> int:
+    """Подвести итог опросов, у которых вышло время; сколько закрыто."""
+    closed = 0
+    for poll in await poll_store().due(time.time()):
+        await _stop(bot, poll)
+        closed += await finish(bot, poll, metrics)
+    return closed
+
+
+async def watch_polls(bot: Bot, metrics: Any = None, interval: float = WATCH_SECONDS) -> None:
+    """Фоновая задача: закрывает опросы по таймеру, пока бот работает."""
+    while True:
+        try:
+            await close_due_polls(bot, metrics)
+        except Exception as error:
+            logger.warning(f"topic polls: closing due polls failed: {error!r}")
+        await asyncio.sleep(interval)
+
+
 async def _tell_admins(bot: Bot, poll: TopicPoll, winner: Topic | None) -> None:
     if winner is None:
         text = t("topics_poll_result_none", id=poll.id)
@@ -282,12 +318,7 @@ async def close_poll(
         await ctx.show(POLLS_MENU, callback_data.p)
         return
     if not stored.closed:
-        try:
-            final = await bot.stop_poll(chat_id=stored.chat_id, message_id=stored.message_id)
-            stored.votes = [option.voter_count for option in final.options]
-        except TelegramBadRequest as error:
-            # Уже закрыт (истёк) или сообщение удалили — итог по последним голосам.
-            logger.info(f"stop topic poll #{stored.id}: {error!r}")
+        await _stop(bot, stored)
         await finish(bot, stored, metrics)
     await ctx.answer(ctx.text("topics_poll_closed_toast"))
     fresh = await poll_store().get(stored.id)

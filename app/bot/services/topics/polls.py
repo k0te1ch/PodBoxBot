@@ -6,6 +6,8 @@
 * ``ns:p:<id>`` — голосование в JSON;
 * ``ns:tg:<poll_id>`` — id голосования по id опроса Telegram;
 * ``ns:all`` — sorted set всех голосований (score — время создания);
+* ``ns:timed`` — sorted set открытых голосований с таймером (score — когда
+  опрос закроется): по нему бот находит опросы, время которых вышло;
 * ``ns:closed:<id>`` — метка, что итог уже подведён: закрытие приходит и
   ответом ``stopPoll``, и апдейтом ``poll``, а подводить итог нужно один раз.
 """
@@ -28,6 +30,9 @@ class TopicPoll:
     created_at: float = field(default_factory=time.time)
     closed_at: float | None = None
     winner_id: int | None = None
+    closes_at: float | None = None
+    """Когда Telegram закроет опрос сам (``open_period``); ``None`` — открыт,
+    пока его не закроют из ``/admin``."""
 
     @property
     def closed(self) -> bool:
@@ -68,6 +73,8 @@ class PollStore:
         await self.save(poll)
         await self._redis.set(self._key("tg", poll.poll_id), poll.id)
         await self._redis.zadd(self._key("all"), {str(poll.id): poll.created_at})
+        if poll.closes_at is not None:
+            await self._redis.zadd(self._key("timed"), {str(poll.id): poll.closes_at})
         return poll
 
     async def save(self, poll: TopicPoll) -> None:
@@ -81,6 +88,12 @@ class PollStore:
         poll_id = await self._redis.get(self._key("tg", telegram_poll_id))
         return await self.get(int(poll_id)) if poll_id else None
 
+    async def due(self, now: float) -> list[TopicPoll]:
+        """Открытые голосования, у которых время опроса уже вышло."""
+        ids = await self._redis.zrangebyscore(self._key("timed"), 0, now)
+        polls = [await self.get(int(poll_id)) for poll_id in ids]
+        return [poll for poll in polls if poll is not None and not poll.closed]
+
     async def list(self, limit: int = 20) -> list[TopicPoll]:
         """Голосования, свежие сверху."""
         ids = await self._redis.zrevrange(self._key("all"), 0, limit - 1)
@@ -89,4 +102,5 @@ class PollStore:
 
     async def claim_close(self, poll_id: int) -> bool:
         """``True`` только первому, кто подводит итог голосования."""
+        await self._redis.zrem(self._key("timed"), str(poll_id))
         return bool(await self._redis.set(self._key("closed", poll_id), 1, nx=True))
