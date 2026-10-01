@@ -19,6 +19,7 @@ from sagenza_tgbot_sdk.menus import MenuContext
 
 from config import FORWARD_CHAT_USERNAME, FORWARD_PIN_SILENT
 from services.i18n import t
+from services.metrics import TELEGRAM, bot_metrics
 from utils.menu_context import username as username_of
 from utils.podcast_methods import generate_podcast_text
 from utils.template_store import load as load_template_info
@@ -123,6 +124,7 @@ async def forward_to_chat(ctx: MenuContext):
     logger.debug(f"[{username}]: Forwarding to chat {FORWARD_CHAT_USERNAME}")
 
     status = None
+    type_episode = None
     try:
         file_name = message.audio.file_name
         stored = await load_template_info(file_name)
@@ -131,6 +133,8 @@ async def forward_to_chat(ctx: MenuContext):
             await ctx.answer(t("invalid_input", ctx.locale), alert=True)
             return
 
+        type_episode = stored.get("type_episode")
+        await bot_metrics.publish_requested(TELEGRAM, type_episode, file_name=file_name)
         status = await message.answer(f"⏳ Пересылка в {chat}: отправляю аудио…", parse_mode=ParseMode.HTML)
         podcast_text = generate_podcast_text(stored["info"])
         if not podcast_text:
@@ -141,16 +145,19 @@ async def forward_to_chat(ctx: MenuContext):
         await _pin_and_check(bot, sent.message_id)
 
         logger.success(f"[{username}]: Successfully forwarded audio")
+        await bot_metrics.publish_succeeded(TELEGRAM, type_episode, "published", file_name=file_name)
         await _status(status, f"✅ Эпизод опубликован в {chat} и закреплён.")
         await ctx.answer(t("forwarded", ctx.locale))
 
     except ForwardError as e:
         logger.error(f"[{username}]: forward_to_chat failed - {e}")
+        bot_metrics.publish_failed(TELEGRAM, type_episode, "forward")
         if status is not None:
             await _status(status, f"❌ {e}")
         await ctx.answer(t("forward_failed", ctx.locale), alert=True)
     except Exception as e:
         logger.exception(f"[{username}]: Error in forward_to_chat - {e}")
+        bot_metrics.publish_failed(TELEGRAM, type_episode, "forward")
         if status is not None:
             await _status(status, f"❌ Пересылка в {chat} не удалась: {escape(str(e))}")
         await ctx.answer(t("forward_failed", ctx.locale), alert=True)

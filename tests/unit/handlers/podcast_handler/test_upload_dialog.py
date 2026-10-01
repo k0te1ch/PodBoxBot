@@ -272,3 +272,40 @@ async def test_publish_episode_tags_and_sends_audio_with_menu(tmp_path, type_epi
     assert kwargs["caption"] == t("done_mp3")
     assert kwargs["reply_markup"] is markup
     assert list(Path(tmp_path).glob("0042_*.mp3"))
+
+
+@pytest.fixture
+def funnel():
+    """Шаги диалога, которые хендлеры отдали в метрики: (step, outcome)."""
+    steps: list[tuple[str, str]] = []
+    with patch.object(podcast_handler.bot_metrics, "upload_step", side_effect=lambda s, o: steps.append((s, o))):
+        yield steps
+
+
+@pytest.mark.asyncio
+async def test_funnel_counts_passed_steps(state, bot, mp3_message, funnel):
+    await _on_template_step(state, bot, mp3_message)
+
+    assert funnel == [("start", "done"), (TYPE_EPISODE, "done"), (MP3, "done")]
+
+
+@pytest.mark.asyncio
+async def test_funnel_marks_rejected_template_and_where_the_admin_cancelled(state, bot, mp3_message, funnel):
+    await _on_template_step(state, bot, mp3_message)
+    with patch.object(podcast_handler, "publish_episode", new=AsyncMock()):
+        await podcast_handler.set_template(_message("garbage"), state, bot, "ru", "admin")
+    await podcast_handler.cancel(_message("/cancel"), state, bot, "ru", "admin")
+
+    assert funnel[-2:] == [(TEMPLATE, "invalid"), (TEMPLATE, "cancelled")]
+
+
+@pytest.mark.asyncio
+async def test_funnel_marks_failed_download(state, bot, mp3_message, funnel):
+    await _choose(state, bot)
+    with (
+        patch.object(podcast_handler, "clear_old_mp3_files", new=AsyncMock()),
+        patch.object(podcast_handler, "_download_mp3", new=AsyncMock(return_value=False)),
+    ):
+        await podcast_handler.get_MP3(mp3_message, state, bot, "ru", "admin")
+
+    assert funnel[-1] == (MP3, "download_failed")

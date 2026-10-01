@@ -13,7 +13,11 @@ groups:
         noDataState: Alerting
         execErrState: Error
         annotations:
-          summary: Prometheus не может снять метрики с bot:8080 больше двух минут.
+          summary: Бот не отвечает больше двух минут.
+          description: >-
+            Prometheus не может снять метрики с bot:8080. Бот, скорее всего, упал
+            или перезапускается: проверьте контейнер podboxbot_bot и его логи на
+            дашборде «PodBoxBot: обзор».
         labels:
           severity: critical
         data:
@@ -40,7 +44,11 @@ groups:
         noDataState: NoData
         execErrState: Error
         annotations:
-          summary: "Точка монтирования {{ $labels.mountpoint }} заполнена на {{ humanize $values.A.Value }}%."
+          summary: "Диск {{ $labels.mountpoint }} заполнен на {{ humanize $values.A.Value }}%."
+          description: >-
+            Когда место кончится, бот не сможет скачать mp3, а Kafka и Loki
+            перестанут писать данные. Освободите место: старые образы Docker,
+            кэш сборки, файлы эпизодов.
         labels:
           severity: warning
         data:
@@ -69,7 +77,13 @@ groups:
         noDataState: OK
         execErrState: Error
         annotations:
-          summary: "{{ $labels.job }} не смог опубликовать эпизод в {{ $labels.target }} за последние 15 минут."
+          summary: >-
+            Публикация не удалась: {{ reReplaceAll "_publisher$" "" $labels.job }},
+            эпизод {{ $labels.target }}.
+          description: >-
+            Сервис публикации исчерпал повторы за последние 15 минут. Причина и
+            шаг есть в статус-сообщении бота и в таблице «Ошибки по шагам и
+            причинам» на дашборде «PodBoxBot: обзор».
         labels:
           severity: warning
         data:
@@ -88,3 +102,65 @@ groups:
               expression: A
               conditions:
                 - evaluator: { type: gt, params: [0] }
+
+      - uid: podboxbot-boosty-session
+        title: Boosty не принимает токен
+        condition: C
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        annotations:
+          summary: Сервис Boosty не может войти в аккаунт, публикации на Boosty не пройдут.
+          description: >-
+            Проверка или обновление токена Boosty не удались. Обычно это значит,
+            что refresh-токен отозван: войдите на boosty.to в браузере и обновите
+            secrets/boosty/boosty_auth.json командой из app/publishers/Boosty/SMOKE.md.
+        labels:
+          severity: warning
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              expr: max(boosty_session_ok)
+              instant: true
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: lt, params: [1] }
+
+      - uid: podboxbot-bot-memory
+        title: Бот занимает слишком много памяти
+        condition: C
+        for: 15m
+        noDataState: OK
+        execErrState: Error
+        annotations:
+          summary: "Процесс бота занимает {{ humanize1024 $values.A.Value }}B памяти дольше 15 минут."
+          description: >-
+            Похоже на утечку памяти или зависшую загрузку большого файла. График
+            «Память процесса» на дашборде «PodBoxBot: обзор» покажет, когда это
+            началось; перезапуск бота из админ-панели освободит память.
+        labels:
+          severity: warning
+        data:
+          - refId: A
+            relativeTimeRange: { from: 900, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              expr: max(process_resident_memory_bytes{job="podboxbot"})
+              instant: true
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [1610612736] }

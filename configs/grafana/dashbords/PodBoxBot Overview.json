@@ -1,23 +1,27 @@
 {
   "uid": "podboxbot-overview",
-  "title": "PodBoxBot · Overview",
+  "title": "PodBoxBot: обзор",
+  "description": "Техническое состояние бота, сервисов публикации, очередей и сервера.",
   "tags": [
     "podboxbot",
-    "publishers",
+    "бот",
+    "публикации",
     "kafka",
     "redis",
-    "logs"
+    "логи"
   ],
   "timezone": "browser",
   "schemaVersion": 41,
-  "version": 2,
+  "version": 1,
   "editable": true,
   "graphTooltip": 1,
-  "refresh": "30s",
+  "refresh": "1m",
   "time": {
     "from": "now-6h",
     "to": "now"
   },
+  "fiscalYearStartMonth": 0,
+  "weekStart": "monday",
   "templating": {
     "list": [
       {
@@ -67,52 +71,59 @@
         },
         "enable": true,
         "hide": true,
-        "name": "Annotations & Alerts",
+        "name": "Аннотации и алерты",
         "type": "dashboard"
       }
     ]
   },
+  "links": [
+    {
+      "title": "Подкаст: публикации",
+      "type": "link",
+      "url": "/d/podcast-publications",
+      "icon": "dashboard",
+      "targetBlank": false,
+      "keepTime": true,
+      "includeVars": false,
+      "asDropdown": false,
+      "tags": []
+    }
+  ],
   "panels": [
     {
-      "id": 41,
       "type": "row",
-      "title": "🤖 Бот — состояние (sagenza-tgbot-sdk)",
+      "title": "🤖 Бот: состояние",
       "collapsed": false,
+      "panels": [],
+      "id": 1,
       "gridPos": {
         "x": 0,
         "y": 0,
         "w": 24,
         "h": 1
-      },
-      "panels": []
+      }
     },
     {
-      "id": 42,
       "type": "stat",
       "title": "Бот",
+      "description": "Отвечает ли бот Prometheus на bot:8080/metrics. «Не работает» дольше 2 минут поднимает алерт.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "gridPos": {
-        "x": 0,
-        "y": 1,
-        "w": 6,
-        "h": 4
-      },
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
+          "unit": "none",
           "mappings": [
             {
               "type": "value",
               "options": {
                 "0": {
-                  "text": "DOWN",
+                  "text": "Не работает",
                   "color": "red"
                 },
                 "1": {
-                  "text": "UP",
+                  "text": "Работает",
                   "color": "green"
                 }
               }
@@ -143,8 +154,12 @@
           "values": false
         },
         "colorMode": "value",
-        "graphMode": "area",
-        "textMode": "auto"
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
       },
       "targets": [
         {
@@ -152,41 +167,47 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
+          "editorMode": "code",
           "expr": "max(up{job=\"podboxbot\"}) or vector(0)",
           "refId": "A",
           "legendFormat": "",
           "instant": true,
           "range": false
         }
-      ]
+      ],
+      "id": 2,
+      "gridPos": {
+        "x": 0,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      }
     },
     {
-      "id": 43,
       "type": "stat",
-      "title": "Апдейтов за 1ч",
+      "title": "Версия",
+      "description": "Версия бота, которая сейчас запущена.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "gridPos": {
-        "x": 6,
-        "y": 1,
-        "w": 6,
-        "h": 4
-      },
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
+          "unit": "none",
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "text",
                 "value": null
               }
             ]
-          }
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "noValue": "нет данных"
         },
         "overrides": []
       },
@@ -199,8 +220,12 @@
           "values": false
         },
         "colorMode": "value",
-        "graphMode": "area",
-        "textMode": "auto"
+        "graphMode": "none",
+        "textMode": "name",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
       },
       "targets": [
         {
@@ -208,29 +233,165 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(increase(sagenza_updates_total[1h]))",
+          "editorMode": "code",
+          "expr": "max by (version) (podboxbot_build_info)",
           "refId": "A",
-          "legendFormat": ""
+          "legendFormat": "{{version}}",
+          "instant": true,
+          "range": false
         }
-      ]
+      ],
+      "id": 3,
+      "gridPos": {
+        "x": 4,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      }
     },
     {
-      "id": 44,
       "type": "stat",
-      "title": "Ошибок хендлеров за 1ч",
+      "title": "Работает без перезапуска",
+      "description": "Сколько бот работает с последнего старта процесса.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: ч",
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "(time() - max(process_start_time_seconds{job=\"podboxbot\"})) / 3600",
+          "refId": "A",
+          "legendFormat": "",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "id": 4,
       "gridPos": {
-        "x": 12,
+        "x": 8,
         "y": 1,
-        "w": 6,
+        "w": 4,
         "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Апдейтов за час",
+      "description": "Сообщений и нажатий кнопок, которые бот обработал за последний час.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
+          "unit": "none",
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum(increase(sagenza_updates_total[1h])) or vector(0)",
+          "refId": "A",
+          "legendFormat": "",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "id": 5,
+      "gridPos": {
+        "x": 12,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Ошибок в хендлерах за час",
+      "description": "Апдейты, обработка которых закончилась исключением.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -244,7 +405,8 @@
                 "value": 1
               }
             ]
-          }
+          },
+          "decimals": 0
         },
         "overrides": []
       },
@@ -257,8 +419,12 @@
           "values": false
         },
         "colorMode": "value",
-        "graphMode": "area",
-        "textMode": "auto"
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
       },
       "targets": [
         {
@@ -266,25 +432,29 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
+          "editorMode": "code",
           "expr": "sum(increase(sagenza_errors_total[1h])) or vector(0)",
           "refId": "A",
-          "legendFormat": ""
+          "legendFormat": "",
+          "instant": true,
+          "range": false
         }
-      ]
+      ],
+      "id": 6,
+      "gridPos": {
+        "x": 16,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      }
     },
     {
-      "id": 45,
       "type": "stat",
-      "title": "p95 латентность",
+      "title": "Время обработки, p95",
+      "description": "95% апдейтов бот обрабатывает быстрее этого времени.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
-      },
-      "gridPos": {
-        "x": 18,
-        "y": 1,
-        "w": 6,
-        "h": 4
       },
       "fieldConfig": {
         "defaults": {
@@ -303,7 +473,7 @@
               },
               {
                 "color": "red",
-                "value": 5
+                "value": 2
               }
             ]
           }
@@ -319,8 +489,12 @@
           "values": false
         },
         "colorMode": "value",
-        "graphMode": "area",
-        "textMode": "auto"
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
       },
       "targets": [
         {
@@ -328,237 +502,51 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
+          "editorMode": "code",
           "expr": "histogram_quantile(0.95, sum by (le) (rate(sagenza_handler_duration_seconds_bucket[$__rate_interval])))",
           "refId": "A",
           "legendFormat": ""
         }
-      ]
+      ],
+      "id": 7,
+      "gridPos": {
+        "x": 20,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      }
     },
     {
-      "id": 46,
       "type": "timeseries",
-      "title": "Апдейты и ошибки по типу (в секунду)",
+      "title": "Апдейты и ошибки по типу",
+      "description": "Сколько апдейтов в секунду бот обрабатывает, по типу (сообщение, нажатие кнопки) и отдельно с ошибками.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
-      },
-      "gridPos": {
-        "x": 0,
-        "y": 5,
-        "w": 8,
-        "h": 8
       },
       "fieldConfig": {
         "defaults": {
           "unit": "reqps",
           "custom": {
             "fillOpacity": 10,
-            "showPoints": "never"
-          }
+            "showPoints": "never",
+            "lineWidth": 2,
+            "drawStyle": "line",
+            "spanNulls": false
+          },
+          "min": 0
         },
         "overrides": []
       },
       "options": {
         "legend": {
           "displayMode": "list",
-          "placement": "bottom"
+          "placement": "bottom",
+          "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
           "sort": "desc"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "sum by (type) (rate(sagenza_updates_total[$__rate_interval]))",
-          "refId": "A",
-          "legendFormat": "{{type}}"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "sum by (type, error) (rate(sagenza_errors_total[$__rate_interval]))",
-          "refId": "B",
-          "legendFormat": "error {{type}} {{error}}"
-        }
-      ]
-    },
-    {
-      "id": 47,
-      "type": "timeseries",
-      "title": "Латентность хендлеров (p50 / p95 / p99)",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "gridPos": {
-        "x": 8,
-        "y": 5,
-        "w": 8,
-        "h": 8
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "s",
-          "custom": {
-            "fillOpacity": 10,
-            "showPoints": "never"
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "histogram_quantile(0.5, sum by (le) (rate(sagenza_handler_duration_seconds_bucket[$__rate_interval])))",
-          "refId": "A",
-          "legendFormat": "p50"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "histogram_quantile(0.95, sum by (le) (rate(sagenza_handler_duration_seconds_bucket[$__rate_interval])))",
-          "refId": "B",
-          "legendFormat": "p95"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "histogram_quantile(0.99, sum by (le) (rate(sagenza_handler_duration_seconds_bucket[$__rate_interval])))",
-          "refId": "C",
-          "legendFormat": "p99"
-        }
-      ]
-    },
-    {
-      "id": 48,
-      "type": "timeseries",
-      "title": "Бизнес-события бота",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "gridPos": {
-        "x": 16,
-        "y": 5,
-        "w": 8,
-        "h": 8
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "custom": {
-            "fillOpacity": 10,
-            "showPoints": "never"
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "sum by (__name__) (increase({__name__=~\"sagenza_event_.+_total\"}[$__rate_interval]))",
-          "refId": "A",
-          "legendFormat": "{{__name__}}"
-        }
-      ]
-    },
-    {
-      "id": 1,
-      "type": "row",
-      "title": "📤 Publishers — публикация эпизодов",
-      "collapsed": false,
-      "gridPos": {
-        "x": 0,
-        "y": 13,
-        "w": 24,
-        "h": 1
-      },
-      "panels": []
-    },
-    {
-      "id": 2,
-      "type": "stat",
-      "title": "Всего успешных публикаций",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "gridPos": {
-        "x": 0,
-        "y": 14,
-        "w": 6,
-        "h": 4
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "color": {
-            "mode": "thresholds"
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "yellow",
-                "value": 1
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "colorMode": "background",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "textMode": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
         }
       },
       "targets": [
@@ -568,34 +556,439 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum({__name__=~\".+_upload_success_total\"})",
+          "expr": "sum by (type) (rate(sagenza_updates_total[$__rate_interval]))",
           "refId": "A",
-          "range": false,
-          "instant": true,
-          "format": "time_series"
+          "legendFormat": "{{type}}"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (type, error) (rate(sagenza_errors_total[$__rate_interval]))",
+          "refId": "B",
+          "legendFormat": "ошибка {{type}}: {{error}}"
         }
-      ]
+      ],
+      "id": 8,
+      "gridPos": {
+        "x": 0,
+        "y": 5,
+        "w": 8,
+        "h": 8
+      }
     },
     {
-      "id": 3,
-      "type": "stat",
-      "title": "Success rate",
+      "type": "timeseries",
+      "title": "Время обработки апдейта",
+      "description": "Медиана, 95-й и 99-й перцентили времени обработки одного апдейта.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "lineWidth": 2,
+            "drawStyle": "line",
+            "spanNulls": false
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.5, sum by (le) (rate(sagenza_handler_duration_seconds_bucket[$__rate_interval])))",
+          "refId": "A",
+          "legendFormat": "медиана"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(sagenza_handler_duration_seconds_bucket[$__rate_interval])))",
+          "refId": "B",
+          "legendFormat": "p95"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(sagenza_handler_duration_seconds_bucket[$__rate_interval])))",
+          "refId": "C",
+          "legendFormat": "p99"
+        }
+      ],
+      "id": 9,
       "gridPos": {
-        "x": 6,
+        "x": 8,
+        "y": 5,
+        "w": 8,
+        "h": 8
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Бизнес-события бота",
+      "description": "Все события sagenza_event_*: шаги загрузки, публикации, RSS, действия админов.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": {
+            "fillOpacity": 80,
+            "showPoints": "never",
+            "lineWidth": 1,
+            "drawStyle": "bars",
+            "spanNulls": false,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (__name__) (increase({__name__=~\"sagenza_event_.+_total\"}[$__rate_interval]))",
+          "refId": "A",
+          "legendFormat": "{{__name__}}"
+        }
+      ],
+      "id": 10,
+      "gridPos": {
+        "x": 16,
+        "y": 5,
+        "w": 8,
+        "h": 8
+      }
+    },
+    {
+      "type": "row",
+      "title": "🐍 Бот: процесс Python",
+      "collapsed": false,
+      "panels": [],
+      "id": 11,
+      "gridPos": {
+        "x": 0,
+        "y": 13,
+        "w": 24,
+        "h": 1
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Память процесса",
+      "description": "Резидентная память (RSS) и виртуальная память процесса бота.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": {
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "lineWidth": 2,
+            "drawStyle": "line",
+            "spanNulls": false
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "process_resident_memory_bytes{job=\"podboxbot\"}",
+          "refId": "A",
+          "legendFormat": "резидентная"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "process_virtual_memory_bytes{job=\"podboxbot\"}",
+          "refId": "B",
+          "legendFormat": "виртуальная"
+        }
+      ],
+      "id": 12,
+      "gridPos": {
+        "x": 0,
         "y": 14,
+        "w": 8,
+        "h": 7
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "CPU процесса",
+      "description": "Доля одного ядра, которую занимает бот.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "lineWidth": 2,
+            "drawStyle": "line",
+            "spanNulls": false
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "rate(process_cpu_seconds_total{job=\"podboxbot\"}[$__rate_interval])",
+          "refId": "A",
+          "legendFormat": "CPU"
+        }
+      ],
+      "id": 13,
+      "gridPos": {
+        "x": 8,
+        "y": 14,
+        "w": 8,
+        "h": 7
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Открытые файлы и сборка мусора",
+      "description": "Открытые файловые дескрипторы и число сборок мусора Python в минуту.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": {
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "lineWidth": 2,
+            "drawStyle": "line",
+            "spanNulls": false
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "process_open_fds{job=\"podboxbot\"}",
+          "refId": "A",
+          "legendFormat": "открытых файлов"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (generation) (rate(python_gc_collections_total{job=\"podboxbot\"}[$__rate_interval])) * 60",
+          "refId": "B",
+          "legendFormat": "сборок GC в минуту, поколение {{generation}}"
+        }
+      ],
+      "id": 14,
+      "gridPos": {
+        "x": 16,
+        "y": 14,
+        "w": 8,
+        "h": 7
+      }
+    },
+    {
+      "type": "row",
+      "title": "📤 Сервисы публикации",
+      "collapsed": false,
+      "panels": [],
+      "id": 15,
+      "gridPos": {
+        "x": 0,
+        "y": 21,
+        "w": 24,
+        "h": 1
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Успешных публикаций",
+      "description": "Сколько раз сервисы публикации (FTP, сайт, Boosty и др.) выложили эпизод. Счётчики живут в Pushgateway с последнего перезапуска сервиса.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum({__name__=~\".+_upload_success_total\"}) or vector(0)",
+          "refId": "A",
+          "legendFormat": "",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "id": 16,
+      "gridPos": {
+        "x": 0,
+        "y": 22,
         "w": 6,
         "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Доля успешных",
+      "description": "Успешные публикации среди всех завершённых (успех + ошибка после всех повторов).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
           "unit": "percent",
-          "color": {
-            "mode": "thresholds"
-          },
+          "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -604,7 +997,7 @@
                 "value": null
               },
               {
-                "color": "yellow",
+                "color": "orange",
                 "value": 80
               },
               {
@@ -618,17 +1011,20 @@
         "overrides": []
       },
       "options": {
-        "colorMode": "background",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "textMode": "auto",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
           ],
           "fields": "",
           "values": false
-        }
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
       },
       "targets": [
         {
@@ -637,135 +1033,131 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "100 * sum({__name__=~\".+_upload_success_total\"}) / clamp_min(sum({__name__=~\".+_upload_success_total\"}) + sum({__name__=~\".+_upload_failure_total\"}), 1)",
+          "expr": "100 * sum({__name__=~\".+_upload_success_total\"}) / clamp_min(sum({__name__=~\".+_upload_success_total\"}) + (sum({__name__=~\".+_upload_failure_total\"}) or vector(0)), 1)",
           "refId": "A",
-          "range": false,
+          "legendFormat": "",
           "instant": true,
-          "format": "time_series"
+          "range": false
         }
-      ]
+      ],
+      "id": 17,
+      "gridPos": {
+        "x": 6,
+        "y": 22,
+        "w": 6,
+        "h": 4
+      }
     },
     {
-      "id": 4,
       "type": "stat",
-      "title": "Всего ошибок",
+      "title": "Ошибок публикации",
+      "description": "Публикации, которые не удались даже после повторов.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum({__name__=~\".+_upload_failure_total\"}) or vector(0)",
+          "refId": "A",
+          "legendFormat": "",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "id": 18,
       "gridPos": {
         "x": 12,
-        "y": 14,
+        "y": 22,
         "w": 6,
         "h": 4
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "color": {
-            "mode": "thresholds"
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "orange",
-                "value": 1
-              },
-              {
-                "color": "red",
-                "value": 5
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "colorMode": "background",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "textMode": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "expr": "sum({__name__=~\".+_upload_failure_total\"})",
-          "refId": "A",
-          "range": false,
-          "instant": true,
-          "format": "time_series"
-        }
-      ]
+      }
     },
     {
-      "id": 5,
       "type": "stat",
-      "title": "Средняя длительность загрузки",
+      "title": "Средняя длительность публикации",
+      "description": "Среднее время одной публикации по всем сервисам.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "gridPos": {
-        "x": 18,
-        "y": 14,
-        "w": 6,
-        "h": 4
-      },
       "fieldConfig": {
         "defaults": {
-          "unit": "s",
-          "color": {
-            "mode": "thresholds"
-          },
+          "unit": "suffix: с",
+          "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "text",
                 "value": null
-              },
-              {
-                "color": "yellow",
-                "value": 10
-              },
-              {
-                "color": "red",
-                "value": 30
               }
             ]
           },
-          "decimals": 2
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 0
         },
         "overrides": []
       },
       "options": {
-        "colorMode": "background",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "textMode": "auto",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
           ],
           "fields": "",
           "values": false
-        }
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
       },
       "targets": [
         {
@@ -776,60 +1168,47 @@
           "editorMode": "code",
           "expr": "sum({__name__=~\".+_upload_duration_seconds_sum\"}) / clamp_min(sum({__name__=~\".+_upload_duration_seconds_count\"}), 1)",
           "refId": "A",
-          "range": false,
+          "legendFormat": "",
           "instant": true,
-          "format": "time_series"
+          "range": false
         }
-      ]
+      ],
+      "id": 19,
+      "gridPos": {
+        "x": 18,
+        "y": 22,
+        "w": 6,
+        "h": 4
+      }
     },
     {
-      "id": 6,
       "type": "timeseries",
-      "title": "Темп публикаций по publisher'ам (в секунду)",
+      "title": "Публикации по сервисам",
+      "description": "Успешные публикации и ошибки по сервисам, штук за интервал.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "gridPos": {
-        "x": 0,
-        "y": 18,
-        "w": 12,
-        "h": 8
-      },
       "fieldConfig": {
         "defaults": {
-          "unit": "reqps",
-          "color": {
-            "mode": "palette-classic"
-          },
+          "unit": "none",
           "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "smooth",
-            "lineWidth": 2,
-            "fillOpacity": 10,
-            "gradientMode": "opacity",
+            "fillOpacity": 80,
             "showPoints": "never",
-            "spanNulls": true,
-            "pointSize": 5,
-            "stacking": {
-              "mode": "none",
-              "group": "A"
-            },
-            "axisPlacement": "auto",
-            "axisLabel": ""
-          }
+            "lineWidth": 1,
+            "drawStyle": "bars",
+            "spanNulls": false
+          },
+          "min": 0,
+          "decimals": 0
         },
         "overrides": []
       },
       "options": {
         "legend": {
-          "displayMode": "table",
+          "displayMode": "list",
           "placement": "bottom",
-          "calcs": [
-            "lastNotNull",
-            "max",
-            "mean"
-          ]
+          "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
@@ -843,12 +1222,9 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum by (job) (rate({__name__=~\".+_upload_success_total\"}[$__rate_interval]))",
-          "refId": "B",
-          "range": true,
-          "instant": false,
-          "format": "time_series",
-          "legendFormat": "{{job}} · success"
+          "expr": "sum by (job) (increase({__name__=~\".+_upload_success_total\"}[$__rate_interval]))",
+          "refId": "A",
+          "legendFormat": "{{job}}: успех"
         },
         {
           "datasource": {
@@ -856,64 +1232,119 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum by (job) (rate({__name__=~\".+_upload_failure_total\"}[$__rate_interval]))",
-          "refId": "C",
-          "range": true,
-          "instant": false,
-          "format": "time_series",
-          "legendFormat": "{{job}} · failure"
+          "expr": "sum by (job) (increase({__name__=~\".+_upload_failure_total\"}[$__rate_interval]))",
+          "refId": "B",
+          "legendFormat": "{{job}}: ошибка"
         }
-      ]
+      ],
+      "id": 20,
+      "gridPos": {
+        "x": 0,
+        "y": 26,
+        "w": 12,
+        "h": 8
+      }
     },
     {
-      "id": 7,
       "type": "timeseries",
-      "title": "Средняя длительность загрузки по publisher'ам",
+      "title": "Средняя длительность по сервисам",
+      "description": "Сколько в среднем длится одна публикация у каждого сервиса.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "gridPos": {
-        "x": 12,
-        "y": 18,
-        "w": 12,
-        "h": 8
-      },
       "fieldConfig": {
         "defaults": {
-          "unit": "s",
-          "color": {
-            "mode": "palette-classic"
-          },
+          "unit": "suffix: с",
           "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "smooth",
-            "lineWidth": 2,
             "fillOpacity": 10,
-            "gradientMode": "opacity",
             "showPoints": "never",
-            "spanNulls": true,
-            "pointSize": 5,
-            "stacking": {
-              "mode": "none",
-              "group": "A"
-            },
-            "axisPlacement": "auto",
-            "axisLabel": ""
+            "lineWidth": 2,
+            "drawStyle": "line",
+            "spanNulls": false
           },
-          "decimals": 2
+          "min": 0
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "ftp_publisher"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "FTP (файл эпизода)"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "wp_publisher"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Сайт"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "boosty_publisher"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Boosty"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "vk_publisher"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "VK Donut"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "patreon_publisher"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Patreon"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "sponsr_publisher"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Sponsr"
+              }
+            ]
+          }
+        ]
       },
       "options": {
         "legend": {
-          "displayMode": "table",
+          "displayMode": "list",
           "placement": "bottom",
-          "calcs": [
-            "lastNotNull",
-            "max",
-            "mean"
-          ]
+          "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
@@ -929,42 +1360,91 @@
           "editorMode": "code",
           "expr": "sum by (job) (increase({__name__=~\".+_upload_duration_seconds_sum\"}[$__rate_interval])) / clamp_min(sum by (job) (increase({__name__=~\".+_upload_duration_seconds_count\"}[$__rate_interval])), 1)",
           "refId": "A",
-          "range": true,
-          "instant": false,
-          "format": "time_series",
           "legendFormat": "{{job}}"
         }
-      ]
+      ],
+      "id": 21,
+      "gridPos": {
+        "x": 12,
+        "y": 26,
+        "w": 12,
+        "h": 8
+      }
     },
     {
-      "id": 8,
       "type": "table",
-      "title": "Публикации по целям (target)",
+      "title": "Публикации по эпизодам",
+      "description": "Успешные публикации по сервису и эпизоду (target: имя файла или номер).",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "gridPos": {
-        "x": 0,
-        "y": 26,
-        "w": 12,
-        "h": 8
-      },
       "fieldConfig": {
         "defaults": {
+          "unit": "none",
+          "decimals": 0,
           "custom": {
             "align": "auto",
             "filterable": true
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Сервис"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "ftp_publisher": {
+                        "text": "FTP (файл эпизода)",
+                        "index": 0
+                      },
+                      "wp_publisher": {
+                        "text": "Сайт",
+                        "index": 1
+                      },
+                      "boosty_publisher": {
+                        "text": "Boosty",
+                        "index": 2
+                      },
+                      "vk_publisher": {
+                        "text": "VK Donut",
+                        "index": 3
+                      },
+                      "patreon_publisher": {
+                        "text": "Patreon",
+                        "index": 4
+                      },
+                      "sponsr_publisher": {
+                        "text": "Sponsr",
+                        "index": 5
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
       },
       "options": {
         "showHeader": true,
         "cellHeight": "sm",
         "footer": {
           "show": false
-        }
+        },
+        "sortBy": [
+          {
+            "displayName": "Публикаций",
+            "desc": true
+          }
+        ]
       },
       "transformations": [
         {
@@ -974,6 +1454,17 @@
               "Time": true,
               "__name__": true,
               "instance": true
+            },
+            "renameByName": {}
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "job": "Сервис",
+              "target": "Эпизод",
+              "Value": "Публикаций"
             }
           }
         }
@@ -987,152 +1478,224 @@
           "editorMode": "code",
           "expr": "sum by (job, target) ({__name__=~\".+_upload_success_total\"})",
           "refId": "A",
-          "range": false,
+          "legendFormat": "",
           "instant": true,
+          "range": false,
           "format": "table"
         }
-      ]
-    },
-    {
-      "id": 9,
-      "type": "barchart",
-      "title": "Success vs Failure по publisher'ам",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "gridPos": {
-        "x": 12,
-        "y": 26,
-        "w": 12,
-        "h": 8
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "fillOpacity": 80,
-            "lineWidth": 1
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "orientation": "auto",
-        "showValue": "auto",
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom"
-        },
-        "xTickLabelRotation": 0,
-        "stacking": "none"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "expr": "sum by (job) ({__name__=~\".+_upload_success_total\"})",
-          "refId": "A",
-          "range": false,
-          "instant": true,
-          "format": "time_series",
-          "legendFormat": "{{job}} success"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "expr": "sum by (job) ({__name__=~\".+_upload_failure_total\"})",
-          "refId": "B",
-          "range": false,
-          "instant": true,
-          "format": "time_series",
-          "legendFormat": "{{job}} failure"
-        }
-      ]
-    },
-    {
-      "id": 49,
-      "type": "timeseries",
-      "title": "Ретраи по publisher'ам и этапам",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
+      ],
+      "id": 22,
       "gridPos": {
         "x": 0,
         "y": 34,
         "w": 12,
         "h": 8
+      }
+    },
+    {
+      "type": "table",
+      "title": "Ошибки по шагам и причинам",
+      "description": "На каком шаге и с каким исключением падали публикации.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
+          "unit": "none",
+          "decimals": 0,
           "custom": {
-            "fillOpacity": 10,
-            "showPoints": "never"
+            "align": "auto",
+            "filterable": true
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Сервис"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "ftp_publisher": {
+                        "text": "FTP (файл эпизода)",
+                        "index": 0
+                      },
+                      "wp_publisher": {
+                        "text": "Сайт",
+                        "index": 1
+                      },
+                      "boosty_publisher": {
+                        "text": "Boosty",
+                        "index": 2
+                      },
+                      "vk_publisher": {
+                        "text": "VK Donut",
+                        "index": 3
+                      },
+                      "patreon_publisher": {
+                        "text": "Patreon",
+                        "index": 4
+                      },
+                      "sponsr_publisher": {
+                        "text": "Sponsr",
+                        "index": 5
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Шаг"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "upload": {
+                        "text": "Загрузка файла",
+                        "index": 0
+                      },
+                      "publish": {
+                        "text": "Публикация поста",
+                        "index": 1
+                      },
+                      "verify": {
+                        "text": "Проверка поста",
+                        "index": 2
+                      },
+                      "container": {
+                        "text": "Поиск блога",
+                        "index": 3
+                      },
+                      "upload_audio": {
+                        "text": "Загрузка аудио",
+                        "index": 4
+                      },
+                      "upload_image": {
+                        "text": "Загрузка обложки",
+                        "index": 5
+                      },
+                      "forward": {
+                        "text": "Пересылка в чат",
+                        "index": 6
+                      },
+                      "auth": {
+                        "text": "Авторизация",
+                        "index": 7
+                      },
+                      "unknown": {
+                        "text": "Шаг не указан",
+                        "index": 8
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
       },
       "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom"
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
         },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
+        "sortBy": [
+          {
+            "displayName": "Раз",
+            "desc": true
+          }
+        ]
       },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "instance": true
+            },
+            "renameByName": {}
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "job": "Сервис",
+              "stage": "Шаг",
+              "error": "Ошибка",
+              "Value": "Раз"
+            }
+          }
+        }
+      ],
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (job, stage) (increase({__name__=~\".+_upload_retry_total\"}[$__rate_interval]))",
+          "editorMode": "code",
+          "expr": "sum by (job, stage, error) ({__name__=~\".+_upload_error_total\"})",
           "refId": "A",
-          "legendFormat": "{{job}} · {{stage}}"
+          "legendFormat": "",
+          "instant": true,
+          "range": false,
+          "format": "table"
         }
-      ]
-    },
-    {
-      "id": 50,
-      "type": "timeseries",
-      "title": "Ошибки публикаций по целям",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
+      ],
+      "id": 23,
       "gridPos": {
         "x": 12,
         "y": 34,
         "w": 12,
         "h": 8
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Повторы по шагам",
+      "description": "Неудачные попытки, после которых сервис повторил шаг сам.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
+          "unit": "none",
           "custom": {
-            "fillOpacity": 10,
-            "showPoints": "never"
-          }
+            "fillOpacity": 80,
+            "showPoints": "never",
+            "lineWidth": 1,
+            "drawStyle": "bars",
+            "spanNulls": false
+          },
+          "min": 0,
+          "decimals": 0
         },
         "overrides": []
       },
       "options": {
         "legend": {
           "displayMode": "list",
-          "placement": "bottom"
+          "placement": "bottom",
+          "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
@@ -1145,45 +1708,337 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (job, target) (increase({__name__=~\".+_upload_failure_total\"}[$__rate_interval]))",
+          "editorMode": "code",
+          "expr": "sum by (job, stage) (increase({__name__=~\".+_upload_retry_total\"}[$__rate_interval]))",
           "refId": "A",
-          "legendFormat": "{{job}} → {{target}}"
+          "legendFormat": "{{job}}: {{stage}}"
         }
-      ]
-    },
-    {
-      "id": 10,
-      "type": "row",
-      "title": "🧵 Kafka — очередь событий",
-      "collapsed": false,
+      ],
+      "id": 24,
       "gridPos": {
         "x": 0,
         "y": 42,
-        "w": 24,
-        "h": 1
-      },
-      "panels": []
+        "w": 12,
+        "h": 8
+      }
     },
     {
-      "id": 11,
       "type": "stat",
-      "title": "Брокеры online",
+      "title": "Последняя удачная публикация",
+      "description": "Когда каждый сервис последний раз успешно выложил эпизод.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "gridPos": {
-        "x": 0,
-        "y": 43,
-        "w": 6,
-        "h": 4
-      },
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
+          "unit": "dateTimeAsLocal",
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
           "color": {
             "mode": "thresholds"
           },
+          "noValue": "ещё не было"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "ftp_publisher"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "FTP (файл эпизода)"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "wp_publisher"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Сайт"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "boosty_publisher"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Boosty"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "vk_publisher"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "VK Donut"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "patreon_publisher"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Patreon"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "sponsr_publisher"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Sponsr"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "1000 * max by (job) ({__name__=~\".+_last_success_timestamp_seconds\"})",
+          "refId": "A",
+          "legendFormat": "{{job}}",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "id": 25,
+      "gridPos": {
+        "x": 12,
+        "y": 42,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "type": "row",
+      "title": "🔑 Внешние сессии",
+      "collapsed": false,
+      "panels": [],
+      "id": 26,
+      "gridPos": {
+        "x": 0,
+        "y": 50,
+        "w": 24,
+        "h": 1
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Boosty: токен истекает через",
+      "description": "Сколько осталось до истечения access-токена Boosty. Сервис сам обновляет его каждый час; если время на исходе и не растёт, обновление не работает.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: мин",
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 10
+              },
+              {
+                "color": "green",
+                "value": 30
+              }
+            ]
+          },
+          "noValue": "Boosty выключен",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "(max(boosty_session_expires_at_timestamp_seconds) - time()) / 60",
+          "refId": "A",
+          "legendFormat": "",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "id": 27,
+      "gridPos": {
+        "x": 0,
+        "y": 51,
+        "w": 8,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Boosty: вход",
+      "description": "Удалась ли последняя проверка или обновление токена Boosty.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Ошибка входа",
+                  "color": "red"
+                },
+                "1": {
+                  "text": "В порядке",
+                  "color": "green"
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "noValue": "Boosty выключен"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "max(boosty_session_ok)",
+          "refId": "A",
+          "legendFormat": "",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "id": 28,
+      "gridPos": {
+        "x": 8,
+        "y": 51,
+        "w": 8,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Boosty: ошибок входа за сутки",
+      "description": "Неудачные проверки и обновления токена за 24 часа.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -1192,7 +2047,334 @@
                 "value": null
               },
               {
-                "color": "yellow",
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum(increase(boosty_session_refresh_total{result=\"error\"}[1d])) or vector(0)",
+          "refId": "A",
+          "legendFormat": "",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "id": 29,
+      "gridPos": {
+        "x": 16,
+        "y": 51,
+        "w": 8,
+        "h": 4
+      }
+    },
+    {
+      "type": "row",
+      "title": "📡 RSS",
+      "collapsed": false,
+      "panels": [],
+      "id": 30,
+      "gridPos": {
+        "x": 0,
+        "y": 55,
+        "w": 24,
+        "h": 1
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Последний удачный опрос ленты",
+      "description": "Когда бот последний раз прочитал RSS подкаста.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: мин назад",
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "noValue": "RSS не настроен",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "(time() - max(podboxbot_rss_last_success_timestamp_seconds)) / 60",
+          "refId": "A",
+          "legendFormat": "",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "id": 31,
+      "gridPos": {
+        "x": 0,
+        "y": 56,
+        "w": 8,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Ошибок подряд",
+      "description": "Сколько опросов ленты подряд закончились ошибкой. После RSS_FAILURE_ALERT бот пишет админам.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 3
+              }
+            ]
+          },
+          "noValue": "RSS не настроен",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "max(podboxbot_rss_consecutive_failures)",
+          "refId": "A",
+          "legendFormat": "",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "id": 32,
+      "gridPos": {
+        "x": 8,
+        "y": 56,
+        "w": 8,
+        "h": 4
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Опросы ленты",
+      "description": "Результаты опросов RSS: прочитана, не изменилась, ошибка.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": {
+            "fillOpacity": 80,
+            "showPoints": "never",
+            "lineWidth": 1,
+            "drawStyle": "bars",
+            "spanNulls": false,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          },
+          "min": 0,
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "ok"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "прочитана"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "not_modified"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "не изменилась"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "error"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "ошибка"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (result) (increase(sagenza_event_rss_poll_total[$__rate_interval]))",
+          "refId": "A",
+          "legendFormat": "{{result}}"
+        }
+      ],
+      "id": 33,
+      "gridPos": {
+        "x": 16,
+        "y": 56,
+        "w": 8,
+        "h": 4
+      }
+    },
+    {
+      "type": "row",
+      "title": "🧵 Kafka: очередь событий",
+      "collapsed": false,
+      "panels": [],
+      "id": 34,
+      "gridPos": {
+        "x": 0,
+        "y": 60,
+        "w": 24,
+        "h": 1
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Брокеров в сети",
+      "description": "Сколько брокеров Kafka видит экспортёр.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
                 "value": 1
               }
             ]
@@ -1201,17 +2383,20 @@
         "overrides": []
       },
       "options": {
-        "colorMode": "background",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "textMode": "auto",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
           ],
           "fields": "",
           "values": false
-        }
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
       },
       "targets": [
         {
@@ -1222,32 +2407,31 @@
           "editorMode": "code",
           "expr": "max(kafka_brokers)",
           "refId": "A",
-          "range": false,
+          "legendFormat": "",
           "instant": true,
-          "format": "time_series"
+          "range": false
         }
-      ]
+      ],
+      "id": 35,
+      "gridPos": {
+        "x": 0,
+        "y": 61,
+        "w": 6,
+        "h": 4
+      }
     },
     {
-      "id": 12,
       "type": "stat",
-      "title": "Суммарный consumer lag",
+      "title": "Отставание консьюмеров",
+      "description": "Сколько сообщений ещё не прочитали консьюмеры (сумма по всем группам).",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "gridPos": {
-        "x": 6,
-        "y": 43,
-        "w": 6,
-        "h": 4
-      },
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
-          "color": {
-            "mode": "thresholds"
-          },
+          "unit": "none",
+          "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -1256,12 +2440,12 @@
                 "value": null
               },
               {
-                "color": "yellow",
-                "value": 50
+                "color": "orange",
+                "value": 10
               },
               {
                 "color": "red",
-                "value": 500
+                "value": 100
               }
             ]
           }
@@ -1269,17 +2453,20 @@
         "overrides": []
       },
       "options": {
-        "colorMode": "background",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "textMode": "auto",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
           ],
           "fields": "",
           "values": false
-        }
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
       },
       "targets": [
         {
@@ -1290,56 +2477,61 @@
           "editorMode": "code",
           "expr": "sum(kafka_consumergroup_lag)",
           "refId": "A",
-          "range": false,
+          "legendFormat": "",
           "instant": true,
-          "format": "time_series"
+          "range": false
         }
-      ]
+      ],
+      "id": 36,
+      "gridPos": {
+        "x": 6,
+        "y": 61,
+        "w": 6,
+        "h": 4
+      }
     },
     {
-      "id": 13,
       "type": "stat",
       "title": "Топиков",
+      "description": "Число топиков Kafka.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "gridPos": {
-        "x": 12,
-        "y": 43,
-        "w": 6,
-        "h": 4
-      },
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
-          "color": {
-            "mode": "thresholds"
-          },
+          "unit": "none",
+          "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "text",
                 "value": null
               }
             ]
+          },
+          "color": {
+            "mode": "thresholds"
           }
         },
         "overrides": []
       },
       "options": {
-        "colorMode": "background",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "textMode": "auto",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
           ],
           "fields": "",
           "values": false
-        }
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
       },
       "targets": [
         {
@@ -1350,56 +2542,63 @@
           "editorMode": "code",
           "expr": "count(group by (topic) (kafka_topic_partitions))",
           "refId": "A",
-          "range": false,
+          "legendFormat": "",
           "instant": true,
-          "format": "time_series"
+          "range": false
         }
-      ]
+      ],
+      "id": 37,
+      "gridPos": {
+        "x": 12,
+        "y": 61,
+        "w": 6,
+        "h": 4
+      }
     },
     {
-      "id": 14,
       "type": "stat",
-      "title": "Партиций",
+      "title": "Перезапуски консьюмеров бота за сутки",
+      "description": "Сколько раз бот перезапускал чтение result-топиков.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "gridPos": {
-        "x": 18,
-        "y": 43,
-        "w": 6,
-        "h": 4
-      },
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
-          "color": {
-            "mode": "thresholds"
-          },
+          "unit": "none",
+          "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
                 "color": "green",
                 "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
               }
             ]
-          }
+          },
+          "decimals": 0
         },
         "overrides": []
       },
       "options": {
-        "colorMode": "background",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "textMode": "auto",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
           ],
           "fields": "",
           "values": false
-        }
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
       },
       "targets": [
         {
@@ -1408,79 +2607,48 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(kafka_topic_partitions)",
+          "expr": "sum(increase(sagenza_event_kafka_consumer_restart_total[1d])) or vector(0)",
           "refId": "A",
-          "range": false,
+          "legendFormat": "",
           "instant": true,
-          "format": "time_series"
+          "range": false
         }
-      ]
+      ],
+      "id": 38,
+      "gridPos": {
+        "x": 18,
+        "y": 61,
+        "w": 6,
+        "h": 4
+      }
     },
     {
-      "id": 15,
       "type": "timeseries",
-      "title": "Consumer lag по топикам",
+      "title": "Отставание по топикам",
+      "description": "Непрочитанные сообщения по топикам.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "gridPos": {
-        "x": 0,
-        "y": 47,
-        "w": 12,
-        "h": 8
-      },
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
-          "color": {
-            "mode": "palette-classic"
-          },
+          "unit": "none",
           "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "smooth",
-            "lineWidth": 2,
             "fillOpacity": 10,
-            "gradientMode": "opacity",
             "showPoints": "never",
-            "spanNulls": true,
-            "pointSize": 5,
-            "stacking": {
-              "mode": "none",
-              "group": "A"
-            },
-            "axisPlacement": "auto",
-            "axisLabel": ""
+            "lineWidth": 2,
+            "drawStyle": "line",
+            "spanNulls": false
           },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "yellow",
-                "value": 50
-              },
-              {
-                "color": "red",
-                "value": 500
-              }
-            ]
-          }
+          "min": 0
         },
         "overrides": []
       },
       "options": {
         "legend": {
-          "displayMode": "table",
+          "displayMode": "list",
           "placement": "bottom",
-          "calcs": [
-            "lastNotNull",
-            "max",
-            "mean"
-          ]
+          "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
@@ -1495,62 +2663,45 @@
           },
           "editorMode": "code",
           "expr": "sum by (topic) (kafka_consumergroup_lag)",
-          "refId": "B",
-          "range": true,
-          "instant": false,
-          "format": "time_series",
+          "refId": "A",
           "legendFormat": "{{topic}}"
         }
-      ]
+      ],
+      "id": 39,
+      "gridPos": {
+        "x": 0,
+        "y": 65,
+        "w": 12,
+        "h": 8
+      }
     },
     {
-      "id": 16,
       "type": "timeseries",
-      "title": "Поток сообщений по топикам (offset/сек)",
+      "title": "Поток сообщений по топикам",
+      "description": "Сколько сообщений в секунду пишется в каждый топик.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "gridPos": {
-        "x": 12,
-        "y": 47,
-        "w": 12,
-        "h": 8
-      },
       "fieldConfig": {
         "defaults": {
           "unit": "wps",
-          "color": {
-            "mode": "palette-classic"
-          },
           "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "smooth",
-            "lineWidth": 2,
             "fillOpacity": 10,
-            "gradientMode": "opacity",
             "showPoints": "never",
-            "spanNulls": true,
-            "pointSize": 5,
-            "stacking": {
-              "mode": "none",
-              "group": "A"
-            },
-            "axisPlacement": "auto",
-            "axisLabel": ""
-          }
+            "lineWidth": 2,
+            "drawStyle": "line",
+            "spanNulls": false
+          },
+          "min": 0
         },
         "overrides": []
       },
       "options": {
         "legend": {
-          "displayMode": "table",
+          "displayMode": "list",
           "placement": "bottom",
-          "calcs": [
-            "lastNotNull",
-            "max",
-            "mean"
-          ]
+          "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
@@ -1566,103 +2717,56 @@
           "editorMode": "code",
           "expr": "sum by (topic) (rate(kafka_topic_partition_current_offset[$__rate_interval]))",
           "refId": "A",
-          "range": true,
-          "instant": false,
-          "format": "time_series",
           "legendFormat": "{{topic}}"
         }
-      ]
-    },
-    {
-      "id": 17,
-      "type": "table",
-      "title": "Детализация lag (группа · топик · партиция)",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "gridPos": {
-        "x": 0,
-        "y": 55,
-        "w": 24,
-        "h": 8
-      },
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "align": "auto",
-            "filterable": true
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "showHeader": true,
-        "cellHeight": "sm",
-        "footer": {
-          "show": false
-        }
-      },
-      "transformations": [
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": {
-              "Time": true,
-              "__name__": true,
-              "instance": true
-            }
-          }
-        }
       ],
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "expr": "kafka_consumergroup_lag",
-          "refId": "A",
-          "range": false,
-          "instant": true,
-          "format": "table"
-        }
-      ]
+      "id": 40,
+      "gridPos": {
+        "x": 12,
+        "y": 65,
+        "w": 12,
+        "h": 8
+      }
     },
     {
-      "id": 18,
       "type": "row",
-      "title": "🔴 Redis — кэш и состояние",
+      "title": "🔴 Redis",
       "collapsed": false,
+      "panels": [],
+      "id": 41,
       "gridPos": {
         "x": 0,
-        "y": 63,
+        "y": 73,
         "w": 24,
         "h": 1
-      },
-      "panels": []
+      }
     },
     {
-      "id": 19,
       "type": "stat",
       "title": "Redis",
+      "description": "Доступен ли Redis (в нём состояние диалогов и журнал эпизодов).",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "gridPos": {
-        "x": 0,
-        "y": 64,
-        "w": 6,
-        "h": 4
-      },
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
-          "color": {
-            "mode": "thresholds"
-          },
+          "unit": "none",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Не работает",
+                  "color": "red"
+                },
+                "1": {
+                  "text": "Работает",
+                  "color": "green"
+                }
+              }
+            }
+          ],
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -1675,37 +2779,25 @@
                 "value": 1
               }
             ]
-          },
-          "mappings": [
-            {
-              "type": "value",
-              "options": {
-                "0": {
-                  "text": "DOWN",
-                  "color": "red"
-                },
-                "1": {
-                  "text": "UP",
-                  "color": "green"
-                }
-              }
-            }
-          ]
+          }
         },
         "overrides": []
       },
       "options": {
-        "colorMode": "background",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "textMode": "auto",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
           ],
           "fields": "",
           "values": false
-        }
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
       },
       "targets": [
         {
@@ -1716,56 +2808,61 @@
           "editorMode": "code",
           "expr": "redis_up",
           "refId": "A",
-          "range": false,
+          "legendFormat": "",
           "instant": true,
-          "format": "time_series"
+          "range": false
         }
-      ]
+      ],
+      "id": 42,
+      "gridPos": {
+        "x": 0,
+        "y": 74,
+        "w": 6,
+        "h": 4
+      }
     },
     {
-      "id": 20,
       "type": "stat",
       "title": "Подключённых клиентов",
+      "description": "Открытые подключения к Redis.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "gridPos": {
-        "x": 6,
-        "y": 64,
-        "w": 6,
-        "h": 4
-      },
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
-          "color": {
-            "mode": "thresholds"
-          },
+          "unit": "none",
+          "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "text",
                 "value": null
               }
             ]
+          },
+          "color": {
+            "mode": "thresholds"
           }
         },
         "overrides": []
       },
       "options": {
-        "colorMode": "background",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "textMode": "auto",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
           ],
           "fields": "",
           "values": false
-        }
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
       },
       "targets": [
         {
@@ -1776,56 +2873,61 @@
           "editorMode": "code",
           "expr": "redis_connected_clients",
           "refId": "A",
-          "range": false,
+          "legendFormat": "",
           "instant": true,
-          "format": "time_series"
+          "range": false
         }
-      ]
+      ],
+      "id": 43,
+      "gridPos": {
+        "x": 6,
+        "y": 74,
+        "w": 6,
+        "h": 4
+      }
     },
     {
-      "id": 21,
       "type": "stat",
-      "title": "Использовано памяти",
+      "title": "Занято памяти",
+      "description": "Память, которую использует Redis.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "gridPos": {
-        "x": 12,
-        "y": 64,
-        "w": 6,
-        "h": 4
-      },
       "fieldConfig": {
         "defaults": {
           "unit": "bytes",
-          "color": {
-            "mode": "thresholds"
-          },
+          "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "text",
                 "value": null
               }
             ]
+          },
+          "color": {
+            "mode": "thresholds"
           }
         },
         "overrides": []
       },
       "options": {
-        "colorMode": "background",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "textMode": "auto",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
           ],
           "fields": "",
           "values": false
-        }
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
       },
       "targets": [
         {
@@ -1836,57 +2938,61 @@
           "editorMode": "code",
           "expr": "redis_memory_used_bytes",
           "refId": "A",
-          "range": false,
+          "legendFormat": "",
           "instant": true,
-          "format": "time_series"
+          "range": false
         }
-      ]
+      ],
+      "id": 44,
+      "gridPos": {
+        "x": 12,
+        "y": 74,
+        "w": 6,
+        "h": 4
+      }
     },
     {
-      "id": 22,
       "type": "stat",
       "title": "Команд в секунду",
+      "description": "Нагрузка на Redis.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "gridPos": {
-        "x": 18,
-        "y": 64,
-        "w": 6,
-        "h": 4
-      },
       "fieldConfig": {
         "defaults": {
           "unit": "ops",
-          "color": {
-            "mode": "thresholds"
-          },
+          "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "text",
                 "value": null
               }
             ]
           },
-          "decimals": 1
+          "color": {
+            "mode": "thresholds"
+          }
         },
         "overrides": []
       },
       "options": {
-        "colorMode": "background",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "textMode": "auto",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
           ],
           "fields": "",
           "values": false
-        }
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
       },
       "targets": [
         {
@@ -1895,134 +3001,46 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "rate(redis_commands_processed_total[$__rate_interval])",
+          "expr": "sum(rate(redis_commands_processed_total[$__rate_interval]))",
           "refId": "A",
-          "range": true,
-          "instant": false,
-          "format": "time_series"
+          "legendFormat": ""
         }
-      ]
+      ],
+      "id": 45,
+      "gridPos": {
+        "x": 18,
+        "y": 74,
+        "w": 6,
+        "h": 4
+      }
     },
     {
-      "id": 23,
       "type": "timeseries",
-      "title": "Команд в секунду",
+      "title": "Попадания в кэш",
+      "description": "Доля запросов, для которых ключ нашёлся.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
-      },
-      "gridPos": {
-        "x": 0,
-        "y": 68,
-        "w": 8,
-        "h": 8
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "ops",
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "smooth",
-            "lineWidth": 2,
-            "fillOpacity": 10,
-            "gradientMode": "opacity",
-            "showPoints": "never",
-            "spanNulls": true,
-            "pointSize": 5,
-            "stacking": {
-              "mode": "none",
-              "group": "A"
-            },
-            "axisPlacement": "auto",
-            "axisLabel": ""
-          },
-          "decimals": 1
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
-          "calcs": [
-            "lastNotNull",
-            "max",
-            "mean"
-          ]
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "expr": "rate(redis_commands_processed_total[$__rate_interval])",
-          "refId": "B",
-          "range": true,
-          "instant": false,
-          "format": "time_series",
-          "legendFormat": "ops/s"
-        }
-      ]
-    },
-    {
-      "id": 24,
-      "type": "timeseries",
-      "title": "Keyspace hit ratio",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "gridPos": {
-        "x": 8,
-        "y": 68,
-        "w": 8,
-        "h": 8
       },
       "fieldConfig": {
         "defaults": {
           "unit": "percent",
-          "color": {
-            "mode": "palette-classic"
-          },
           "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "smooth",
-            "lineWidth": 2,
             "fillOpacity": 10,
-            "gradientMode": "opacity",
             "showPoints": "never",
-            "spanNulls": true,
-            "pointSize": 5,
-            "stacking": {
-              "mode": "none",
-              "group": "A"
-            },
-            "axisPlacement": "auto",
-            "axisLabel": ""
+            "lineWidth": 2,
+            "drawStyle": "line",
+            "spanNulls": false
           },
-          "decimals": 1
+          "min": 0
         },
         "overrides": []
       },
       "options": {
         "legend": {
-          "displayMode": "table",
+          "displayMode": "list",
           "placement": "bottom",
-          "calcs": [
-            "lastNotNull",
-            "max",
-            "mean"
-          ]
+          "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
@@ -2038,61 +3056,44 @@
           "editorMode": "code",
           "expr": "100 * rate(redis_keyspace_hits_total[$__rate_interval]) / clamp_min(rate(redis_keyspace_hits_total[$__rate_interval]) + rate(redis_keyspace_misses_total[$__rate_interval]), 1)",
           "refId": "A",
-          "range": true,
-          "instant": false,
-          "format": "time_series",
-          "legendFormat": "hit %"
+          "legendFormat": "попадания"
         }
-      ]
+      ],
+      "id": 46,
+      "gridPos": {
+        "x": 0,
+        "y": 78,
+        "w": 12,
+        "h": 7
+      }
     },
     {
-      "id": 25,
       "type": "timeseries",
-      "title": "Использование памяти",
+      "title": "Память Redis",
+      "description": "Использование памяти Redis.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "gridPos": {
-        "x": 16,
-        "y": 68,
-        "w": 8,
-        "h": 8
-      },
       "fieldConfig": {
         "defaults": {
           "unit": "bytes",
-          "color": {
-            "mode": "palette-classic"
-          },
           "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "smooth",
-            "lineWidth": 2,
             "fillOpacity": 10,
-            "gradientMode": "opacity",
             "showPoints": "never",
-            "spanNulls": true,
-            "pointSize": 5,
-            "stacking": {
-              "mode": "none",
-              "group": "A"
-            },
-            "axisPlacement": "auto",
-            "axisLabel": ""
-          }
+            "lineWidth": 2,
+            "drawStyle": "line",
+            "spanNulls": false
+          },
+          "min": 0
         },
         "overrides": []
       },
       "options": {
         "legend": {
-          "displayMode": "table",
+          "displayMode": "list",
           "placement": "bottom",
-          "calcs": [
-            "lastNotNull",
-            "max",
-            "mean"
-          ]
+          "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
@@ -2108,48 +3109,43 @@
           "editorMode": "code",
           "expr": "redis_memory_used_bytes",
           "refId": "A",
-          "range": true,
-          "instant": false,
-          "format": "time_series",
-          "legendFormat": "used"
+          "legendFormat": "занято"
         }
-      ]
+      ],
+      "id": 47,
+      "gridPos": {
+        "x": 12,
+        "y": 78,
+        "w": 12,
+        "h": 7
+      }
     },
     {
-      "id": 26,
       "type": "row",
-      "title": "🖥️ Host — ресурсы сервера (node-exporter)",
+      "title": "🖥️ Сервер",
       "collapsed": false,
+      "panels": [],
+      "id": 48,
       "gridPos": {
         "x": 0,
-        "y": 76,
+        "y": 85,
         "w": 24,
         "h": 1
-      },
-      "panels": []
+      }
     },
     {
-      "id": 27,
       "type": "gauge",
-      "title": "CPU busy",
+      "title": "Загрузка CPU",
+      "description": "Средняя загрузка процессора сервера.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
-      },
-      "gridPos": {
-        "x": 0,
-        "y": 77,
-        "w": 8,
-        "h": 8
       },
       "fieldConfig": {
         "defaults": {
           "unit": "percent",
           "min": 0,
           "max": 100,
-          "color": {
-            "mode": "thresholds"
-          },
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -2158,12 +3154,12 @@
                 "value": null
               },
               {
-                "color": "yellow",
+                "color": "orange",
                 "value": 70
               },
               {
                 "color": "red",
-                "value": 90
+                "value": 85
               }
             ]
           }
@@ -2171,15 +3167,15 @@
         "overrides": []
       },
       "options": {
-        "showThresholdLabels": false,
-        "showThresholdMarkers": true,
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
           ],
           "fields": "",
           "values": false
-        }
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
       },
       "targets": [
         {
@@ -2190,34 +3186,32 @@
           "editorMode": "code",
           "expr": "100 - (avg(rate(node_cpu_seconds_total{mode=\"idle\"}[$__rate_interval])) * 100)",
           "refId": "A",
-          "range": false,
+          "legendFormat": "",
           "instant": true,
-          "format": "time_series"
+          "range": false
         }
-      ]
+      ],
+      "id": 49,
+      "gridPos": {
+        "x": 0,
+        "y": 86,
+        "w": 8,
+        "h": 6
+      }
     },
     {
-      "id": 28,
       "type": "gauge",
-      "title": "Memory used",
+      "title": "Занято памяти",
+      "description": "Доля занятой оперативной памяти сервера.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
-      },
-      "gridPos": {
-        "x": 8,
-        "y": 77,
-        "w": 8,
-        "h": 8
       },
       "fieldConfig": {
         "defaults": {
           "unit": "percent",
           "min": 0,
           "max": 100,
-          "color": {
-            "mode": "thresholds"
-          },
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -2226,12 +3220,12 @@
                 "value": null
               },
               {
-                "color": "yellow",
+                "color": "orange",
                 "value": 70
               },
               {
                 "color": "red",
-                "value": 90
+                "value": 85
               }
             ]
           }
@@ -2239,15 +3233,15 @@
         "overrides": []
       },
       "options": {
-        "showThresholdLabels": false,
-        "showThresholdMarkers": true,
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
           ],
           "fields": "",
           "values": false
-        }
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
       },
       "targets": [
         {
@@ -2258,34 +3252,32 @@
           "editorMode": "code",
           "expr": "100 * (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)",
           "refId": "A",
-          "range": false,
+          "legendFormat": "",
           "instant": true,
-          "format": "time_series"
+          "range": false
         }
-      ]
+      ],
+      "id": 50,
+      "gridPos": {
+        "x": 8,
+        "y": 86,
+        "w": 8,
+        "h": 6
+      }
     },
     {
-      "id": 29,
       "type": "gauge",
-      "title": "Disk used (/)",
+      "title": "Занято диска (/)",
+      "description": "Заполнение корневого раздела. Выше 85% дольше 10 минут поднимается алерт.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
-      },
-      "gridPos": {
-        "x": 16,
-        "y": 77,
-        "w": 8,
-        "h": 8
       },
       "fieldConfig": {
         "defaults": {
           "unit": "percent",
           "min": 0,
           "max": 100,
-          "color": {
-            "mode": "thresholds"
-          },
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -2294,12 +3286,12 @@
                 "value": null
               },
               {
-                "color": "yellow",
+                "color": "orange",
                 "value": 70
               },
               {
                 "color": "red",
-                "value": 90
+                "value": 85
               }
             ]
           }
@@ -2307,15 +3299,15 @@
         "overrides": []
       },
       "options": {
-        "showThresholdLabels": false,
-        "showThresholdMarkers": true,
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
           ],
           "fields": "",
           "values": false
-        }
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
       },
       "targets": [
         {
@@ -2326,78 +3318,46 @@
           "editorMode": "code",
           "expr": "100 * (1 - max(node_filesystem_avail_bytes{mountpoint=\"/\",fstype!~\"tmpfs|overlay\"}) / max(node_filesystem_size_bytes{mountpoint=\"/\",fstype!~\"tmpfs|overlay\"}))",
           "refId": "A",
-          "range": false,
+          "legendFormat": "",
           "instant": true,
-          "format": "time_series"
+          "range": false
         }
-      ]
+      ],
+      "id": 51,
+      "gridPos": {
+        "x": 16,
+        "y": 86,
+        "w": 8,
+        "h": 6
+      }
     },
     {
-      "id": 30,
       "type": "timeseries",
-      "title": "CPU usage",
+      "title": "Загрузка CPU",
+      "description": "Загрузка процессора сервера во времени.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "gridPos": {
-        "x": 0,
-        "y": 85,
-        "w": 8,
-        "h": 8
-      },
       "fieldConfig": {
         "defaults": {
           "unit": "percent",
-          "color": {
-            "mode": "palette-classic"
-          },
           "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "smooth",
-            "lineWidth": 2,
             "fillOpacity": 10,
-            "gradientMode": "opacity",
             "showPoints": "never",
-            "spanNulls": true,
-            "pointSize": 5,
-            "stacking": {
-              "mode": "none",
-              "group": "A"
-            },
-            "axisPlacement": "auto",
-            "axisLabel": ""
+            "lineWidth": 2,
+            "drawStyle": "line",
+            "spanNulls": false
           },
-          "decimals": 1,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "yellow",
-                "value": 70
-              },
-              {
-                "color": "red",
-                "value": 90
-              }
-            ]
-          }
+          "min": 0
         },
         "overrides": []
       },
       "options": {
         "legend": {
-          "displayMode": "table",
+          "displayMode": "list",
           "placement": "bottom",
-          "calcs": [
-            "lastNotNull",
-            "max",
-            "mean"
-          ]
+          "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
@@ -2412,62 +3372,45 @@
           },
           "editorMode": "code",
           "expr": "100 - (avg(rate(node_cpu_seconds_total{mode=\"idle\"}[$__rate_interval])) * 100)",
-          "refId": "B",
-          "range": true,
-          "instant": false,
-          "format": "time_series",
-          "legendFormat": "busy %"
+          "refId": "A",
+          "legendFormat": "CPU"
         }
-      ]
+      ],
+      "id": 52,
+      "gridPos": {
+        "x": 0,
+        "y": 92,
+        "w": 8,
+        "h": 7
+      }
     },
     {
-      "id": 31,
       "type": "timeseries",
-      "title": "Network I/O",
+      "title": "Сеть",
+      "description": "Входящий и исходящий трафик по интерфейсам.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "gridPos": {
-        "x": 8,
-        "y": 85,
-        "w": 8,
-        "h": 8
-      },
       "fieldConfig": {
         "defaults": {
           "unit": "Bps",
-          "color": {
-            "mode": "palette-classic"
-          },
           "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "smooth",
-            "lineWidth": 2,
             "fillOpacity": 10,
-            "gradientMode": "opacity",
             "showPoints": "never",
-            "spanNulls": true,
-            "pointSize": 5,
-            "stacking": {
-              "mode": "none",
-              "group": "A"
-            },
-            "axisPlacement": "auto",
-            "axisLabel": ""
-          }
+            "lineWidth": 2,
+            "drawStyle": "line",
+            "spanNulls": false
+          },
+          "min": 0
         },
         "overrides": []
       },
       "options": {
         "legend": {
-          "displayMode": "table",
+          "displayMode": "list",
           "placement": "bottom",
-          "calcs": [
-            "lastNotNull",
-            "max",
-            "mean"
-          ]
+          "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
@@ -2483,10 +3426,7 @@
           "editorMode": "code",
           "expr": "sum by (device) (rate(node_network_receive_bytes_total{device!~\"lo\"}[$__rate_interval]))",
           "refId": "A",
-          "range": true,
-          "instant": false,
-          "format": "time_series",
-          "legendFormat": "rx {{device}}"
+          "legendFormat": "{{device}}: вход"
         },
         {
           "datasource": {
@@ -2496,62 +3436,45 @@
           "editorMode": "code",
           "expr": "sum by (device) (rate(node_network_transmit_bytes_total{device!~\"lo\"}[$__rate_interval]))",
           "refId": "B",
-          "range": true,
-          "instant": false,
-          "format": "time_series",
-          "legendFormat": "tx {{device}}"
+          "legendFormat": "{{device}}: выход"
         }
-      ]
+      ],
+      "id": 53,
+      "gridPos": {
+        "x": 8,
+        "y": 92,
+        "w": 8,
+        "h": 7
+      }
     },
     {
-      "id": 32,
       "type": "timeseries",
-      "title": "Load average",
+      "title": "Средняя нагрузка (load average)",
+      "description": "Очередь процессов за 1, 5 и 15 минут.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "gridPos": {
-        "x": 16,
-        "y": 85,
-        "w": 8,
-        "h": 8
-      },
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
-          "color": {
-            "mode": "palette-classic"
-          },
+          "unit": "none",
           "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "smooth",
-            "lineWidth": 2,
             "fillOpacity": 10,
-            "gradientMode": "opacity",
             "showPoints": "never",
-            "spanNulls": true,
-            "pointSize": 5,
-            "stacking": {
-              "mode": "none",
-              "group": "A"
-            },
-            "axisPlacement": "auto",
-            "axisLabel": ""
+            "lineWidth": 2,
+            "drawStyle": "line",
+            "spanNulls": false
           },
+          "min": 0,
           "decimals": 2
         },
         "overrides": []
       },
       "options": {
         "legend": {
-          "displayMode": "table",
+          "displayMode": "list",
           "placement": "bottom",
-          "calcs": [
-            "lastNotNull",
-            "max",
-            "mean"
-          ]
+          "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
@@ -2567,10 +3490,7 @@
           "editorMode": "code",
           "expr": "node_load1",
           "refId": "A",
-          "range": true,
-          "instant": false,
-          "format": "time_series",
-          "legendFormat": "1m"
+          "legendFormat": "1 мин"
         },
         {
           "datasource": {
@@ -2580,10 +3500,7 @@
           "editorMode": "code",
           "expr": "node_load5",
           "refId": "B",
-          "range": true,
-          "instant": false,
-          "format": "time_series",
-          "legendFormat": "5m"
+          "legendFormat": "5 мин"
         },
         {
           "datasource": {
@@ -2593,87 +3510,44 @@
           "editorMode": "code",
           "expr": "node_load15",
           "refId": "C",
-          "range": true,
-          "instant": false,
-          "format": "time_series",
-          "legendFormat": "15m"
+          "legendFormat": "15 мин"
         }
-      ]
-    },
-    {
-      "id": 51,
-      "type": "timeseries",
-      "title": "Объём логов контейнеров (байт/ч, по данным Loki)",
-      "datasource": {
-        "type": "loki",
-        "uid": "loki"
-      },
+      ],
+      "id": 54,
       "gridPos": {
-        "x": 0,
-        "y": 93,
-        "w": 12,
-        "h": 8
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "bytes",
-          "custom": {
-            "fillOpacity": 10,
-            "showPoints": "never"
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "loki",
-            "uid": "loki"
-          },
-          "expr": "sum by (container_name) (bytes_over_time({container_name=~\".+\"}[1h]))",
-          "refId": "A",
-          "legendFormat": "{{container_name}}"
-        }
-      ]
+        "x": 16,
+        "y": 92,
+        "w": 8,
+        "h": 7
+      }
     },
     {
-      "id": 52,
       "type": "timeseries",
       "title": "Заполнение дисков",
+      "description": "Заполнение всех разделов сервера.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
-      },
-      "gridPos": {
-        "x": 12,
-        "y": 93,
-        "w": 12,
-        "h": 8
       },
       "fieldConfig": {
         "defaults": {
           "unit": "percent",
           "custom": {
             "fillOpacity": 10,
-            "showPoints": "never"
-          }
+            "showPoints": "never",
+            "lineWidth": 2,
+            "drawStyle": "line",
+            "spanNulls": false
+          },
+          "min": 0
         },
         "overrides": []
       },
       "options": {
         "legend": {
           "displayMode": "list",
-          "placement": "bottom"
+          "placement": "bottom",
+          "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
@@ -2686,77 +3560,129 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
+          "editorMode": "code",
           "expr": "100 * (1 - node_filesystem_avail_bytes{fstype!~\"tmpfs|overlay|squashfs\"} / node_filesystem_size_bytes{fstype!~\"tmpfs|overlay|squashfs\"})",
           "refId": "A",
           "legendFormat": "{{mountpoint}}"
         }
-      ]
-    },
-    {
-      "id": 33,
-      "type": "row",
-      "title": "📜 Logs — логи сервисов (Loki)",
-      "collapsed": false,
+      ],
+      "id": 55,
       "gridPos": {
         "x": 0,
-        "y": 101,
-        "w": 24,
-        "h": 1
-      },
-      "panels": []
+        "y": 99,
+        "w": 12,
+        "h": 7
+      }
     },
     {
-      "id": 34,
-      "type": "stat",
-      "title": "Бот — ошибок за час",
+      "type": "timeseries",
+      "title": "Объём логов контейнеров",
+      "description": "Сколько байт логов пишет каждый контейнер за час (по данным Loki).",
       "datasource": {
         "type": "loki",
         "uid": "loki"
       },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": {
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "lineWidth": 2,
+            "drawStyle": "line",
+            "spanNulls": false
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "sum by (container_name) (bytes_over_time({container_name=~\".+\"}[1h]))",
+          "queryType": "range",
+          "refId": "A",
+          "legendFormat": "{{container_name}}"
+        }
+      ],
+      "id": 56,
+      "gridPos": {
+        "x": 12,
+        "y": 99,
+        "w": 12,
+        "h": 7
+      }
+    },
+    {
+      "type": "row",
+      "title": "📜 Логи",
+      "collapsed": false,
+      "panels": [],
+      "id": 57,
       "gridPos": {
         "x": 0,
-        "y": 102,
-        "w": 8,
-        "h": 4
+        "y": 106,
+        "w": 24,
+        "h": 1
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Бот: строк с ошибками за час",
+      "description": "Строки логов бота со словами error, exception, traceback, failed.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
-          "color": {
-            "mode": "thresholds"
-          },
+          "unit": "none",
+          "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "text",
                 "value": null
-              },
-              {
-                "color": "yellow",
-                "value": 1
-              },
-              {
-                "color": "red",
-                "value": 10
               }
             ]
+          },
+          "color": {
+            "mode": "thresholds"
           }
         },
         "overrides": []
       },
       "options": {
-        "colorMode": "background",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "textMode": "auto",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
           ],
           "fields": "",
           "values": false
-        }
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
       },
       "targets": [
         {
@@ -2766,65 +3692,60 @@
           },
           "editorMode": "code",
           "expr": "sum(count_over_time({container_name=\"podboxbot_bot\"} |~ \"(?i)\\\\b(error|exception|traceback|critical|failed)\\\\b\" [1h]))",
-          "refId": "A",
-          "range": false,
-          "instant": true,
-          "format": "time_series"
+          "queryType": "instant",
+          "refId": "A"
         }
-      ]
+      ],
+      "id": 58,
+      "gridPos": {
+        "x": 0,
+        "y": 107,
+        "w": 8,
+        "h": 4
+      }
     },
     {
-      "id": 35,
       "type": "stat",
-      "title": "Publishers — ошибок за час",
+      "title": "Сервисы публикации: строк с ошибками за час",
+      "description": "То же для контейнеров podboxbot_publisher_*.",
       "datasource": {
         "type": "loki",
         "uid": "loki"
       },
-      "gridPos": {
-        "x": 8,
-        "y": 102,
-        "w": 8,
-        "h": 4
-      },
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
-          "color": {
-            "mode": "thresholds"
-          },
+          "unit": "none",
+          "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "text",
                 "value": null
-              },
-              {
-                "color": "yellow",
-                "value": 1
-              },
-              {
-                "color": "red",
-                "value": 10
               }
             ]
+          },
+          "color": {
+            "mode": "thresholds"
           }
         },
         "overrides": []
       },
       "options": {
-        "colorMode": "background",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "textMode": "auto",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
           ],
           "fields": "",
           "values": false
-        }
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
       },
       "targets": [
         {
@@ -2834,57 +3755,60 @@
           },
           "editorMode": "code",
           "expr": "sum(count_over_time({container_name=~\"podboxbot_publisher_.+\"} |~ \"(?i)\\\\b(error|exception|traceback|critical|failed)\\\\b\" [1h]))",
-          "refId": "A",
-          "range": false,
-          "instant": true,
-          "format": "time_series"
+          "queryType": "instant",
+          "refId": "A"
         }
-      ]
+      ],
+      "id": 59,
+      "gridPos": {
+        "x": 8,
+        "y": 107,
+        "w": 8,
+        "h": 4
+      }
     },
     {
-      "id": 36,
       "type": "stat",
-      "title": "Строк логов (app) за час",
+      "title": "Медленных апдейтов за час",
+      "description": "Апдейты дольше SAGENZA_LOG_SLOW_UPDATE_SECONDS (по умолчанию 2 с).",
       "datasource": {
         "type": "loki",
         "uid": "loki"
       },
-      "gridPos": {
-        "x": 16,
-        "y": 102,
-        "w": 8,
-        "h": 4
-      },
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
-          "color": {
-            "mode": "thresholds"
-          },
+          "unit": "none",
+          "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "text",
                 "value": null
               }
             ]
+          },
+          "color": {
+            "mode": "thresholds"
           }
         },
         "overrides": []
       },
       "options": {
-        "colorMode": "background",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "textMode": "auto",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
           ],
           "fields": "",
           "values": false
-        }
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
       },
       "targets": [
         {
@@ -2893,62 +3817,46 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "sum(count_over_time({job=\"app_logs\"} [1h]))",
-          "refId": "A",
-          "range": false,
-          "instant": true,
-          "format": "time_series"
+          "expr": "sum(count_over_time({container_name=\"podboxbot_bot\"} |~ \"(?i)slow update\" [1h]))",
+          "queryType": "instant",
+          "refId": "A"
         }
-      ]
+      ],
+      "id": 60,
+      "gridPos": {
+        "x": 16,
+        "y": 107,
+        "w": 8,
+        "h": 4
+      }
     },
     {
-      "id": 37,
       "type": "timeseries",
-      "title": "Темп логов по контейнерам (строк/сек)",
+      "title": "Строк логов по контейнерам",
+      "description": "Сколько строк в секунду пишет каждый контейнер.",
       "datasource": {
         "type": "loki",
         "uid": "loki"
       },
-      "gridPos": {
-        "x": 0,
-        "y": 106,
-        "w": 12,
-        "h": 8
-      },
       "fieldConfig": {
         "defaults": {
-          "unit": "logs",
-          "color": {
-            "mode": "palette-classic"
-          },
+          "unit": "none",
           "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "smooth",
-            "lineWidth": 2,
             "fillOpacity": 10,
-            "gradientMode": "opacity",
             "showPoints": "never",
-            "spanNulls": true,
-            "pointSize": 5,
-            "stacking": {
-              "mode": "normal",
-              "group": "A"
-            },
-            "axisPlacement": "auto",
-            "axisLabel": ""
-          }
+            "lineWidth": 2,
+            "drawStyle": "line",
+            "spanNulls": false
+          },
+          "min": 0
         },
         "overrides": []
       },
       "options": {
         "legend": {
-          "displayMode": "table",
+          "displayMode": "list",
           "placement": "bottom",
-          "calcs": [
-            "lastNotNull",
-            "max",
-            "mean"
-          ]
+          "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
@@ -2963,79 +3871,46 @@
           },
           "editorMode": "code",
           "expr": "sum by (container_name) (rate({job=\"app_logs\"} [$__rate_interval]))",
-          "refId": "B",
-          "range": true,
-          "instant": false,
-          "format": "time_series",
+          "queryType": "range",
+          "refId": "A",
           "legendFormat": "{{container_name}}"
         }
-      ]
+      ],
+      "id": 61,
+      "gridPos": {
+        "x": 0,
+        "y": 111,
+        "w": 12,
+        "h": 8
+      }
     },
     {
-      "id": 38,
       "type": "timeseries",
-      "title": "Темп ошибок по контейнерам (строк/сек)",
+      "title": "Строк с ошибками по контейнерам",
+      "description": "Строки со словами error, exception, traceback, failed.",
       "datasource": {
         "type": "loki",
         "uid": "loki"
       },
-      "gridPos": {
-        "x": 12,
-        "y": 106,
-        "w": 12,
-        "h": 8
-      },
       "fieldConfig": {
         "defaults": {
-          "unit": "logs",
-          "color": {
-            "mode": "palette-classic"
-          },
+          "unit": "none",
           "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "smooth",
-            "lineWidth": 2,
             "fillOpacity": 10,
-            "gradientMode": "opacity",
             "showPoints": "never",
-            "spanNulls": true,
-            "pointSize": 5,
-            "stacking": {
-              "mode": "none",
-              "group": "A"
-            },
-            "axisPlacement": "auto",
-            "axisLabel": ""
+            "lineWidth": 2,
+            "drawStyle": "line",
+            "spanNulls": false
           },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "yellow",
-                "value": 1
-              },
-              {
-                "color": "red",
-                "value": 10
-              }
-            ]
-          }
+          "min": 0
         },
         "overrides": []
       },
       "options": {
         "legend": {
-          "displayMode": "table",
+          "displayMode": "list",
           "placement": "bottom",
-          "calcs": [
-            "lastNotNull",
-            "max",
-            "mean"
-          ]
+          "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
@@ -3050,27 +3925,26 @@
           },
           "editorMode": "code",
           "expr": "sum by (container_name) (rate({job=\"app_logs\"} |~ \"(?i)\\\\b(error|exception|traceback|critical|failed)\\\\b\" [$__rate_interval]))",
+          "queryType": "range",
           "refId": "A",
-          "range": true,
-          "instant": false,
-          "format": "time_series",
           "legendFormat": "{{container_name}}"
         }
-      ]
+      ],
+      "id": 62,
+      "gridPos": {
+        "x": 12,
+        "y": 111,
+        "w": 12,
+        "h": 8
+      }
     },
     {
-      "id": 39,
       "type": "logs",
       "title": "Логи бота",
+      "description": "Последние строки логов бота.",
       "datasource": {
         "type": "loki",
         "uid": "loki"
-      },
-      "gridPos": {
-        "x": 0,
-        "y": 114,
-        "w": 24,
-        "h": 10
       },
       "options": {
         "showTime": true,
@@ -3093,21 +3967,22 @@
           "queryType": "range",
           "refId": "A"
         }
-      ]
+      ],
+      "id": 63,
+      "gridPos": {
+        "x": 0,
+        "y": 119,
+        "w": 24,
+        "h": 10
+      }
     },
     {
-      "id": 40,
       "type": "logs",
-      "title": "Логи publisher'ов",
+      "title": "Логи сервисов публикации",
+      "description": "Последние строки логов FTP, сайта, Boosty и платных площадок.",
       "datasource": {
         "type": "loki",
         "uid": "loki"
-      },
-      "gridPos": {
-        "x": 0,
-        "y": 124,
-        "w": 24,
-        "h": 10
       },
       "options": {
         "showTime": true,
@@ -3130,28 +4005,32 @@
           "queryType": "range",
           "refId": "A"
         }
-      ]
+      ],
+      "id": 64,
+      "gridPos": {
+        "x": 0,
+        "y": 129,
+        "w": 24,
+        "h": 10
+      }
     },
     {
-      "id": 53,
       "type": "logs",
       "title": "Логи сервиса: $service",
+      "description": "Логи выбранных сервисов с поиском по тексту (переменные вверху).",
       "datasource": {
         "type": "loki",
         "uid": "loki"
       },
-      "gridPos": {
-        "x": 0,
-        "y": 134,
-        "w": 24,
-        "h": 12
-      },
       "options": {
         "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
         "wrapLogMessage": true,
-        "sortOrder": "Descending",
+        "prettifyLogMessage": false,
         "enableLogDetails": true,
-        "dedupStrategy": "none"
+        "dedupStrategy": "none",
+        "sortOrder": "Descending"
       },
       "targets": [
         {
@@ -3159,11 +4038,19 @@
             "type": "loki",
             "uid": "loki"
           },
+          "editorMode": "code",
           "expr": "{container_name=~\"$service\"} |~ \"(?i)$search\"",
-          "refId": "A",
-          "legendFormat": ""
+          "queryType": "range",
+          "refId": "A"
         }
-      ]
+      ],
+      "id": 65,
+      "gridPos": {
+        "x": 0,
+        "y": 139,
+        "w": 24,
+        "h": 10
+      }
     }
   ]
 }
