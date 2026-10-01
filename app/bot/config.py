@@ -82,6 +82,10 @@ class Settings(BaseSettings):
     # Анкета «Предложить тему»: ephemeral — в группе, видна только автору
     # (запасной путь — личка); private — сразу в личке бота; off — без анкеты.
     TOPICS_FORM_MODE: Literal["ephemeral", "private", "off"] = "ephemeral"
+    # Голосование по темам: куда публиковать опрос (пусто — чат тем) и
+    # сколько часов он открыт (0 — пока ведущие не закроют его из /admin).
+    TOPICS_POLL_CHAT: str | None = None
+    TOPICS_POLL_HOURS: int = 24
 
     # DEBUG
     DEBUG: bool = False
@@ -205,6 +209,8 @@ TOPICS_DAILY_LIMIT = settings.TOPICS_DAILY_LIMIT
 TOPICS_MIN_LENGTH = settings.TOPICS_MIN_LENGTH
 TOPICS_MAX_LENGTH = settings.TOPICS_MAX_LENGTH
 TOPICS_FORM_MODE = settings.TOPICS_FORM_MODE
+TOPICS_POLL_CHAT = (settings.TOPICS_POLL_CHAT or "").strip() or TOPICS_CHAT
+TOPICS_POLL_HOURS = settings.TOPICS_POLL_HOURS
 API_ID = settings.TELEGRAM_SERVER_API_ID
 API_HASH = settings.TELEGRAM_SERVER_API_HASH
 

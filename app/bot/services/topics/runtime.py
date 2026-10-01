@@ -11,6 +11,7 @@ from aiogram.types import Chat, Message, User
 import config as bot_config
 from services import redis
 from services.topics.models import Author
+from services.topics.polls import PollStore
 from services.topics.quota import DailyQuota
 from services.topics.repository import RedisTopicRepository
 from services.topics.service import TopicService
@@ -28,6 +29,10 @@ def topic_service() -> TopicService:
         bot_config.TOPICS_MIN_LENGTH,
         bot_config.TOPICS_MAX_LENGTH,
     )
+
+
+def poll_store() -> PollStore:
+    return PollStore(redis)
 
 
 def count_event(metrics: Any, name: str, **labels: str) -> None:

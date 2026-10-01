@@ -36,6 +36,7 @@ from handlers.paywalled_handler import PATREON, SPONSR, VK, Platform, upload_to
 from handlers.service_handler import open_from_menu as open_service_message
 from handlers.topics_form_handler import form_enabled, post_suggest_button
 from handlers.topics_handler import topics_submenu
+from handlers.topics_polls_handler import polls_submenu
 from handlers.wordpress_handler import upload_WP
 from services.i18n import DEFAULT_LOCALE, translator
 from services.metrics import bot_metrics
@@ -142,6 +143,7 @@ def build_menus() -> BotMenus:
                         confirm=True,
                         visible_if=form_enabled,
                     ),
+                    polls_submenu(),
                 ),
             ),
         ],
