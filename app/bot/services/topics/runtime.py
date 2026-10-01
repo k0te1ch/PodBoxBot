@@ -1,20 +1,35 @@
 """Сборка очереди тем под этот бот: Redis, настройки, метрики.
 
+Очередь: :class:`SuggestionBox` из модуля ``suggest`` SDK, но без
+``SuggestModule``: диалог в личке у бота свой (анкета на DialogEngine, общая
+с вариантом C), а разбирают темы ведущие в ``/admin``. Поэтому у очереди нет
+модераторов (и карточки SDK никому не уходят) и нет статусов для
+уведомлений (автору пишет :mod:`.delivery`: в личку, а если нельзя,
+эфемерно в чат). Лимит и длина берутся из ``TOPICS_*``, а не из
+``SAGENZA_SUGGEST_*``, чтобы настройка была одна.
+
 Настройки читаются из :mod:`config` при каждом вызове, а не при импорте:
 так флаги видны в тестах и после правки конфига.
 """
 
 from typing import Any
 
+from aiogram import Bot
 from aiogram.types import Chat, Message, User
+from sagenza_tgbot_sdk.i18n import Texts
+from sagenza_tgbot_sdk.suggest import RedisSuggestStore, SuggestionBox, SuggestLimits
+from sagenza_tgbot_sdk.suggest.texts import DEFAULT_TEXTS
 
 import config as bot_config
 from services import redis
+from services.i18n import DEFAULT_LOCALE, translator
 from services.topics.models import Author
 from services.topics.polls import PollStore
-from services.topics.quota import DailyQuota
-from services.topics.repository import RedisTopicRepository
+from services.topics.repository import SuggestTopicRepository
 from services.topics.service import TopicService
+
+QUEUE_PREFIX = "topics:queue"
+RATE_PERIOD_SECONDS = 24 * 3600
 
 
 def topics_enabled(*_args: Any) -> bool:
@@ -22,10 +37,33 @@ def topics_enabled(*_args: Any) -> bool:
     return bool(bot_config.TOPICS_ENABLED)
 
 
-def topic_service() -> TopicService:
+def suggest_texts() -> Texts:
+    """Тексты SDK с подменой из ``locales/*.ftl`` бота (``suggest-*``)."""
+    return Texts(DEFAULT_TEXTS, translator, DEFAULT_LOCALE)
+
+
+def suggestion_box(bot: Bot | None = None, metrics: Any = None) -> SuggestionBox:
+    """Очередь тем. С *metrics* SDK сам считает ``suggestion_submitted`` и
+    ``suggestion_moderated``; *bot* нужен только затем, чтобы SDK не ругался
+    в лог, что показать тему некому."""
+    box = SuggestionBox(
+        RedisSuggestStore(redis, prefix=QUEUE_PREFIX),
+        limits=SuggestLimits(
+            max_length=bot_config.TOPICS_MAX_LENGTH,
+            rate_limit=bot_config.TOPICS_DAILY_LIMIT,
+            rate_period=RATE_PERIOD_SECONDS,
+        ),
+        texts=suggest_texts(),
+        notify_statuses=(),
+    )
+    if bot is not None:
+        box.bind(bot, metrics)
+    return box
+
+
+def topic_service(bot: Bot | None = None, metrics: Any = None) -> TopicService:
     return TopicService(
-        RedisTopicRepository(redis),
-        DailyQuota(redis, bot_config.TOPICS_DAILY_LIMIT, bot_config.TIMEZONE),
+        SuggestTopicRepository(suggestion_box(bot, metrics), redis),
         bot_config.TOPICS_MIN_LENGTH,
         bot_config.TOPICS_MAX_LENGTH,
     )

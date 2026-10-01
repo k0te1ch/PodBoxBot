@@ -72,7 +72,8 @@ class Settings(BaseSettings):
     # Темы от слушателей. По умолчанию выключено.
     # TOPICS_CHAT — где слушатели предлагают темы (@username или числовой id),
     # пусто — чат форварда. TOPICS_HASHTAG пустой отключает сбор по хештегу.
-    # TOPICS_DAILY_LIMIT 0 — без лимита.
+    # TOPICS_DAILY_LIMIT: тем от автора за последние 24 часа, 0 без лимита.
+    # Лимит, длина и бан-лист работают в очереди модуля suggest SDK.
     TOPICS_ENABLED: bool = False
     TOPICS_CHAT: str | None = None
     TOPICS_HASHTAG: str = "тема"

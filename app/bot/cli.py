@@ -16,7 +16,7 @@ from config import (
     SKIP_UPDATES,
 )
 from handlers import COMMANDS
-from handlers.topics_form_handler import register_group_commands
+from handlers.topics_form_handler import private_commands, register_group_commands
 from services.scheduler import init_scheduler_jobs, scheduler
 
 
@@ -81,7 +81,7 @@ async def _run():
     # COMMANDS живёт рядом с роутерами (handlers/__init__.py), чтобы список
     # команд и их обработчики правились в одном месте.
     await main.bot.set_my_commands(
-        commands=COMMANDS,
+        commands=[*COMMANDS, *private_commands()],
         scope=BotCommandScopeAllPrivateChats(),
     )
     await register_group_commands(main.bot)

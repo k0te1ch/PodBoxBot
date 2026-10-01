@@ -1,4 +1,4 @@
-"""Очередь тем в /admin: видимость, статусы, карточка и кнопки решения."""
+"""Очередь тем в /admin: видимость, статусы, карточка, номер выпуска и бан автора."""
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -31,9 +31,16 @@ def _ctx(value=None, state=None, page=0):
 
 def _fsm():
     data: dict = {}
+    current: dict = {"state": None}
     state = MagicMock(spec=th.FSMContext)
     state.update_data = AsyncMock(side_effect=lambda d: data.update(d))
     state.get_data = AsyncMock(side_effect=lambda: data)
+
+    async def set_state(value=None):
+        current["state"] = getattr(value, "state", value)
+
+    state.set_state = AsyncMock(side_effect=set_state)
+    state.get_state = AsyncMock(side_effect=lambda: current["state"])
     return state
 
 
@@ -149,7 +156,8 @@ async def test_card_offers_every_status_but_the_current_one(fake_redis):
     assert "тема &lt;про&gt; гостей" in text
     assert t("topics_status_later") in text
     decisions = [th.TopicCallback.unpack(b.callback_data).a for b in markup.inline_keyboard[0]]
-    assert decisions == ["taken", "rejected"]
+    assert decisions == [th.ASK_EPISODE, "rejected"]
+    assert th.TopicCallback.unpack(markup.inline_keyboard[1][0].callback_data).a == th.BAN
 
 
 @pytest.mark.asyncio
@@ -165,22 +173,145 @@ async def test_missing_topic_card_returns_to_list(fake_redis):
 
 
 def _decide_ctx():
-    return MagicMock(locale="ru", text=lambda key, **kw: t(key, **kw), answer=AsyncMock(), show=AsyncMock())
+    return MagicMock(
+        locale="ru",
+        page=0,
+        data={},
+        text=lambda key, **kw: t(key, **kw),
+        answer=AsyncMock(),
+        show=AsyncMock(),
+        put=AsyncMock(),
+    )
+
+
+def _press(user_id=1):
+    callback = MagicMock()
+    callback.from_user.id = user_id
+    return callback
 
 
 @pytest.mark.asyncio
-async def test_take_moves_topic_notifies_author_and_counts(fake_redis, bot):
+async def test_take_without_number_moves_topic_notifies_author_and_counts(fake_redis, bot):
     topic = await _add()
     ctx, metrics = _decide_ctx(), MagicMock()
 
     with patch.object(menus.menus, "context", return_value=ctx):
-        await th.decide(MagicMock(), th.TopicCallback(a="taken", id=topic.id, p=1), MagicMock(), bot, metrics)
+        await th.decide(_press(), th.TopicCallback(a="taken", id=topic.id, p=1), _fsm(), bot, metrics)
 
-    assert (await topic_service().repository.get(topic.id)).status is TopicStatus.TAKEN
-    assert bot.send_message.await_args.kwargs["chat_id"] == 7
-    metrics.event.assert_called_once_with("topic_status", status=TopicStatus.TAKEN)
+    stored = await topic_service().repository.get(topic.id)
+    assert (stored.status, stored.note) == (TopicStatus.TAKEN, None)
+    kwargs = bot.send_message.await_args.kwargs
+    assert kwargs["chat_id"] == 7
+    assert kwargs["text"] == t("suggest-notify-taken", text="про гостей из Питера")
+    metrics.event.assert_called_once_with("suggestion_moderated", status="taken")
     ctx.answer.assert_awaited_once_with(t("topics_marked_taken"))
     ctx.show.assert_awaited_once_with(th.ENTRIES_MENU, 1)
+
+
+@pytest.mark.asyncio
+async def test_take_asks_for_episode_number_first(fake_redis, bot):
+    topic = await _add()
+    ctx, state = _decide_ctx(), _fsm()
+
+    with patch.object(menus.menus, "context", return_value=ctx):
+        await th.decide(_press(), th.TopicCallback(a=th.ASK_EPISODE, id=topic.id, p=2), state, bot)
+
+    assert await state.get_state() == th.TopicStates.episode.state
+    assert (await state.get_data())[th.EPISODE_TOPIC_KEY] == topic.id
+    text, markup = ctx.put.await_args.args
+    assert text == t("topics_ask_episode", id=topic.id, max=th.EPISODE_MAX_CHARS)
+    actions = [th.TopicCallback.unpack(row[0].callback_data).a for row in markup.inline_keyboard]
+    assert actions == ["taken", th.CARD]
+    assert (await topic_service().repository.get(topic.id)).status is TopicStatus.NEW
+    bot.send_message.assert_not_awaited()
+
+
+def _admin_message(text):
+    msg = MagicMock()
+    msg.text = text
+    msg.from_user.id = 1
+    msg.answer = AsyncMock()
+    return msg
+
+
+@pytest.mark.asyncio
+async def test_episode_number_takes_topic_and_tells_author(fake_redis, bot):
+    topic = await _add()
+    ctx, state, metrics = _decide_ctx(), _fsm(), MagicMock()
+    with patch.object(menus.menus, "context", return_value=ctx):
+        await th.decide(_press(), th.TopicCallback(a=th.ASK_EPISODE, id=topic.id, p=2), state, bot)
+        msg = _admin_message(" 42 ")
+        await th.take_with_episode(msg, state, bot, metrics)
+
+    stored = await topic_service().repository.get(topic.id)
+    assert (stored.status, stored.note) == (TopicStatus.TAKEN, "42")
+    assert await state.get_state() is None
+    notice = bot.send_message.await_args.kwargs
+    assert notice["chat_id"] == 7
+    assert notice["text"] == t("suggest-notify-taken-note", text="про гостей из Питера", note="42")
+    msg.answer.assert_awaited_once_with(t("topics_marked_taken_episode", note="42"))
+    card, _markup = ctx.put.await_args.args
+    assert t("topics_card_episode", note="42") in card
+    assert ctx.page == 2
+    metrics.event.assert_called_once_with("suggestion_moderated", status="taken")
+
+
+@pytest.mark.asyncio
+async def test_only_fresh_short_text_counts_as_episode_number(fake_redis):
+    state = _fsm()
+    await state.update_data({th.EPISODE_ASKED_KEY: th.time.time()})
+
+    assert await th._is_episode_answer(_admin_message("42"), state)
+    assert not await th._is_episode_answer(_admin_message("x" * (th.EPISODE_MAX_CHARS + 1)), state)
+
+    await state.update_data({th.EPISODE_ASKED_KEY: th.time.time() - th.EPISODE_WAIT_SECONDS - 1})
+    assert not await th._is_episode_answer(_admin_message("42"), state)
+
+
+@pytest.mark.asyncio
+async def test_back_from_episode_question_returns_to_card(fake_redis, bot):
+    topic = await _add()
+    ctx, state = _decide_ctx(), _fsm()
+    await state.set_state(th.TopicStates.episode)
+
+    with patch.object(menus.menus, "context", return_value=ctx):
+        await th.decide(_press(), th.TopicCallback(a=th.CARD, id=topic.id), state, bot)
+
+    assert await state.get_state() is None
+    text, _markup = ctx.put.await_args.args
+    assert t("topics_card_title", id=topic.id) in text
+
+
+@pytest.mark.asyncio
+async def test_ban_and_unban_author_from_card(fake_redis, bot):
+    topic = await _add()
+    ctx = _decide_ctx()
+
+    with patch.object(menus.menus, "context", return_value=ctx):
+        await th.decide(_press(), th.TopicCallback(a=th.BAN, id=topic.id), _fsm(), bot)
+        assert await topic_service().repository.is_banned(7)
+        text, markup = ctx.put.await_args.args
+        assert t("topics_card_banned") in text
+        assert th.TopicCallback.unpack(markup.inline_keyboard[1][0].callback_data).a == th.UNBAN
+
+        await th.decide(_press(), th.TopicCallback(a=th.UNBAN, id=topic.id), _fsm(), bot)
+
+    assert not await topic_service().repository.is_banned(7)
+    ctx.answer.assert_any_await(t("topics_ban_done"))
+
+
+@pytest.mark.asyncio
+async def test_anonymous_author_has_no_ban_button(fake_redis):
+    topic = await _add(user_id=None)
+    ctx = _ctx(value=str(topic.id))
+    ctx.put = AsyncMock()
+    ctx.answer = AsyncMock()
+
+    await menus.menus.get_menu(th.ENTRIES_MENU).on_select(ctx)
+
+    _text, markup = ctx.put.await_args.args
+    actions = [th.TopicCallback.unpack(b.callback_data).a for row in markup.inline_keyboard[:-1] for b in row]
+    assert th.BAN not in actions
 
 
 @pytest.mark.asyncio
@@ -188,7 +319,7 @@ async def test_same_status_again_does_not_notify(fake_redis, bot):
     topic = await _add(status=TopicStatus.LATER)
 
     with patch.object(menus.menus, "context", return_value=_decide_ctx()):
-        await th.decide(MagicMock(), th.TopicCallback(a="later", id=topic.id), MagicMock(), bot)
+        await th.decide(_press(), th.TopicCallback(a="later", id=topic.id), _fsm(), bot)
 
     bot.send_message.assert_not_awaited()
 
@@ -199,7 +330,7 @@ async def test_unknown_decision_is_ignored(fake_redis, bot):
     ctx = _decide_ctx()
 
     with patch.object(menus.menus, "context", return_value=ctx):
-        await th.decide(MagicMock(), th.TopicCallback(a="new", id=topic.id), MagicMock(), bot)
+        await th.decide(_press(), th.TopicCallback(a="new", id=topic.id), _fsm(), bot)
 
     assert (await topic_service().repository.get(topic.id)).status is TopicStatus.NEW
     ctx.show.assert_not_awaited()

@@ -46,15 +46,18 @@ def _ctx(bot=None, value=None, state=None, metrics=None):
     return ctx
 
 
-async def _add(text, status=TopicStatus.NEW, created_at=1.0, user_id=7) -> Topic:
+@pytest.fixture(autouse=True)
+def _roomy_queue(monkeypatch):
+    """Голосованиям нужно много тем от одного автора и длинные варианты."""
+    monkeypatch.setattr(config, "TOPICS_DAILY_LIMIT", 0)
+    monkeypatch.setattr(config, "TOPICS_MAX_LENGTH", 500)
+
+
+async def _add(text, status=TopicStatus.NEW, user_id=7) -> Topic:
+    """Тема в очередь; каждая следующая свежее предыдущей."""
     repository = topic_service().repository
     topic = await repository.add(
-        Topic(
-            text=text,
-            author=Author(name="@listener", user_id=user_id),
-            source=TopicSource.HASHTAG,
-            created_at=created_at,
-        )
+        Topic(text=text, author=Author(name="@listener", user_id=user_id), source=TopicSource.HASHTAG)
     )
     if status is not TopicStatus.NEW:
         topic = await repository.set_status(topic.id, status)
@@ -77,7 +80,7 @@ def _poll_update(votes, closed=False, poll_id="tg-poll-1"):
 
 
 async def _published(bot, count=3) -> tuple[TopicPoll, list[Topic]]:
-    topics = [await _add(f"тема номер {i}", created_at=float(i)) for i in range(count)]
+    topics = [await _add(f"тема номер {i}") for i in range(count)]
     bot.send_poll = AsyncMock(return_value=_sent_poll())
     ctx = _ctx(bot)
     for topic in topics:
@@ -113,9 +116,9 @@ async def test_store_finds_poll_by_telegram_id_and_closes_once(fake_redis):
 
 @pytest.mark.asyncio
 async def test_pick_list_offers_new_and_postponed_topics_with_marks(fake_redis):
-    new = await _add("новая тема", created_at=2)
-    later = await _add("отложенная тема", TopicStatus.LATER, created_at=1)
-    await _add("уже взятая тема", TopicStatus.TAKEN, created_at=3)
+    later = await _add("отложенная тема", TopicStatus.LATER)
+    new = await _add("новая тема")
+    await _add("уже взятая тема", TopicStatus.TAKEN)
     ctx = _ctx(value=str(later.id))
 
     await ph._toggle(ctx)
@@ -298,7 +301,7 @@ async def test_votes_are_tracked_and_closed_poll_picks_winner(fake_redis, bot):
     recipients = [call.kwargs["chat_id"] for call in bot.send_message.await_args_list]
     assert recipients == [7, 100]
     assert "тема номер 1" in bot.send_message.await_args.kwargs["text"]
-    metrics.event.assert_any_call("topic_status", status=TopicStatus.TAKEN)
+    metrics.event.assert_any_call("suggestion_moderated", status="taken")
     metrics.event.assert_any_call("topic_poll", action="closed")
 
     await ph.on_poll_update(_poll_update([1, 7, 2], closed=True), bot, metrics)

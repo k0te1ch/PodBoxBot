@@ -1104,6 +1104,31 @@ test = ["check-manifest (>=0.50)", "coverage (>=7.8.0)", "factory-boy (>=3.3.3)"
 yaml-plugin = ["PyYAML (>=6.0.2)"]
 
 [[package]]
+name = "fakeredis"
+version = "2.38.0"
+description = "Python implementation of redis API, can be used for testing purposes."
+optional = false
+python-versions = ">=3.8"
+groups = ["testing"]
+files = [
+    {file = "fakeredis-2.38.0-py3-none-any.whl", hash = "sha256:d9fb0518c4eaa35f1f2c94df6b4a4c97ff3ca9f43d6cc8112317a9037d244301"},
+    {file = "fakeredis-2.38.0.tar.gz", hash = "sha256:d2abfd24652f86501044499bf08c9d639db050f695eefc06b8b8b6f0bb24dbd6"},
+]
+
+[package.dependencies]
+redis = ">=4.3"
+sortedcontainers = ">=2"
+
+[package.extras]
+bf = ["pyprobables (>=0.6)"]
+cf = ["pyprobables (>=0.6)"]
+json = ["jsonpath-ng (>=1.6)"]
+lua = ["lupa (>=2.1)"]
+probabilistic = ["pyprobables (>=0.6)"]
+valkey = ["valkey (>=6)"]
+vectorset = ["jsonpath-ng (>=1.6) ; python_version >= \"3.11\"", "numpy (>=2.4.0) ; python_version >= \"3.11\""]
+
+[[package]]
 name = "fastavro"
 version = "1.12.1"
 description = "Fast read/write of AVRO files"
@@ -2472,7 +2497,7 @@ version = "4.6.0"
 description = "Python client for Redis database and key-value store"
 optional = false
 python-versions = ">=3.7"
-groups = ["main"]
+groups = ["main", "testing"]
 files = [
     {file = "redis-4.6.0-py3-none-any.whl", hash = "sha256:e2b03db868160ee4591de3cb90d40ebb50a90dd302138775937f6a42b7ed183c"},
     {file = "redis-4.6.0.tar.gz", hash = "sha256:585dc516b9eb042a619ef0a39c3d7d55fe81bdb4df09a52c9cdde0d07bf1aa7d"},
@@ -2570,7 +2595,7 @@ files = [
 
 [[package]]
 name = "sagenza-tgbot-sdk"
-version = "0.1.0"
+version = "0.2.0"
 description = "Shared SDK for the Sagenza family of aiogram 3 Telegram bots."
 optional = false
 python-versions = ">=3.12,<4.0"
@@ -2585,15 +2610,29 @@ loguru = ">=0.7,<1.0"
 prometheus-client = {version = ">=0.21,<1.0", optional = true}
 pydantic = {version = ">=2.7,<3.0", optional = true}
 pydantic-settings = {version = ">=2.5,<3.0", optional = true}
+redis = {version = ">=4.6,<9.0", optional = true}
 
 [package.extras]
 aiogram = ["aiogram (>=3.20,<4.0)", "prometheus-client (>=0.21,<1.0)", "pydantic (>=2.7,<3.0)", "pydantic-settings (>=2.5,<3.0)"]
+redis = ["redis (>=4.6,<9.0)"]
 
 [package.source]
 type = "git"
 url = "https://github.com/k0te1ch/sagenza-tgbot-sdk.git"
-reference = "v0.1.0"
-resolved_reference = "9623b2160031da2c81820d847b39a355f9dfcc46"
+reference = "v0.2.0"
+resolved_reference = "8c6d531a4205950851241d83c6eadd7d0c8337c7"
+
+[[package]]
+name = "sortedcontainers"
+version = "2.4.0"
+description = "Sorted Containers -- Sorted List, Sorted Dict, Sorted Set"
+optional = false
+python-versions = "*"
+groups = ["testing"]
+files = [
+    {file = "sortedcontainers-2.4.0-py2.py3-none-any.whl", hash = "sha256:a163dcaede0f1c021485e957a39245190e74249897e2ae4b2aa38595db237ee0"},
+    {file = "sortedcontainers-2.4.0.tar.gz", hash = "sha256:25caa5a06cc30b6b83d11423433f65d1f9d76c4c6a0c90e3379eaa43b9bfdb88"},
+]
 
 [[package]]
 name = "sqlalchemy"
@@ -3018,4 +3057,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.15"
-content-hash = "3ca1b00434d441d43123d86b93fa0c9248c54ac44c5f0e6240a3570d90a70f8b"
+content-hash = "cabe99a72cb3d9f9b7ee4621b4e0a030dd6b4a329e75e50c660876b2733533d5"
