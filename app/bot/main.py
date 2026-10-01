@@ -22,7 +22,6 @@ from sagenza_tgbot_sdk.notify import NotifyModule
 from sagenza_tgbot_sdk.status import StatusModule
 
 from handlers import ROUTERS, bot_menus
-from handlers.topics_polls_handler import watch_polls
 from middlewares.base.admin_activity_middleware import AdminActivityMiddleware
 from middlewares.base.user_context_middleware import UserContextMiddleware
 from services import init_services, redis
@@ -30,7 +29,7 @@ from services.kafka.handlers.upload_event import record_publish_metrics
 from services.metrics import bot_metrics
 from services.none_module import _NoneModule
 from services.rss import RssWatcher
-from services.topics.runtime import topics_enabled
+from services.topics.runtime import refresh_list_size, topics_enabled
 from utils.error_reporting import register_error_handler
 from utils.release_notes import get_version, send_release_note
 
@@ -196,15 +195,15 @@ async def start_rss_watcher(bot: Bot) -> None:
 _rss_tasks: set[asyncio.Task] = set()
 
 
-async def start_topic_polls_watcher(bot: Bot) -> None:
-    """Закрывает опросы по темам, у которых вышло время: Telegram о таком
-    закрытии боту не сообщает. Нужен Redis, как и всей очереди тем."""
+async def report_topics_list_size() -> None:
+    """Размер списка тем и вопросов в метриках сразу после старта, а не с
+    первого изменения. Нужен Redis, как и всему списку."""
     if not topics_enabled() or isinstance(redis, _NoneModule):
         return
-    _topic_poll_tasks.add(asyncio.create_task(watch_polls(bot, bot_metrics.sdk)))
-
-
-_topic_poll_tasks: set[asyncio.Task] = set()
+    try:
+        await refresh_list_size()
+    except Exception as e:
+        logger.warning(f"could not read the topics list size: {e!r}")
 
 
 def _add_middlewares_to_observers(observers: list[TelegramEventObserver], middlewares: list[BaseMiddleware]) -> None:
@@ -256,7 +255,7 @@ def _get_dp_obj(bot, redis):
 
     dp.startup.register(on_startup)
     dp.startup.register(start_rss_watcher)
-    dp.startup.register(start_topic_polls_watcher)
+    dp.startup.register(report_topics_list_size)
 
     logger.debug("Dispatcher is configured")
     return dp

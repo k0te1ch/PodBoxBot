@@ -1,4 +1,4 @@
-"""Приём и разбор тем: проверки, смена статуса.
+"""Приём пунктов и чистка списка.
 
 Сервис ничего не знает про Telegram и тексты: причину отказа он возвращает
 значением :class:`Refusal`, а что ответить автору, решает хендлер. Лимит на
@@ -11,8 +11,8 @@ from enum import StrEnum
 
 from sagenza_tgbot_sdk.suggest import RejectReason, SuggestionRejectedError
 
-from services.topics.models import Topic, TopicStatus
-from services.topics.repository import TopicRepository
+from services.topics.models import Item
+from services.topics.repository import ListRepository
 
 
 class Refusal(StrEnum):
@@ -32,55 +32,47 @@ _SDK_REFUSALS = {
 
 
 @dataclass
-class Suggestion:
-    topic: Topic | None = None
+class Added:
+    item: Item | None = None
     refusal: Refusal | None = None
 
 
-@dataclass
-class StatusChange:
-    topic: Topic
-    previous: TopicStatus
-    previous_note: str | None = None
-
-    @property
-    def changed(self) -> bool:
-        return self.topic.status != self.previous or self.topic.note != self.previous_note
-
-
-class TopicService:
-    def __init__(self, repository: TopicRepository, min_length: int, max_length: int) -> None:
+class TopicList:
+    def __init__(self, repository: ListRepository, min_length: int, max_length: int) -> None:
         self.repository = repository
         self.min_length = min_length
         self.max_length = max_length
 
-    def check_text(self, text: str) -> Refusal | None:
+    def check_text(self, text: str, *, trusted: bool = False) -> Refusal | None:
         length = len(text.strip())
-        if length < self.min_length:
+        if length < (1 if trusted else self.min_length):
             return Refusal.TOO_SHORT
         if length > self.max_length:
             return Refusal.TOO_LONG
         return None
 
-    async def suggest(self, topic: Topic) -> Suggestion:
-        topic.text = " ".join(topic.text.split())
-        refusal = self.check_text(topic.text)
+    async def add(self, item: Item, *, trusted: bool = False) -> Added:
+        """Добавить пункт. *trusted*: пункт добавляет админ, ему не мешают
+        ни лимит, ни бан-лист, ни минимальная длина."""
+        item.text = " ".join(item.text.split())
+        refusal = self.check_text(item.text, trusted=trusted)
         if refusal is not None:
-            return Suggestion(refusal=refusal)
+            return Added(refusal=refusal)
         try:
-            saved = await self.repository.add(topic)
+            saved = await self.repository.add(item, check_limits=not trusted)
         except SuggestionRejectedError as error:
             # Ссылку на сообщение бот строит сам, BAD_LINK сюда не доходит.
-            return Suggestion(refusal=_SDK_REFUSALS.get(error.reason, Refusal.TOO_SHORT))
+            return Added(refusal=_SDK_REFUSALS.get(error.reason, Refusal.TOO_SHORT))
         if saved is None:
-            return Suggestion(refusal=Refusal.DUPLICATE)
-        return Suggestion(topic=saved)
+            return Added(refusal=Refusal.DUPLICATE)
+        return Added(item=saved)
 
-    async def set_status(
-        self, topic_id: int, status: TopicStatus, *, note: str | None = None, moderator_id: int | None = None
-    ) -> StatusChange | None:
-        topic = await self.repository.get(topic_id)
-        if topic is None:
-            return None
-        updated = await self.repository.set_status(topic_id, status, note=note, moderator_id=moderator_id)
-        return StatusChange(updated, topic.status, topic.note) if updated is not None else None
+    async def remove(self, item_ids: list[int], moderator_id: int | None = None) -> list[Item]:
+        """Убрать пункты из списка; в ответе только те, что там были."""
+        removed = [await self.repository.remove(item_id, moderator_id) for item_id in item_ids]
+        return [item for item in removed if item is not None]
+
+    async def restore(self, item_ids: list[int]) -> list[Item]:
+        """Вернуть убранные пункты; в ответе только те, что вернулись."""
+        restored = [await self.repository.restore(item_id) for item_id in item_ids]
+        return [item for item in restored if item is not None]

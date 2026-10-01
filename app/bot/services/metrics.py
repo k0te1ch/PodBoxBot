@@ -7,7 +7,8 @@
 * бизнес-события через ``Metrics.event``: они видны как
   ``sagenza_event_<имя>_total{bot="podboxbot", ...}``;
 * гистограммы и gauge ``podboxbot_*``: время от загрузки mp3 до публикации,
-  размер и длительность аудио, состояние RSS, активность админов, версия;
+  размер и длительность аудио, состояние RSS, активность админов, версия,
+  размер списка тем и вопросов;
 * метрики процесса Python (``process_*``, ``python_*``): у реестра SDK их нет.
 
 Метки только с коротким известным набором значений: площадка, тип эпизода,
@@ -268,6 +269,12 @@ class BotMetrics:
             labels,
             registry=registry,
         )
+        self._topics_list_size = Gauge(
+            "podboxbot_topics_list_size",
+            "Items in the listener topics and questions list.",
+            [*labels, "kind"],
+            registry=registry,
+        )
         self._build_info = Gauge(
             "podboxbot_build_info",
             "Running bot version (always 1).",
@@ -302,6 +309,12 @@ class BotMetrics:
     @_never_fails
     def set_admins(self, count: int) -> None:
         self._admins_configured.labels(BOT_NAME).set(count)
+
+    @_never_fails
+    def topics_list_size(self, sizes: dict[str, int]) -> None:
+        """Сколько пунктов в списке тем и вопросов, по типам (``topic``, ``question``)."""
+        for kind, size in sizes.items():
+            self._topics_list_size.labels(BOT_NAME, kind).set(size)
 
     @_never_fails
     def admin_seen(self, user_id: int) -> None:

@@ -3052,7 +3052,7 @@
     },
     {
       "type": "row",
-      "title": "💬 Темы от слушателей",
+      "title": "💬 Темы и вопросы от слушателей",
       "collapsed": false,
       "panels": [],
       "id": 40,
@@ -3065,8 +3065,8 @@
     },
     {
       "type": "stat",
-      "title": "Тем предложено",
-      "description": "Темы, которые слушатели прислали хештегом или анкетой. Счётчики появятся вместе с функцией тем от слушателей (флаг TOPICS_ENABLED).",
+      "title": "Сейчас в списке",
+      "description": "Сколько тем и вопросов ждут ведущих прямо сейчас. Счётчики появятся, когда включат темы и вопросы от слушателей (флаг TOPICS_ENABLED).",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -3112,7 +3112,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(increase(sagenza_event_topic_suggested_total[$__range]))",
+          "expr": "sum(podboxbot_topics_list_size)",
           "refId": "A",
           "legendFormat": "",
           "instant": true,
@@ -3123,14 +3123,104 @@
       "gridPos": {
         "x": 0,
         "y": 68,
-        "w": 6,
+        "w": 4,
         "h": 6
       }
     },
     {
       "type": "bargauge",
-      "title": "Откуда темы",
-      "description": "Хештег в чате или анкета. Счётчики появятся вместе с функцией тем от слушателей (флаг TOPICS_ENABLED).",
+      "title": "Добавлено: темы и вопросы",
+      "description": "Сколько пунктов каждого типа попало в список за период. Счётчики появятся, когда включат темы и вопросы от слушателей (флаг TOPICS_ENABLED).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "topic"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Темы"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "question"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Вопросы"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "showUnfilled": true,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "valueMode": "color",
+        "namePlacement": "left",
+        "sizing": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (kind) (increase(sagenza_event_topic_added_total[$__range]))",
+          "refId": "A",
+          "legendFormat": "{{kind}}",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "id": 42,
+      "gridPos": {
+        "x": 4,
+        "y": 68,
+        "w": 5,
+        "h": 6
+      }
+    },
+    {
+      "type": "bargauge",
+      "title": "Откуда добавлено",
+      "description": "Хештег в чате, анкета или команда слушателя, админ в боте, сообщение чата, которое взял админ. Счётчики появятся, когда включат темы и вопросы от слушателей (флаг TOPICS_ENABLED).",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -3174,7 +3264,31 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "Анкета"
+                "value": "Анкета и команды слушателей"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "admin"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Добавил админ"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "reply"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Админ взял из чата"
               }
             ]
           }
@@ -3202,25 +3316,25 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum by (source) (increase(sagenza_event_topic_suggested_total[$__range]))",
+          "expr": "sum by (source) (increase(sagenza_event_topic_added_total[$__range]))",
           "refId": "A",
           "legendFormat": "{{source}}",
           "instant": true,
           "range": false
         }
       ],
-      "id": 42,
+      "id": 43,
       "gridPos": {
-        "x": 6,
+        "x": 9,
         "y": 68,
-        "w": 6,
+        "w": 5,
         "h": 6
       }
     },
     {
-      "type": "bargauge",
-      "title": "Решения по темам",
-      "description": "Что админы сделали с темами за период. Счётчики появятся вместе с функцией тем от слушателей (флаг TOPICS_ENABLED).",
+      "type": "stat",
+      "title": "Удалено как обсуждённое",
+      "description": "Сколько пунктов ведущие убрали из списка за период; возвращённые кнопкой «Вернуть» не считаются. Счётчики появятся, когда включат темы и вопросы от слушателей (флаг TOPICS_ENABLED).",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -3228,7 +3342,7 @@
       "fieldConfig": {
         "defaults": {
           "unit": "none",
-          "min": 0,
+          "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -3238,66 +3352,11 @@
               }
             ]
           },
-          "color": {
-            "mode": "thresholds"
-          },
           "decimals": 0
         },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "new"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "Новые"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "later"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "Отложены"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "taken"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "Взяты в выпуск"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "rejected"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "Отклонены"
-              }
-            ]
-          }
-        ]
+        "overrides": []
       },
       "options": {
-        "orientation": "horizontal",
-        "displayMode": "basic",
-        "showUnfilled": true,
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
@@ -3305,9 +3364,13 @@
           "fields": "",
           "values": false
         },
-        "valueMode": "color",
-        "namePlacement": "left",
-        "sizing": "auto"
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
       },
       "targets": [
         {
@@ -3316,25 +3379,25 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum by (status) (increase(sagenza_event_topic_status_total[$__range]))",
+          "expr": "clamp_min((sum(increase(sagenza_event_topic_removed_total[$__range])) or vector(0)) - (sum(increase(sagenza_event_topic_restored_total[$__range])) or vector(0)), 0)",
           "refId": "A",
-          "legendFormat": "{{status}}",
+          "legendFormat": "",
           "instant": true,
           "range": false
         }
       ],
-      "id": 43,
+      "id": 45,
       "gridPos": {
-        "x": 12,
+        "x": 14,
         "y": 68,
-        "w": 6,
+        "w": 4,
         "h": 6
       }
     },
     {
       "type": "bargauge",
       "title": "Не принято",
-      "description": "Почему бот не принял тему. Счётчики появятся вместе с функцией тем от слушателей (флаг TOPICS_ENABLED).",
+      "description": "Почему бот не принял тему или вопрос. Счётчики появятся, когда включат темы и вопросы от слушателей (флаг TOPICS_ENABLED).",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -3403,6 +3466,18 @@
               {
                 "id": "displayName",
                 "value": "Повтор"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "banned"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Автор заблокирован"
               }
             ]
           }

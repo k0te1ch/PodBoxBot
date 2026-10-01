@@ -1,4 +1,4 @@
-"""Темы от слушателей на живом боте.
+"""Список тем и вопросов от слушателей на живом боте.
 
 Бот должен быть запущен с ``TOPICS_ENABLED=true`` и Redis, тестовый аккаунт
 в ``ADMINS``. Тесты включаются переменной ``E2E_TOPICS=1``; сценарии в группе
@@ -6,8 +6,12 @@
 аккаунт, и которая совпадает с ``TOPICS_CHAT`` бота (``@username`` или
 числовой id).
 
-Лимит тем на автора (``TOPICS_DAILY_LIMIT``) у тестового бота нужно снять
-(``0``): каждый прогон предлагает больше трёх тем с одного аккаунта.
+Тестовый аккаунт админ, поэтому его команды в личке лимитом не ограничены. А
+хештеги в группе ограничены: лимит на автора (``TOPICS_DAILY_LIMIT``) у
+тестового бота нужно снять (``0``).
+
+Список у бота один и общий, поэтому каждый тест ищет свои пункты по тексту с
+меткой времени и в конце удаляет их.
 
 Эфемерные сообщения tgtest не знает, поэтому анкета в группе проверяется
 сырыми запросами Telethon (``ephemeral.*``): так видно, что бот ответил и что
@@ -17,16 +21,14 @@
 
 import asyncio
 import os
+import re
 import time
 
 import pytest
-from sagenza_tgbot_sdk.menus.callback import Action, MenuCallback
 from telethon import events
 from telethon.tl import functions, types
 
 pytestmark = pytest.mark.skipif(os.getenv("E2E_TOPICS") != "1", reason="set E2E_TOPICS=1 against a bot with topics on")
-
-NEW_TOPICS = MenuCallback(m="topics", a=Action.SELECT, v="new").pack()
 
 
 def _topics_chat() -> int | str:
@@ -38,26 +40,41 @@ def _topics_chat() -> int | str:
     return int(group) if group.lstrip("-").isdigit() else group
 
 
-async def _open_topics(chat, phrase) -> None:
-    await chat.command("admin")
-    await chat.expect(buttons=[phrase("admin_topics", full=True)])
-    await chat.click(phrase("admin_topics", full=True))
-    await chat.expect_edit(contains=phrase("topics_panel"), timeout=10)
+def _has_button(message, label: str) -> bool:
+    return any(button.text == label for row in message.buttons or [] for button in row)
 
 
-async def _open_new_topics(chat, phrase) -> None:
-    await _open_topics(chat, phrase)
-    await chat.click(data=NEW_TOPICS)
-    await chat.expect_edit(contains=phrase("topics_entries"), timeout=10)
+async def _show_list(chat, phrase):
+    """``/topics``: текст всего списка и его последнее сообщение, под которым кнопки действий."""
+    await chat.command("topics")
+    refresh = phrase("topics_refresh", full=True)
+    texts = []
+    while True:
+        message = await chat.get_reply(timeout=15)
+        texts.append(message.message)
+        if _has_button(message, refresh):
+            return "\n".join(texts), message
 
 
-async def _suggest_in_private(chat, phrase, command: str, topic: str) -> None:
-    await chat.command(command)
-    await chat.expect(contains=phrase("topics_form_ask"))
-    await chat.send(topic)
-    await chat.wait_until(contains=topic, timeout=10)
-    await chat.click(phrase("de-button-confirm", full=True))
-    await chat.wait_until(contains=phrase("topics_form_accepted"), timeout=10)
+def _number(listing: str, kind: str, text: str) -> int:
+    """Номер пункта ``N) ТИП - текст`` в показанном списке."""
+    found = re.search(rf"^(\d+)\) {re.escape(kind)} - {re.escape(text)}$", listing, re.MULTILINE)
+    assert found, f"no line '{kind} - {text}' in the list:\n{listing}"
+    return int(found.group(1))
+
+
+async def _delete(chat, phrase, *lines: tuple[str, str]):
+    """Удалить пункты ``(тип, текст)`` командой «удали …»; в ответе отчёт бота об удалении."""
+    listing, _last = await _show_list(chat, phrase)
+    numbers = [_number(listing, kind, text) for kind, text in lines]
+    await chat.send("удали " + ", ".join(map(str, numbers)))
+    report = await chat.expect(contains=phrase("topics_removed"), timeout=15)
+    for _kind, text in lines:
+        assert text in report.message
+    rest = await chat.get_reply(timeout=15)
+    for _kind, text in lines:
+        assert text not in rest.message
+    return report
 
 
 class _EphemeralInbox:
@@ -108,138 +125,174 @@ def _button_data(message, label: str) -> bytes:
 
 @pytest.mark.e2e
 @pytest.mark.asyncio
-async def test_private_form_topic_is_taken_into_episode_and_author_notified(tester, bot_username, phrase):
-    topic = f"e2e тема про гостей {int(time.time())}"
+async def test_private_commands_add_a_topic_and_a_question_to_one_list(tester, bot_username, phrase):
+    stamp = int(time.time())
+    topic, question = f"e2e как съездили в отпуск {stamp}", f"e2e почему небо голубое {stamp}?"
+    topic_kind, question_kind = phrase("topics_kind_topic", full=True), phrase("topics_kind_question", full=True)
     async with tester.conversation(bot_username) as chat:
-        await _suggest_in_private(chat, phrase, "start topic", topic)
+        await chat.command(f"тема {topic}")
+        await chat.expect(contains=f"{topic_kind} - {topic}", timeout=15)
+        await chat.command(f"вопрос {question}")
+        await chat.expect(contains=f"{question_kind} - {question}", timeout=15)
 
-    async with tester.conversation(bot_username) as chat:
-        await _open_new_topics(chat, phrase)
-        # Свежая тема первая в списке.
-        await chat.click(index=0)
-        await chat.expect_edit(contains=topic, timeout=10)
-        await chat.click(phrase("topics_take", full=True))
-        await chat.expect_edit(contains=phrase("topics_ask_episode"), timeout=10)
-        await chat.send("999")
-        # Автор здесь тот же аккаунт: уведомление приходит раньше ответа ведущему.
-        notice = await chat.expect(contains=phrase("suggest-notify-taken-note"), timeout=20)
-        assert topic[:20] in notice.message
-        assert "999" in notice.message
-        # Ответ ведущему и карточка приходят новыми сообщениями: номер прислан текстом.
-        await chat.expect(contains=phrase("topics_marked_taken_episode"), timeout=10)
-        card = await chat.expect(contains=topic, timeout=10)
-        assert "999" in card.message
+        listing, _last = await _show_list(chat, phrase)
+        assert listing.startswith(phrase("topics_list_title", full=True))
+        # Пункты идут в порядке добавления, нумерация сквозная.
+        assert _number(listing, question_kind, question) == _number(listing, topic_kind, topic) + 1
+
+        await _delete(chat, phrase, (topic_kind, topic), (question_kind, question))
 
 
 @pytest.mark.e2e
 @pytest.mark.asyncio
-@pytest.mark.parametrize("command", ["topic", "тема"])
-async def test_private_command_opens_the_same_form(tester, bot_username, phrase, command):
-    topic = f"e2e тема по команде {command} {int(time.time())}"
+async def test_form_asks_for_the_kind_and_adds_the_item(tester, bot_username, phrase):
+    question = f"e2e вопрос из анкеты {int(time.time())}"
+    kind = phrase("topics_kind_question", full=True)
     async with tester.conversation(bot_username) as chat:
-        await _suggest_in_private(chat, phrase, command, topic)
+        await chat.command("start topic")
+        await chat.expect(contains=phrase("topics_form_kind"))
+        await chat.click(phrase("topics_form_kind_question", full=True))
+        await chat.expect_edit(contains=phrase("topics_form_ask_question"), timeout=10)
+        await chat.send(question)
+        await chat.wait_until(contains=f"{kind} - {question}", timeout=10)
+        await chat.click(phrase("de-button-confirm", full=True))
+        await chat.wait_until(contains=phrase("topics_admin_added"), timeout=10)
 
-    async with tester.conversation(bot_username) as chat:
-        await _open_new_topics(chat, phrase)
-        await chat.click(index=0)
-        await chat.expect_edit(contains=topic, timeout=10)
+        await _delete(chat, phrase, (kind, question))
 
 
 @pytest.mark.e2e
 @pytest.mark.asyncio
-async def test_hashtag_in_group_lands_in_admin_queue(tester, bot_username, phrase):
+@pytest.mark.parametrize(
+    ("command", "kind_key"), [("question", "topics_kind_question"), ("topic", "topics_kind_topic")]
+)
+async def test_command_without_text_opens_the_form_of_its_kind(tester, bot_username, phrase, command, kind_key):
+    text = f"e2e пункт по команде {command} {int(time.time())}"
+    kind = phrase(kind_key, full=True)
+    async with tester.conversation(bot_username) as chat:
+        await chat.command(command)
+        await chat.expect(contains=phrase(f"topics_form_ask_{command}"))
+        await chat.send(text)
+        await chat.wait_until(contains=f"{kind} - {text}", timeout=10)
+        await chat.click(phrase("de-button-confirm", full=True))
+        await chat.wait_until(contains=phrase("topics_admin_added"), timeout=10)
+
+        await _delete(chat, phrase, (kind, text))
+
+
+@pytest.mark.e2e
+@pytest.mark.asyncio
+async def test_deleted_items_can_be_restored(tester, bot_username, phrase):
+    stamp = int(time.time())
+    kind = phrase("topics_kind_topic", full=True)
+    first, second = f"e2e удалить и вернуть раз {stamp}", f"e2e удалить и вернуть два {stamp}"
+    async with tester.conversation(bot_username) as chat:
+        for text in (first, second):
+            await chat.command(f"topic {text}")
+            await chat.expect(contains=text, timeout=15)
+
+        report = await _delete(chat, phrase, (kind, first), (kind, second))
+        await report.click(text=phrase("topics_undo", full=True))
+        # Отчёт об удалении меняется на «Вернул в список», следом приходит свежий список.
+        restored = await chat.expect(contains=first, timeout=15)
+        assert second in restored.message
+        await chat.wait_until(message=report, contains=phrase("topics_restored"), timeout=10)
+
+        # Номера неизвестного пункта бот не удаляет и ничего не трогает.
+        listing, _last = await _show_list(chat, phrase)
+        await chat.send("удали 9999")
+        await chat.expect(contains=phrase("topics_numbers_unknown"), timeout=15)
+
+        numbers = [_number(listing, kind, text) for text in (first, second)]
+        await chat.command("done " + " ".join(map(str, numbers)))
+        await chat.expect(contains=phrase("topics_removed"), timeout=15)
+
+
+@pytest.mark.e2e
+@pytest.mark.asyncio
+async def test_buttons_under_the_list_delete_ticked_items(tester, bot_username, phrase):
+    text = f"e2e удалить кнопками {int(time.time())}"
+    kind = phrase("topics_kind_topic", full=True)
+    async with tester.conversation(bot_username) as chat:
+        await chat.command(f"topic {text}")
+        await chat.expect(contains=text, timeout=15)
+
+        listing, last = await _show_list(chat, phrase)
+        number = _number(listing, kind, text)
+        await last.click(text=str(number))
+        await chat.wait_until(message=last, buttons=[f"✅ {number}"], timeout=10)
+        await chat.click(phrase("topics_remove_marked", full=True))
+        report = await chat.expect(contains=phrase("topics_removed"), timeout=15)
+        assert text in report.message
+        rest = await chat.get_reply(timeout=15)
+        assert text not in rest.message
+
+
+@pytest.mark.e2e
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("hashtag", "kind_key"), [("тема", "topics_kind_topic"), ("вопрос", "topics_kind_question")])
+async def test_hashtag_in_group_lands_on_the_list_with_its_kind(tester, bot_username, phrase, hashtag, kind_key):
     group = _topics_chat()
-    topic = f"e2e тема из чата {int(time.time())}"
-    sent = await tester.client.send_message(group, f"#тема {topic}")
-    await asyncio.sleep(3)
+    text = f"e2e из чата по хештегу {hashtag} {int(time.time())}"
+    kind = phrase(kind_key, full=True)
+    client = tester.client
 
-    # Принятую тему бот отмечает реакцией.
-    marked = await tester.client.get_messages(group, ids=sent.id)
+    async with _EphemeralInbox(client) as inbox:
+        sent = await client.send_message(group, f"#{hashtag} {text}")
+        # Автору бот пишет эфемерно, что добавил пункт, и ставит реакцию на сообщение.
+        await inbox.next(phrase("topics_added_question" if hashtag == "вопрос" else "topics_added_topic"))
+    marked = await client.get_messages(group, ids=sent.id)
     assert marked.reactions is not None and marked.reactions.results
 
     async with tester.conversation(bot_username) as chat:
-        await _open_new_topics(chat, phrase)
-        await chat.wait_until(contains=phrase("topics_entries"), timeout=10)
-        await chat.click(index=0)
-        await chat.expect_edit(contains=topic, timeout=10)
+        await _delete(chat, phrase, (kind, text))
 
 
 @pytest.mark.e2e
 @pytest.mark.asyncio
-async def test_ephemeral_form_in_group_lands_in_admin_queue(tester, bot_username, phrase):
+async def test_ephemeral_form_in_group_adds_the_item(tester, bot_username, phrase):
     group = _topics_chat()
-    topic = f"e2e эфемерная тема {int(time.time())}"
+    text = f"e2e эфемерная тема {int(time.time())}"
+    kind = phrase("topics_kind_topic", full=True)
     client = tester.client
     bot = await client.get_input_entity(bot_username)
     peer = await client.get_input_entity(group)
 
     async with _EphemeralInbox(client) as inbox:
         await client(functions.ephemeral.SendMessageRequest(receiver_id=bot, peer=peer, message="/topic"))
-        form = await inbox.next(phrase("topics_form_ask"))
+        form = await inbox.next(phrase("topics_form_kind"))
+        pick = _button_data(form, phrase("topics_form_kind_topic", full=True))
+        await client(functions.ephemeral.GetCallbackAnswerRequest(peer=peer, id=form.id, data=pick))
+        await inbox.next(phrase("topics_form_ask_topic"))
         await client(
             functions.ephemeral.SendMessageRequest(
-                receiver_id=bot, peer=peer, message=topic, reply_to=types.InputReplyToEphemeralMessage(id=form.id)
+                receiver_id=bot, peer=peer, message=text, reply_to=types.InputReplyToEphemeralMessage(id=form.id)
             )
         )
-        confirm = await inbox.next(topic)
+        confirm = await inbox.next(text)
         send = _button_data(confirm, phrase("de-button-confirm", full=True))
         await client(functions.ephemeral.GetCallbackAnswerRequest(peer=peer, id=confirm.id, data=send))
-        await inbox.next(phrase("topics_form_accepted"))
+        await inbox.next(phrase("topics_added_topic"))
 
     async with tester.conversation(bot_username) as chat:
-        await _open_new_topics(chat, phrase)
-        await chat.click(index=0)
-        await chat.expect_edit(contains=topic, timeout=10)
+        await _delete(chat, phrase, (kind, text))
 
 
 @pytest.mark.e2e
 @pytest.mark.asyncio
-async def test_poll_of_three_topics_is_closed_by_the_host(tester, bot_username, phrase):
+async def test_admin_adds_a_chat_message_by_replying_with_a_command(tester, bot_username, phrase):
     group = _topics_chat()
+    text = f"e2e реплика из чата без хештега {int(time.time())}"
+    kind = phrase("topics_kind_question", full=True)
     client = tester.client
-    stamp = int(time.time())
-    for index in range(3):
-        await client.send_message(group, f"#тема e2e опрос {index} {stamp}")
-        await asyncio.sleep(1)
-    await asyncio.sleep(3)
-    before = (await client.get_messages(group, limit=1))[0].id
+
+    said = await client.send_message(group, text)
+    async with _EphemeralInbox(client) as inbox:
+        await client.send_message(group, "/вопрос", reply_to=said.id)
+        added = await inbox.next(phrase("topics_admin_added"))
+        assert f"{kind} - {text}" in added.message
+    marked = await client.get_messages(group, ids=said.id)
+    assert marked.reactions is not None and marked.reactions.results
 
     async with tester.conversation(bot_username) as chat:
-        await _open_topics(chat, phrase)
-        await chat.click(phrase("topics_polls_button", full=True))
-        await chat.expect_edit(contains=phrase("topics_polls"), timeout=10)
-        await chat.click(phrase("topics_poll_new", full=True))
-        await chat.expect_edit(contains=phrase("topics_poll_pick"), timeout=10)
-        # Выбор хранится между заходами: начинаем с пустого.
-        await chat.click(phrase("topics_poll_clear", full=True))
-        await asyncio.sleep(1)
-        # Свежие темы сверху: отмечаем три последние, порядок в опросе тот же.
-        for index in range(3):
-            await chat.click(index=index)
-            await chat.expect_edit(timeout=10)
-        await chat.click(phrase("topics_poll_publish", full=True))
-        await chat.expect_edit(timeout=10)
-        # Первая кнопка подтверждения: «Да».
-        await chat.click(index=0)
-        await chat.expect_edit(contains=phrase("topics_polls"), timeout=15)
-
-        published = [m for m in await client.get_messages(group, limit=5) if m.id > before and m.poll is not None]
-        assert published, "the poll did not show up in the topics chat"
-        poll = published[0]
-        answers = poll.poll.poll.answers
-        assert len(answers) == 3
-        await client(functions.messages.SendVoteRequest(peer=group, msg_id=poll.id, options=[answers[1].option]))
-        await asyncio.sleep(3)
-
-        # Свежее голосование первое в списке.
-        await chat.click(index=0)
-        await chat.expect_edit(contains=f"e2e опрос 1 {stamp}", timeout=10)
-        await chat.click(phrase("topics_poll_close", full=True))
-        # Автор победившей темы здесь тот же аккаунт: сначала уведомление ему, потом итог ведущим.
-        notice = await chat.expect(contains=phrase("suggest-notify-taken"), timeout=20)
-        assert f"e2e опрос 1 {stamp}" in notice.message
-        result = await chat.expect(timeout=10)
-        assert f"e2e опрос 1 {stamp}" in result.message
-
-    closed = await client.get_messages(group, ids=poll.id)
-    assert closed.poll.poll.closed
+        await _delete(chat, phrase, (kind, text))

@@ -1,30 +1,27 @@
-"""Очередь тем от слушателей.
+"""Список тем и вопросов от слушателей.
 
-* :mod:`.models`: тема, автор, статусы;
-* :mod:`.repository`: очередь поверх модуля ``suggest`` из sagenza-tgbot-sdk
+* :mod:`.models`: пункт списка, его тип, автор и источник;
+* :mod:`.repository`: хранилище поверх модуля ``suggest`` из sagenza-tgbot-sdk
   (протокол и адаптер);
-* :mod:`.service`: проверки и смена статуса;
-* :mod:`.delivery`: доставка автору;
-* :mod:`.polls`: голосования;
+* :mod:`.service`: приём пунктов с проверками, удаление и возврат;
+* :mod:`.listing`: как список выглядит текстом, разбор «удали 1, 3»;
+* :mod:`.views`: какой список админ видел последним, что можно вернуть;
+* :mod:`.delivery`: эфемерный ответ автору;
 * :mod:`.runtime`: сборка под этот бот.
 """
 
-from services.topics.models import Author, Topic, TopicSource, TopicStatus
-from services.topics.polls import PollStore, TopicPoll
-from services.topics.repository import SuggestTopicRepository, TopicRepository
-from services.topics.service import Refusal, StatusChange, Suggestion, TopicService
+from services.topics.models import Author, Item, Kind, Source
+from services.topics.repository import ListRepository, SuggestListRepository
+from services.topics.service import Added, Refusal, TopicList
 
 __all__ = [
+    "Added",
     "Author",
-    "PollStore",
+    "Item",
+    "Kind",
+    "ListRepository",
     "Refusal",
-    "StatusChange",
-    "SuggestTopicRepository",
-    "Suggestion",
-    "Topic",
-    "TopicPoll",
-    "TopicRepository",
-    "TopicService",
-    "TopicSource",
-    "TopicStatus",
+    "Source",
+    "SuggestListRepository",
+    "TopicList",
 ]
