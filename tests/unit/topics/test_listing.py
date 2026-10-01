@@ -4,7 +4,7 @@ import pytest
 
 from services.i18n import t
 from services.topics import Author, Item, Kind, Source, listing
-from services.topics.listing import list_pages, parse_numbers, parse_removal
+from services.topics.listing import list_pages, mark_lines, parse_numbers, parse_removal
 
 
 def _item(text: str, kind: Kind = Kind.TOPIC) -> Item:
@@ -64,6 +64,25 @@ def test_page_holds_no_more_items_than_buttons_fit(monkeypatch):
     assert [page.numbers for page in pages] == [[1, 2, 3], [4, 5, 6], [7]]
 
 
+def test_marked_items_get_a_tick_and_the_rest_keep_the_plain_look():
+    shown = "Список тем и вопросов:\n1) ВОПРОС - Почему небо голубое?\n2) ТЕМА - Как съездили в отпуск"
+
+    marked = mark_lines(shown, [2])
+
+    assert marked == "Список тем и вопросов:\n1) ВОПРОС - Почему небо голубое?\n✅ 2) ТЕМА - Как съездили в отпуск"
+    assert mark_lines(marked, [1]) == (
+        "Список тем и вопросов:\n✅ 1) ВОПРОС - Почему небо голубое?\n2) ТЕМА - Как съездили в отпуск"
+    )
+    assert mark_lines(marked, []) == shown
+
+
+def test_ticks_do_not_touch_numbers_inside_the_item_text():
+    shown = "12) ТЕМА - итоги: 1) отпуск 2) ремонт"
+
+    assert mark_lines(shown, [1, 2]) == shown
+    assert mark_lines(shown, [12]) == f"✅ {shown}"
+
+
 @pytest.mark.parametrize(
     ("text", "numbers"),
     [
@@ -77,6 +96,7 @@ def test_page_holds_no_more_items_than_buttons_fit(monkeypatch):
         ("удали: 3,3,1", [3, 1]),
         ("  вычеркни  10 ", [10]),
         ("delete 1, 2", [1, 2]),
+        ("delete 1 and 3", [1, 3]),
     ],
 )
 def test_removal_requests_are_understood(text, numbers):

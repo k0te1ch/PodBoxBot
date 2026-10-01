@@ -220,7 +220,9 @@ async def test_buttons_under_the_list_delete_ticked_items(tester, bot_username, 
         listing, last = await _show_list(chat, phrase)
         number = _number(listing, kind, text)
         await last.click(text=str(number))
-        await chat.wait_until(message=last, buttons=[f"✅ {number}"], timeout=10)
+        # Отметка видна и на кнопке, и в тексте списка: галочка перед номером.
+        ticked = await chat.wait_until(message=last, buttons=[f"✅ {number}"], timeout=10)
+        assert f"✅ {number}) {kind} - {text}" in ticked.message
         await chat.click(phrase("topics_remove_marked", full=True))
         report = await chat.expect(contains=phrase("topics_removed"), timeout=15)
         assert text in report.message

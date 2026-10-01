@@ -8,8 +8,9 @@
 
 * Показать: ``/topics`` (``/список``) или ``/admin`` → «Темы и вопросы».
 * Удалить обсуждённое: «удали 1, 3, 4», «удали пункты 2-5», ``/done 1 3 4``
-  или кнопки с номерами под списком и «Удалить отмеченные». Бот отвечает,
-  что удалил, даёт кнопку «Вернуть» и сразу показывает остаток.
+  или кнопки с номерами под списком и «Удалить отмеченные». Отмеченный пункт
+  получает галочку и в тексте списка (``✅ 1) ВОПРОС - …``), и на кнопке. Бот
+  отвечает, что удалил, даёт кнопку «Вернуть» и сразу показывает остаток.
 * Номера относятся к списку, который бот показал в этом чате последним
   (:mod:`services.topics.views`): пункты, добавленные позже, номера не
   сдвигают. Кнопки под старым списком отвечают, что он устарел.
@@ -58,7 +59,7 @@ from handlers.topics_list_view import (
 from services.i18n import t
 from services.metrics import bot_metrics
 from services.topics import Kind
-from services.topics.listing import parse_numbers, parse_removal
+from services.topics.listing import mark_lines, parse_numbers, parse_removal
 from services.topics.runtime import (
     count_event,
     is_admin,
@@ -141,7 +142,10 @@ async def _mark(callback: CallbackQuery, data: ListCallback, locale: str) -> Non
         await _stale(callback, locale)
         return
     await callback.answer(marked_text(view, locale))
-    await _edit(message.edit_reply_markup(reply_markup=remark(message.reply_markup, view)))
+    # Отметка видна и в тексте списка, и на кнопке: правится всё сообщение.
+    text = mark_lines(message.text or "", view.marked)
+    markup = remark(message.reply_markup, view)
+    await _edit(message.edit_text(text, reply_markup=markup, link_preview_options=NO_PREVIEW))
 
 
 async def _remove_marked(callback: CallbackQuery, data: ListCallback, locale: str, metrics: Any) -> None:

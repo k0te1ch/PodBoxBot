@@ -1,8 +1,9 @@
 """Как список выглядит текстом и как из текста понять, что удалить.
 
 Список — нумерованные строки ``1) ВОПРОС - текст``. Длинный список режется на
-несколько сообщений, нумерация сквозная. Удаление: «удали 1, 3, 4»,
-«удали пункты 2-5» или аргументы команды ``/done 1 3 4``.
+несколько сообщений, нумерация сквозная. Пункт, отмеченный кнопкой под
+списком, получает галочку перед номером: ``✅ 1) ВОПРОС - текст``. Удаление:
+«удали 1, 3, 4», «удали пункты 2-5» или аргументы команды ``/done 1 3 4``.
 """
 
 import html
@@ -17,6 +18,7 @@ MAX_PAGE_CHARS = 3500
 # Под каждым сообщением кнопка на пункт, а кнопок в клавиатуре не больше 100.
 MAX_PAGE_ITEMS = 40
 MAX_RANGE = 500
+MARK = "✅ "
 
 _NUMBER = r"\d+(?:\s*[-–—]\s*\d+)?"
 _SEPARATOR = r"(?:\s*[,;]\s*|\s+(?:и|and)\s+|\s+)"
@@ -26,6 +28,7 @@ _NOUN = r"(?:пункт(?:ы|а|ов)?|номер(?:а|ов)?|№|#)"
 _REMOVAL = re.compile(rf"\s*{_VERB}\s*{_NOUN}?\s*:?\s*({_NUMBERS})\s*[.!]?\s*", re.IGNORECASE)
 _ONLY_NUMBERS = re.compile(rf"\s*({_NUMBERS})\s*")
 _RANGE = re.compile(r"(\d+)(?:\s*[-–—]\s*(\d+))?")
+_NUMBERED_LINE = re.compile(rf"(?:{MARK})?(\d+)\) ")
 
 
 @dataclass
@@ -64,6 +67,23 @@ def list_pages(items: list[Item], locale: str = DEFAULT_LOCALE) -> list[Page]:
         page.text = f"{page.text}\n{line}" if page.text else line
         page.numbers.append(number)
     return pages
+
+
+def mark_lines(shown: str, marked: list[int]) -> str:
+    """Текст сообщения списка с галочками у отмеченных пунктов, в HTML.
+
+    *shown*: текст уже показанного сообщения, каким его отдаёт Telegram (без
+    разметки). Строки пунктов узнаются по номеру в начале; у отмеченных
+    появляется галочка, у остальных она снимается, заголовок не меняется.
+    """
+    lines = []
+    for line in shown.split("\n"):
+        found = _NUMBERED_LINE.match(line)
+        if found:
+            plain = line.removeprefix(MARK)
+            line = f"{MARK}{plain}" if int(found.group(1)) in marked else plain
+        lines.append(html.escape(line))
+    return "\n".join(lines)
 
 
 def _expand(raw: str) -> list[int] | None:

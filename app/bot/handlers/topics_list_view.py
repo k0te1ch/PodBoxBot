@@ -15,6 +15,7 @@ from loguru import logger
 
 from services.i18n import t
 from services.topics import Item
+from services.topics.listing import MARK as MARKED_PREFIX
 from services.topics.listing import MAX_PAGE_CHARS, Page, item_line, list_pages
 from services.topics.runtime import count_event, report_list_size, topic_list, view_store
 from services.topics.views import ListView
@@ -30,7 +31,6 @@ BAN = "bb"
 UNBAN = "bu"
 
 NUMBERS_PER_ROW = 6
-MARKED_PREFIX = "✅ "
 MAX_AUTHOR_BUTTONS = 50
 MAX_TOAST_CHARS = 190
 NO_PREVIEW = LinkPreviewOptions(is_disabled=True)
