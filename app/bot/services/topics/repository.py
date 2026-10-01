@@ -18,8 +18,9 @@ sagenza-tgbot-sdk (:class:`SuggestionBox` поверх ``RedisSuggestStore``): �
   может доставить апдейт повторно, а у SDK отсечки по сообщению нет;
 * ``<ns>:bans`` в Redis: имена забаненных авторов, чтобы показать их админу
   (SDK хранит только id);
-* автор без id (пост от имени канала, анонимный админ) хранится с
-  ``author_id=0`` и лимитом не ограничивается: считать его не по кому.
+* автор без id (анонимный админ группы) хранится с ``author_id=0`` и лимитом
+  не ограничивается: считать его не по кому. У поста от имени канала автор —
+  сам канал, с его id.
 """
 
 from typing import Any, Protocol
@@ -46,9 +47,6 @@ class ListRepository(Protocol):
         Отказ по лимиту или бану: :class:`SuggestionRejectedError` из SDK.
         """
 
-    async def get(self, item_id: int) -> Item | None:
-        """Пункт по id, даже если его уже убрали из списка."""
-
     async def items(self) -> list[Item]:
         """Пункты списка, старые сверху."""
 
@@ -63,8 +61,6 @@ class ListRepository(Protocol):
     async def ban(self, user_id: int, name: str) -> None: ...
 
     async def unban(self, user_id: int) -> None: ...
-
-    async def is_banned(self, user_id: int) -> bool: ...
 
     async def banned(self) -> dict[int, str]:
         """Забаненные авторы: id → имя."""
@@ -103,7 +99,6 @@ def to_item(suggestion: Suggestion) -> Item:
         created_at=suggestion.created_at,
         chat_id=int(extra["chat_id"]) if "chat_id" in extra else None,
         message_id=int(extra["message_id"]) if "message_id" in extra else None,
-        link=suggestion.link,
     )
 
 
@@ -148,7 +143,6 @@ class SuggestListRepository:
         suggestion = await self.box.submit(
             author.user_id or ANONYMOUS_AUTHOR_ID,
             item.text,
-            link=item.link,
             source=item.source.value,
             author_name=author.name,
             locale=author.language,
@@ -158,10 +152,6 @@ class SuggestListRepository:
         if key is not None:
             await self._redis.set(key, str(suggestion.id), ex=ORIGIN_TTL_SECONDS)
         return to_item(suggestion)
-
-    async def get(self, item_id: int) -> Item | None:
-        suggestion = await self.box.get(item_id)
-        return to_item(suggestion) if suggestion is not None else None
 
     async def items(self) -> list[Item]:
         return [to_item(suggestion) for suggestion in await self.box.find(IN_LIST, LIST_LIMIT)]
@@ -190,9 +180,6 @@ class SuggestListRepository:
     async def unban(self, user_id: int) -> None:
         await self.box.unban(user_id)
         await self._redis.hdel(self._key("bans"), str(user_id))
-
-    async def is_banned(self, user_id: int) -> bool:
-        return await self.box.is_banned(user_id)
 
     async def banned(self) -> dict[int, str]:
         names = {int(_text(k)): _text(v) for k, v in (await self._redis.hgetall(self._key("bans"))).items()}

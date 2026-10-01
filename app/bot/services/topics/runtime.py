@@ -119,15 +119,6 @@ def all_hashtags() -> list[str]:
     return [*bot_config.TOPICS_HASHTAGS, *bot_config.TOPICS_QUESTION_HASHTAGS]
 
 
-def message_link(chat: Chat, message_id: int) -> str | None:
-    if chat.username:
-        return f"https://t.me/{chat.username}/{message_id}"
-    raw = str(chat.id)
-    if raw.startswith("-100"):
-        return f"https://t.me/c/{raw[4:]}/{message_id}"
-    return None
-
-
 def language_of(user: User | None) -> str:
     code = user.language_code if user is not None else None
     return code if code in bot_config.LANGUAGES else DEFAULT_LOCALE
@@ -139,8 +130,15 @@ def author_from_user(user: User) -> Author:
 
 
 def author_of(message: Message) -> Author:
-    """Автор сообщения; от имени канала или анонимного админа — без id."""
-    if message.sender_chat is not None or message.from_user is None:
-        title = message.sender_chat.title if message.sender_chat else message.chat.title
-        return Author(name=title or "?")
+    """Автор сообщения.
+
+    Пост от имени канала: автор — канал, с его id, чтобы лимит и бан работали
+    и для него. Анонимный админ пишет от имени самой группы: у него id нет.
+    """
+    sender = message.sender_chat
+    if sender is not None:
+        user_id = sender.id if sender.id != message.chat.id else None
+        return Author(name=sender.title or "?", user_id=user_id)
+    if message.from_user is None:
+        return Author(name=message.chat.title or "?")
     return author_from_user(message.from_user)

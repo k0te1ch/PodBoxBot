@@ -9,6 +9,7 @@ import config
 from services.topics import Author, Item, Kind, Source, runtime
 
 GROUP_ID = -1001234567890
+CHANNEL_ID = -1005550001111
 
 
 @pytest.fixture
@@ -74,8 +75,14 @@ def _group_message(
     message_id: int = 100,
     reply_to=None,
     ephemeral_id: int | None = None,
+    sender_chat_id: int | None = CHANNEL_ID,
 ):
-    """Сообщение в чате тем от слушателя (или от имени канала, если ``user_id`` нет)."""
+    """Сообщение в чате тем от слушателя.
+
+    Без ``user_id`` это пост от имени канала ``sender_chat_id``; с
+    ``sender_chat_id=GROUP_ID`` пишет анонимный админ, от имени самой группы.
+    Telegram в обоих случаях подставляет в ``from_user`` служебного бота.
+    """
     msg = MagicMock()
     msg.text = text
     msg.caption = None
@@ -91,7 +98,10 @@ def _group_message(
     msg.reply = AsyncMock()
     msg.delete = AsyncMock()
     if user_id is None:
-        msg.from_user = None
+        msg.from_user.id = 136817688
+        msg.from_user.username = "Channel_Bot"
+        msg.from_user.language_code = None
+        msg.sender_chat.id = sender_chat_id
         msg.sender_chat.title = "Podcast channel"
     else:
         msg.sender_chat = None

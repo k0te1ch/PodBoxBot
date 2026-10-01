@@ -5,7 +5,8 @@
   списка; тип пункта задаёт хештег. Принятое бот отмечает реакцией 👍
   (``TOPICS_ACK_REACTION``) и пишет автору эфемерно, что добавил его в список
   (``TOPICS_ACK_EPHEMERAL``). При отказе (лимит, длина, бан) автор получает
-  эфемерный ответ: это видит только он.
+  эфемерный ответ: это видит только он. Пост от имени канала считается по
+  каналу: у него свой лимит, и его можно забанить.
 * Админ отвечает на любое сообщение чата командой ``/тема`` или ``/вопрос``
   (``/topic``, ``/question``), и оно попадает в список без лимитов. Текст
   после команды заменяет текст сообщения. Команду от не-админа этот хендлер
@@ -29,7 +30,7 @@ from services.collector import extract_hashtags, strip_hashtags
 from services.i18n import t
 from services.topics import Added, Item, Kind, Refusal, Source
 from services.topics.delivery import send_ephemeral
-from services.topics.listing import item_line
+from services.topics.listing import item_text
 from services.topics.runtime import (
     all_hashtags,
     author_of,
@@ -38,7 +39,6 @@ from services.topics.runtime import (
     is_topics_chat,
     kind_of_hashtags,
     language_of,
-    message_link,
     refresh_list_size,
     topic_list,
     topics_enabled,
@@ -97,6 +97,12 @@ def _not_command(message: Message) -> bool:
     return not (message.text or message.caption or "").startswith("/")
 
 
+def _visible(message: Message) -> bool:
+    """Обычное сообщение чата. Эфемерное видит только бот: это ответ анкете
+    или команда, а не реплика в чате, и ссылаться в нём не на что."""
+    return message.ephemeral_message_id is None
+
+
 def _is_reply(message: Message) -> bool:
     """Ответ на сообщение. В форуме любое сообщение темы «отвечает» на её
     служебное сообщение о создании: это не ответ."""
@@ -107,7 +113,13 @@ def _is_reply(message: Message) -> bool:
 router = Router(name=os.path.splitext(os.path.basename(__file__))[0])
 
 
-@router.message(topics_enabled, _from_topics_chat, _is_reply, is_admin, Command(*TOPIC_COMMANDS, *QUESTION_COMMANDS))
+@router.message(
+    topics_enabled,
+    _from_topics_chat,
+    _is_reply,
+    is_admin,
+    Command(*TOPIC_COMMANDS, *QUESTION_COMMANDS, ignore_case=True),
+)
 async def add_by_reply(msg: Message, command: CommandObject, bot: Bot, metrics: Any = None):
     """Админ берёт в список сообщение, на которое ответил командой."""
     target = msg.reply_to_message
@@ -120,13 +132,12 @@ async def add_by_reply(msg: Message, command: CommandObject, bot: Bot, metrics: 
         source=Source.REPLY,
         chat_id=msg.chat.id,
         message_id=target.message_id,
-        link=message_link(msg.chat, target.message_id),
     )
     result = await topic_list(bot).add(item, trusted=True)
     await record_added(result, kind, Source.REPLY, metrics)
     if result.item is not None:
         await react(target)
-        answer = t("topics_admin_added", locale, line=item_line(await topic_list().repository.count(), result.item))
+        answer = t("topics_admin_added", locale, line=item_text(result.item, locale))
     elif result.refusal is Refusal.TOO_SHORT:
         answer = t("topics_reply_no_text", locale)
     else:
@@ -151,8 +162,10 @@ async def _answer_admin(bot: Bot, command: Message, text: str) -> None:
         logger.debug(f"topics: could not delete the admin command: {error!r}")
 
 
-@router.message(topics_enabled, _from_topics_chat, F.text | F.caption, _not_command, _hashtag_kind)
+@router.message(topics_enabled, _from_topics_chat, _visible, F.text | F.caption, _not_command, _hashtag_kind)
 async def collect_from_chat(msg: Message, bot: Bot, kind: Kind, metrics: Any = None):
+    """Сообщение с хештегом в чате тем. Админа лимит и бан не касаются."""
+    trusted = is_admin(msg)
     item = Item(
         text=strip_hashtags(msg.text or msg.caption, all_hashtags()),
         kind=kind,
@@ -160,18 +173,18 @@ async def collect_from_chat(msg: Message, bot: Bot, kind: Kind, metrics: Any = N
         source=Source.HASHTAG,
         chat_id=msg.chat.id,
         message_id=msg.message_id,
-        link=message_link(msg.chat, msg.message_id),
     )
-    result = await topic_list(bot).add(item)
+    result = await topic_list(bot).add(item, trusted=trusted)
     await record_added(result, kind, Source.HASHTAG, metrics)
     author = item.author
     if result.item is not None:
         await react(msg)
-        if bot_config.TOPICS_ACK_EPHEMERAL and author.user_id is not None:
+        if bot_config.TOPICS_ACK_EPHEMERAL and author.is_person:
             text = t(f"topics_added_{kind}", author.language)
             await send_ephemeral(bot, msg.chat.id, author.user_id, text, reply_to=msg.message_id)
         return
-    if result.refusal is Refusal.DUPLICATE or author.user_id is None:
+    # Каналу и анонимному админу эфемерно не ответить: отказ остаётся в логе.
+    if result.refusal is Refusal.DUPLICATE or not author.is_person:
         return
-    text = refusal_text(result.refusal, author.language)
+    text = refusal_text(result.refusal, author.language, trusted=trusted)
     await send_ephemeral(bot, msg.chat.id, author.user_id, text, reply_to=msg.message_id)

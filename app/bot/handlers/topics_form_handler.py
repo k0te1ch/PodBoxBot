@@ -55,6 +55,7 @@ from loguru import logger
 from sagenza_tgbot_sdk.menus import MenuContext
 
 import config as bot_config
+from forms.service_message import service_message_runner
 from forms.topic_suggestion import FORMS, FULL, KIND, TEXT, TYPED, Form, kind_of
 from forms.upload_file import upload_file_runner
 from handlers.topics_handler import (
@@ -68,7 +69,7 @@ from handlers.topics_handler import (
 from services.i18n import t
 from services.topics import Added, Item, Kind, Source
 from services.topics.delivery import send_ephemeral
-from services.topics.listing import item_line
+from services.topics.listing import item_text
 from services.topics.runtime import (
     author_from_user,
     author_of,
@@ -76,11 +77,12 @@ from services.topics.runtime import (
     is_admin,
     is_topics_chat,
     language_of,
-    message_link,
     topic_list,
     topics_enabled,
 )
 
+# Диалоги админа в личке, которые тоже ждут текст.
+OTHER_DIALOGS = (upload_file_runner, service_message_runner)
 START_PAYLOAD = "topic"
 COMMANDS = (*TOPIC_COMMANDS, *QUESTION_COMMANDS)
 SUGGEST_CALLBACK = "topic:suggest"
@@ -185,12 +187,12 @@ async def _add(bot: Bot, item: Item, *, trusted: bool, metrics: Any) -> Added:
     return result
 
 
-async def _added_text(result: Added, locale: str, *, trusted: bool) -> str:
+def _added_text(result: Added, locale: str, *, trusted: bool) -> str:
     """Что ответить на принятый или отклонённый пункт."""
     if result.item is None:
         return refusal_text(result.refusal, locale, trusted=trusted)
     if trusted:
-        return t("topics_admin_added", locale, line=item_line(await topic_list().repository.count(), result.item))
+        return t("topics_admin_added", locale, line=item_text(result.item, locale))
     return t(f"topics_added_{result.item.kind}", locale)
 
 
@@ -201,7 +203,7 @@ router = Router(name=os.path.splitext(os.path.basename(__file__))[0])
 async def group_command(msg: Message, command: CommandObject, state: FSMContext, bot: Bot, metrics: Any = None):
     """``/topic`` и ``/question`` в чате тем: текст после команды идёт в список
     сразу, без текста открывается анкета."""
-    if msg.from_user is None:
+    if msg.sender_chat is not None or msg.from_user is None:
         # От имени канала или анонимного админа: ответить эфемерно некому.
         return
     kind = kind_of_command(command.command)
@@ -217,22 +219,23 @@ async def group_command(msg: Message, command: CommandObject, state: FSMContext,
 
 
 async def _add_from_group(msg: Message, text: str, kind: Kind, bot: Bot, metrics: Any) -> None:
+    """Пункт из команды с текстом в чате тем. Админа лимит и бан не касаются."""
     visible = msg.ephemeral_message_id is None
+    trusted = is_admin(msg)
     item = Item(
         text=text,
         kind=kind,
         author=author_of(msg),
-        source=Source.FORM,
+        source=Source.ADMIN if trusted else Source.FORM,
         chat_id=msg.chat.id,
         message_id=msg.message_id if visible else None,
-        link=message_link(msg.chat, msg.message_id) if visible else None,
     )
-    result = await _add(bot, item, trusted=False, metrics=metrics)
+    result = await _add(bot, item, trusted=trusted, metrics=metrics)
     if result.item is not None and visible:
         await react(msg)
     if result.item is not None and not bot_config.TOPICS_ACK_EPHEMERAL:
         return
-    answer = await _added_text(result, item.author.language, trusted=False)
+    answer = _added_text(result, item.author.language, trusted=trusted)
     await send_ephemeral(bot, msg.chat.id, msg.from_user.id, answer, reply_to=msg.message_id if visible else None)
 
 
@@ -247,7 +250,12 @@ async def suggest_button(callback: CallbackQuery, state: FSMContext, bot: Bot, m
     await callback.answer(url=await start_link(bot))
 
 
-@router.message(form_enabled, F.chat.type == ChatType.PRIVATE, Command(*COMMANDS, ignore_case=True))
+def _in_private(message: Message) -> bool:
+    """Личка, где анкета доступна: слушателю при включённой анкете, админу всегда."""
+    return message.chat.type == ChatType.PRIVATE and (form_enabled() or is_admin(message))
+
+
+@router.message(topics_enabled, _in_private, Command(*COMMANDS, ignore_case=True))
 async def private_command(msg: Message, command: CommandObject, state: FSMContext, bot: Bot, metrics: Any = None):
     """``/тема`` и ``/вопрос`` в личке: с текстом пункт добавляется сразу,
     без текста анкета просит его. Админу не мешают ни лимит, ни бан."""
@@ -263,14 +271,10 @@ async def private_command(msg: Message, command: CommandObject, state: FSMContex
         source=Source.ADMIN if trusted else Source.FORM,
     )
     result = await _add(bot, item, trusted=trusted, metrics=metrics)
-    await msg.answer(await _added_text(result, item.author.language, trusted=trusted))
+    await msg.answer(_added_text(result, item.author.language, trusted=trusted))
 
 
-@router.message(
-    form_enabled,
-    F.chat.type == ChatType.PRIVATE,
-    CommandStart(deep_link=True, magic=F.args == START_PAYLOAD),
-)
+@router.message(topics_enabled, _in_private, CommandStart(deep_link=True, magic=F.args == START_PAYLOAD))
 async def start_in_private(msg: Message, state: FSMContext, bot: Bot, metrics: Any = None):
     """Анкета в личке по ссылке ``?start=topic``: с выбором типа."""
     await start_private_form(bot, state, msg.chat.id, msg.from_user, None, trusted=is_admin(msg), metrics=metrics)
@@ -299,19 +303,24 @@ def _touched(session: DialogSession, engine: DialogEngine) -> float:
 async def _expects_text(form: Form, state: FSMContext) -> bool:
     """Ждёт ли анкета текст от этого человека.
 
-    В личке у админа может одновременно идти диалог загрузки выпуска, и он
-    тоже ждёт текст (шаблон). Сообщение достаётся тому диалогу, с которым
-    работали последним: иначе забытая анкета съела бы шаблон выпуска, а
-    незаконченная загрузка не давала бы добавить тему.
+    В личке у админа может одновременно идти диалог загрузки выпуска или
+    сервисного сообщения, и он тоже ждёт текст. Сообщение достаётся тому
+    диалогу, с которым работали последним: иначе забытая анкета съела бы
+    шаблон выпуска, а незаконченная загрузка не давала бы добавить тему.
     """
     session, _ui = await form.storage.load(state)
     if session is None or not session.is_active:
         return False
-    upload, _ui = await upload_file_runner.storage.load(state)
-    upload_engine = upload_file_runner.engine
-    if upload is None or not upload.is_active or upload_engine.is_expired(upload):
-        return True
-    return _touched(session, form.private_runner.engine) >= _touched(upload, upload_engine)
+    engine = form.private_runner.engine
+    for rival in OTHER_DIALOGS:
+        other, _ui = await rival.storage.load(state)
+        if other is None or not other.is_active or rival.engine.is_expired(other):
+            continue
+        # Устаревшая анкета уступает живому диалогу молча, а не отвечает
+        # «анкета устарела» на текст, который писали не ей.
+        if engine.is_expired(session) or _touched(other, rival.engine) > _touched(session, engine):
+            return False
+    return True
 
 
 async def on_text(form: Form, msg: Message, state: FSMContext) -> None:
@@ -340,8 +349,10 @@ def _register(form: Form) -> None:
     async def expects_text(_msg: Message, state: FSMContext) -> bool:
         return await _expects_text(form, state)
 
-    router.message.register(text, form_enabled, F.text, _is_answer, expects_text)
-    router.callback_query.register(button, form_enabled, DialogCallbackFilter(form.dialog_id))
+    # Не form_enabled: при TOPICS_FORM_MODE=off анкета закрыта слушателям, но
+    # админ по-прежнему добавляет пункты через неё.
+    router.message.register(text, topics_enabled, F.text, _is_answer, expects_text)
+    router.callback_query.register(button, topics_enabled, DialogCallbackFilter(form.dialog_id))
 
 
 for _form in FORMS:
@@ -364,7 +375,7 @@ async def _outcome(turn: DialogTurn, user: User, bot: Bot, metrics: Any) -> str 
         chat_id=turn.context.get("chat_id"),
     )
     result = await _add(bot, item, trusted=trusted, metrics=metrics)
-    return await _added_text(result, locale, trusted=trusted)
+    return _added_text(result, locale, trusted=trusted)
 
 
 async def post_suggest_button(ctx: MenuContext) -> None:

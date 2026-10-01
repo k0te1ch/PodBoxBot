@@ -146,6 +146,7 @@ topics_kind_question = QUESTION
 topics_list_title = Topics and questions:
 topics_list_empty = The list of topics and questions is empty: nobody has suggested anything yet.
 topics_marked = Ticked: { $numbers }
+topics_marked_count = Items ticked: { $count }
 topics_marked_none = Nothing is ticked
 topics_mark_first = Tick the items with the number buttons first
 topics_list_stale = This list is out of date. Here is a fresh one: tick the items there.

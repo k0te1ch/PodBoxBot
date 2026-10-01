@@ -19,7 +19,7 @@ MAX_PAGE_ITEMS = 40
 MAX_RANGE = 500
 
 _NUMBER = r"\d+(?:\s*[-–—]\s*\d+)?"
-_SEPARATOR = r"(?:\s*[,;]\s*|\s+и\s+|\s+)"
+_SEPARATOR = r"(?:\s*[,;]\s*|\s+(?:и|and)\s+|\s+)"
 _NUMBERS = rf"{_NUMBER}(?:{_SEPARATOR}{_NUMBER})*"
 _VERB = r"(?:удали(?:ть)?|убери|убрать|вычеркни|вычеркнуть|обсудили|delete|remove)"
 _NOUN = r"(?:пункт(?:ы|а|ов)?|номер(?:а|ов)?|№|#)"
@@ -40,8 +40,13 @@ def kind_label(item: Item, locale: str = DEFAULT_LOCALE) -> str:
     return t(f"topics_kind_{item.kind}", locale)
 
 
+def item_text(item: Item, locale: str = DEFAULT_LOCALE) -> str:
+    """Пункт без номера: ``ВОПРОС - текст``, годится для HTML."""
+    return f"{kind_label(item, locale)} - {html.escape(item.text)}"
+
+
 def item_line(number: int, item: Item, locale: str = DEFAULT_LOCALE) -> str:
-    return f"{number}) {kind_label(item, locale)} - {html.escape(item.text)}"
+    return f"{number}) {item_text(item, locale)}"
 
 
 def list_pages(items: list[Item], locale: str = DEFAULT_LOCALE) -> list[Page]:

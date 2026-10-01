@@ -11,11 +11,16 @@ import config
 from handlers import topics_handler as th
 from services.i18n import t
 from services.topics import Kind, Source
-from services.topics.runtime import is_admin, is_hosts_chat, is_topics_chat, message_link, topic_list
+from services.topics.runtime import is_admin, is_hosts_chat, is_topics_chat, topic_list
 
 
 def _bad_request():
     return TelegramBadRequest(method=SendMessage(chat_id=1, text="x"), message="EPHEMERAL_NOT_ALLOWED")
+
+
+GROUP_ID = -1001234567890
+CHANNEL_ID = -1005550001111
+OTHER_CHANNEL_ID = -1007770002222
 
 
 async def _items():
@@ -40,7 +45,7 @@ async def test_hashtag_message_goes_to_the_list_with_its_kind(fake_redis, bot, g
     [item] = await _items()
     assert (item.kind, item.text, item.source) == (kind, saved, Source.HASHTAG)
     assert (item.author.name, item.author.user_id) == ("@listener", 7)
-    assert item.link == "https://t.me/test_group/100"
+    assert (item.chat_id, item.message_id) == (msg.chat.id, 100)
     metrics.event.assert_called_once_with("topic_added", kind=kind.value, source="hashtag")
 
 
@@ -145,9 +150,64 @@ async def test_channel_post_is_collected_without_a_private_note(fake_redis, bot,
     await th.collect_from_chat(msg, bot, Kind.TOPIC)
 
     [item] = await _items()
-    assert (item.author.name, item.author.user_id) == ("Podcast channel", None)
+    assert (item.author.name, item.author.user_id) == ("Podcast channel", CHANNEL_ID)
     msg.react.assert_awaited_once()
     bot.send_message.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_channel_is_limited_and_can_be_banned_like_a_person(fake_redis, bot, group_message):
+    for index in range(2):
+        post = group_message(f"#тема пост канала номер {index}", user_id=None, message_id=index)
+        await th.collect_from_chat(post, bot, Kind.TOPIC)
+    over = group_message("#тема третий пост за сутки", user_id=None, message_id=9)
+    await th.collect_from_chat(over, bot, Kind.TOPIC)
+    assert len(await _items()) == 2
+    over.react.assert_not_awaited()
+
+    # У другого канала свой счёт, пока его не забанили.
+    other = group_message("#тема пост другого канала", user_id=None, message_id=10, sender_chat_id=OTHER_CHANNEL_ID)
+    await th.collect_from_chat(other, bot, Kind.TOPIC)
+    assert len(await _items()) == 3
+
+    await topic_list().repository.ban(OTHER_CHANNEL_ID, "Other channel")
+    again = group_message(
+        "#тема ещё пост другого канала", user_id=None, message_id=11, sender_chat_id=OTHER_CHANNEL_ID
+    )
+    await th.collect_from_chat(again, bot, Kind.TOPIC)
+    assert len(await _items()) == 3
+    # Каналу эфемерно не ответить: отказы остаются только в логе.
+    bot.send_message.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_anonymous_group_admin_has_no_limit(fake_redis, bot, group_message):
+    for index in range(4):
+        msg = group_message(
+            f"#тема от анонимного админа {index}", user_id=None, message_id=index, sender_chat_id=GROUP_ID
+        )
+        await th.collect_from_chat(msg, bot, Kind.TOPIC)
+
+    items = await _items()
+    assert len(items) == 4
+    assert {item.author.user_id for item in items} == {None}
+
+
+@pytest.mark.asyncio
+async def test_admin_hashtags_skip_the_limit_and_the_ban(fake_redis, bot, group_message):
+    await topic_list().repository.ban(1, "@admin")
+
+    for index in range(4):
+        msg = group_message(f"#тема от ведущего {index}", user_id=1, username="admin", message_id=index)
+        await th.collect_from_chat(msg, bot, Kind.TOPIC)
+
+    assert len(await _items()) == 4
+
+
+def test_ephemeral_messages_are_not_chat_messages(group_message):
+    assert th._visible(group_message("#вопрос почему небо голубое?"))
+    # Ответ эфемерной анкете с хештегом в тексте: это не реплика в чате.
+    assert not th._visible(group_message("#вопрос почему небо голубое?", ephemeral_id=7))
 
 
 @pytest.mark.asyncio
@@ -187,11 +247,13 @@ async def test_admin_takes_a_chat_message_by_replying(fake_redis, bot, group_mes
     assert (item.kind, item.source) == (kind, Source.REPLY)
     assert item.text == "А расскажите, как вы познакомились"
     assert (item.author.name, item.author.user_id) == ("@listener", 7)
-    assert (item.message_id, item.link) == (55, "https://t.me/test_group/55")
+    assert item.message_id == 55
     target.react.assert_awaited_once()
     note = bot.send_message.await_args.kwargs
     assert note["ephemeral_message_parameters"].receiver_user_id == 1
-    assert f"1) {t(f'topics_kind_{kind}')} - А расскажите, как вы познакомились" in note["text"]
+    assert note["text"] == t(
+        "topics_admin_added", line=f"{t(f'topics_kind_{kind}')} - А расскажите, как вы познакомились"
+    )
     msg.delete.assert_awaited_once()
     metrics.event.assert_called_once_with("topic_added", kind=kind.value, source="reply")
 
@@ -310,12 +372,3 @@ def test_hosts_chat_is_off_by_default_and_never_the_topics_chat(group_message, m
     assert not is_hosts_chat(chat)
     monkeypatch.setattr(config, "TOPICS_CHAT", "@listeners")
     assert is_hosts_chat(chat)
-
-
-def test_message_link_for_public_and_private_groups(group_message):
-    chat = group_message("x").chat
-    assert message_link(chat, 5) == "https://t.me/test_group/5"
-    chat.username = None
-    assert message_link(chat, 5) == "https://t.me/c/1234567890/5"
-    chat.id = -42
-    assert message_link(chat, 5) is None

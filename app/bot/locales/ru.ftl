@@ -146,6 +146,7 @@ topics_kind_question = ВОПРОС
 topics_list_title = Список тем и вопросов:
 topics_list_empty = Список тем и вопросов пуст: пока никто ничего не предложил.
 topics_marked = Отмечено: { $numbers }
+topics_marked_count = Отмечено пунктов: { $count }
 topics_marked_none = Ничего не отмечено
 topics_mark_first = Сначала отметь пункты кнопками с номерами
 topics_list_stale = Этот список устарел. Вот свежий: отмечай в нём.

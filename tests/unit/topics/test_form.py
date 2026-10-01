@@ -197,7 +197,7 @@ async def test_listener_is_limited_and_admin_is_not(fake_redis, bot, state):
 
     items = await _items()
     assert [item.source for item in items] == [Source.FORM] * 2 + [Source.ADMIN] * 3
-    assert "5) ТЕМА - Что с погодой" in by_admin.answer.await_args.args[0]
+    by_admin.answer.assert_awaited_with(t("topics_admin_added", line="ТЕМА - Что с погодой"))
 
 
 @pytest.mark.asyncio
@@ -224,7 +224,7 @@ async def test_admin_form_in_private_is_trusted(fake_redis, private_bot, state):
 
     [item] = await _items()
     assert (item.text, item.kind, item.source) == ("Юг?", Kind.QUESTION, Source.ADMIN)
-    assert "1) ВОПРОС - Юг?" in bot.edit_message_text.await_args.kwargs["text"]
+    assert bot.edit_message_text.await_args.kwargs["text"] == t("topics_admin_added", line="ВОПРОС - Юг?")
 
 
 @pytest.mark.asyncio
@@ -298,7 +298,7 @@ async def test_text_after_the_group_command_is_added_at_once(fake_redis, bot, st
 
     [item] = await _items()
     assert (item.kind, item.text, item.source) == (Kind.QUESTION, "Почему небо голубое?", Source.FORM)
-    assert (item.message_id, item.link) == (100, "https://t.me/test_group/100")
+    assert (item.chat_id, item.message_id) == (GROUP_ID, 100)
     msg.react.assert_awaited_once()
     note = bot.send_message.await_args.kwargs
     assert note["text"] == t("topics_added_question")
@@ -313,7 +313,7 @@ async def test_ephemeral_group_command_with_text_has_no_message_to_react_to(fake
     await fh.group_command(msg, _command("тема", "про отпуск на море"), state, bot)
 
     [item] = await _items()
-    assert (item.message_id, item.link) == (None, None)
+    assert item.message_id is None
     msg.react.assert_not_awaited()
     assert bot.send_message.await_args.kwargs["reply_parameters"] is None
 
@@ -321,7 +321,7 @@ async def test_ephemeral_group_command_with_text_has_no_message_to_react_to(fake
 @pytest.mark.asyncio
 async def test_group_command_from_a_channel_is_ignored(fake_redis, bot, state):
     msg = _message(bot, "/topic")
-    msg.from_user = None
+    msg.sender_chat = MagicMock()
 
     await fh.group_command(msg, _command("topic"), state, bot)
 
@@ -534,3 +534,41 @@ async def test_expired_upload_does_not_block_the_form(fake_redis, private_bot, s
     monkeypatch.setattr(upload_file_runner.engine, "_clock", lambda: 2000.0 + upload_file_runner.engine.ttl + 1)
 
     assert await fh._expects_text(form.TYPED, state)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("text", ["{text:99999999} привет", "{text.__class__} и {0}", "скобки {} и {{так}}"])
+async def test_braces_in_the_text_stay_text(fake_redis, private_bot, state, monkeypatch, text):
+    monkeypatch.setattr(config, "TOPICS_MAX_LENGTH", 500)
+    bot = private_bot
+
+    await fh.private_command(_private(bot, "/тема"), _command("тема"), state, bot)
+    await fh.on_text(form.TYPED, _private(bot, text), state)
+
+    confirm = bot.edit_message_text.await_args.kwargs
+    assert confirm["text"] == t("topics_form_confirm", kind="ТЕМА", text=text)
+
+    await _press(bot, state, form.TYPED, confirm["reply_markup"], t("de-button-confirm"))
+    [item] = await _items()
+    assert item.text == text
+
+
+@pytest.mark.asyncio
+async def test_admin_command_in_the_chat_skips_the_limit(fake_redis, bot, state):
+    for index in range(4):
+        msg = _message(bot, f"/тема тема ведущего {index}", user=ADMIN, message_id=index)
+        await fh.group_command(msg, _command("тема", f"тема ведущего {index}"), state, bot)
+
+    items = await _items()
+    assert [item.source for item in items] == [Source.ADMIN] * 4
+    assert bot.send_message.await_args.kwargs["text"] == t("topics_admin_added", line="ТЕМА - тема ведущего 3")
+
+
+@pytest.mark.asyncio
+async def test_listener_command_in_the_chat_is_limited(fake_redis, bot, state):
+    for index in range(3):
+        msg = _message(bot, f"/тема тема слушателя {index}", message_id=index)
+        await fh.group_command(msg, _command("тема", f"тема слушателя {index}"), state, bot)
+
+    assert len(await _items()) == 2
+    assert bot.send_message.await_args.kwargs["text"] == t("topics_refused_limit", limit=2)

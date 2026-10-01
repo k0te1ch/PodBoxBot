@@ -1,5 +1,6 @@
 """Список для ведущих: показ, «удали 1, 3», кнопки, «Вернуть», авторы и бан, раздел /admin."""
 
+import asyncio
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock
 
@@ -14,6 +15,7 @@ import config
 from forms import topic_suggestion as form
 from handlers import menus
 from handlers import topics_list_handler as lh
+from handlers import topics_list_view as lv
 from handlers.topics_list_handler import ListCallback
 from services.i18n import t
 from services.metrics import bot_metrics
@@ -291,7 +293,7 @@ async def test_long_removal_report_is_cut(fake_redis, add_item, bot, monkeypatch
     for index in range(6):
         await add_item(f"тема номер {index} про что-нибудь важное")
     await lh.send_list(bot, ADMIN_ID, "ru", private=True)
-    monkeypatch.setattr(lh, "MAX_PAGE_CHARS", 120)
+    monkeypatch.setattr(lv, "MAX_PAGE_CHARS", 120)
     bot.send_message.reset_mock()
 
     await lh.remove_numbers(bot, ADMIN_ID, ADMIN_ID, [1, 2, 3, 4, 5, 6], "ru", private=True, metrics=None)
@@ -637,3 +639,82 @@ async def test_show_button_of_the_menu_sends_the_list(three, bot):
 
     assert _texts(bot)[0].startswith("Список тем и вопросов:\n1) ВОПРОС")
     assert (await view_store().last(ADMIN_ID)).ids == [item.id for item in three]
+
+
+@pytest.mark.asyncio
+async def test_marks_from_quick_presses_do_not_overwrite_each_other(three, bot):
+    await lh.show_list(_message(bot, "/topics"), bot)
+    view = await view_store().last(ADMIN_ID)
+
+    # Два нажатия прочитали снимок до того, как любое из них записало отметку.
+    await asyncio.gather(
+        view_store().toggle(ADMIN_ID, view.token, 1),
+        view_store().toggle(ADMIN_ID, view.token, 3),
+    )
+
+    assert (await view_store().last(ADMIN_ID)).marked == [1, 3]
+
+
+@pytest.mark.asyncio
+async def test_fresh_list_starts_without_old_marks(three, bot):
+    await lh.show_list(_message(bot, "/topics"), bot)
+    old = await view_store().last(ADMIN_ID)
+    await view_store().toggle(ADMIN_ID, old.token, 2)
+
+    await lh.show_list(_message(bot, "/topics"), bot)
+
+    assert (await view_store().last(ADMIN_ID)).marked == []
+    assert await view_store().toggle(ADMIN_ID, old.token, 1) is None
+
+
+@pytest.mark.asyncio
+async def test_toast_about_marks_fits_the_telegram_limit(fake_redis, add_item, bot):
+    for index in range(80):
+        await add_item(f"тема номер {index}")
+    await lh.send_list(bot, ADMIN_ID, "ru", private=True)
+    view = await view_store().last(ADMIN_ID)
+    for number in range(1, 81):
+        view = await view_store().toggle(ADMIN_ID, view.token, number)
+
+    assert lv.marked_text(view, "ru") == t("topics_marked_count", count=80)
+    view.marked = [1, 2, 3]
+    assert lv.marked_text(view, "ru") == t("topics_marked", numbers="1, 2, 3")
+
+
+@pytest.mark.asyncio
+async def test_button_under_a_too_old_message_gets_a_fresh_list(three, bot):
+    from aiogram.types import InaccessibleMessage
+
+    old = InaccessibleMessage(chat=Chat(id=ADMIN_ID, type="private"), message_id=5)
+    data = ListCallback(a=lh.MARK, v="dead", n=1)
+    press = _press(bot, data, old)
+    assert lh._hosts_place(press)
+
+    await lh.on_list_button(press, data, MagicMock(), bot)
+
+    press.answer.assert_awaited_once_with(t("topics_list_stale"), show_alert=True)
+    assert _texts(bot)[0].startswith("Список тем и вопросов:")
+
+
+@pytest.mark.asyncio
+async def test_failed_send_keeps_the_previous_snapshot(three, add_item, bot):
+    await lh.show_list(_message(bot, "/topics"), bot)
+    shown = await view_store().last(ADMIN_ID)
+    await add_item("поздняя тема про погоду")
+    bot.send_message.side_effect = ConnectionError("telegram is down")
+
+    with pytest.raises(ConnectionError):
+        await lh.send_list(bot, ADMIN_ID, "ru", private=True)
+
+    kept = await view_store().last(ADMIN_ID)
+    assert (kept.token, kept.ids) == (shown.token, shown.ids)
+
+
+@pytest.mark.asyncio
+async def test_channel_author_can_be_banned_from_the_panel(fake_redis, add_item, bot):
+    await add_item("пост от имени канала", user_id=-1005550001111, name="Podcast channel")
+
+    _text, markup = await lh.authors_view("ru")
+
+    assert _labels(markup) == [[t("topics_author", name="Podcast channel", count=1)]]
+    assert _data(markup, t("topics_author", name="Podcast channel", count=1)).n == -1005550001111

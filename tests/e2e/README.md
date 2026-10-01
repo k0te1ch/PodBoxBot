@@ -33,9 +33,9 @@ from the default `pytest` run** (`addopts = -m 'not e2e'` in
   Ephemeral messages go through raw Telethon requests, tgtest has no helper
   for them. What other members of the group see, and how a client without
   ephemeral messages behaves, is still checked by hand.
-  The test account is an admin, so its private commands skip the daily
-  limit; hashtags in the group do not, so set `TOPICS_DAILY_LIMIT=0` on the
-  test bot. Every test deletes the items it added.
+  The test account is an admin, so the daily limit and the ban list do not
+  apply to it: those refusals are covered by unit tests and need a second,
+  non-admin account to see live. Every test deletes the items it added.
 
 Everything goes through tgtest (0.2+): the MP3 upload uses `chat.send_file`,
 menu edits are checked with `expect_edit` / `wait_until`, and the account

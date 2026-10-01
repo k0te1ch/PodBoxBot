@@ -24,21 +24,21 @@ class ListView:
     ids: list[int]
     """Пункты в показанном порядке: номер ``n`` — это ``ids[n - 1]``."""
     marked: list[int] = field(default_factory=list)
-    """Номера, отмеченные кнопками под списком."""
+    """Номера, отмеченные кнопками под списком, по возрастанию."""
 
     def item_id(self, number: int) -> int | None:
         return self.ids[number - 1] if 1 <= number <= len(self.ids) else None
 
-    def to_json(self) -> str:
-        return json.dumps({"token": self.token, "ids": self.ids, "marked": self.marked})
-
-    @classmethod
-    def from_json(cls, raw: str | bytes) -> "ListView":
-        data = json.loads(raw)
-        return cls(token=data["token"], ids=list(data["ids"]), marked=list(data.get("marked", [])))
-
 
 class ViewStore:
+    """Снимки и «Вернуть» в Redis.
+
+    * ``<ns>:view:<chat>``: метка и id пунктов последнего показанного списка;
+    * ``<ns>:marks:<chat>:<метка>``: множество отмеченных номеров. Отдельным
+      множеством, чтобы два быстрых нажатия не затирали отметки друг друга;
+    * ``<ns>:undo:<метка>``: id удалённых пунктов, пока их можно вернуть.
+    """
+
     def __init__(self, redis: Any, namespace: str = "topics") -> None:
         self._redis = redis
         self.namespace = namespace
@@ -46,21 +46,33 @@ class ViewStore:
     def _view_key(self, chat_id: int) -> str:
         return f"{self.namespace}:view:{chat_id}"
 
+    def _marks_key(self, chat_id: int, token: str) -> str:
+        return f"{self.namespace}:marks:{chat_id}:{token}"
+
     def _undo_key(self, token: str) -> str:
         return f"{self.namespace}:undo:{token}"
 
-    async def _save(self, chat_id: int, view: ListView) -> None:
-        await self._redis.set(self._view_key(chat_id), view.to_json(), ex=VIEW_TTL_SECONDS)
+    @staticmethod
+    def new_view(item_ids: list[int], marked: list[int] | None = None) -> ListView:
+        """Снимок под список, который бот сейчас покажет; в Redis его кладёт :meth:`remember`."""
+        return ListView(token=secrets.token_hex(3), ids=list(item_ids), marked=sorted(set(marked or [])))
 
-    async def remember(self, chat_id: int, item_ids: list[int]) -> ListView:
-        """Запомнить только что показанный список; прежний снимок чата заменяется."""
-        view = ListView(token=secrets.token_hex(3), ids=list(item_ids))
-        await self._save(chat_id, view)
-        return view
+    async def remember(self, chat_id: int, view: ListView) -> None:
+        """Запомнить показанный список; прежний снимок чата заменяется."""
+        raw = json.dumps({"token": view.token, "ids": view.ids})
+        await self._redis.set(self._view_key(chat_id), raw, ex=VIEW_TTL_SECONDS)
+        if view.marked:
+            key = self._marks_key(chat_id, view.token)
+            await self._redis.sadd(key, *view.marked)
+            await self._redis.expire(key, VIEW_TTL_SECONDS)
 
     async def last(self, chat_id: int) -> ListView | None:
         raw = await self._redis.get(self._view_key(chat_id))
-        return ListView.from_json(raw) if raw else None
+        if not raw:
+            return None
+        data = json.loads(raw)
+        marks = await self._redis.smembers(self._marks_key(chat_id, data["token"]))
+        return ListView(token=data["token"], ids=list(data["ids"]), marked=sorted(int(mark) for mark in marks))
 
     async def current(self, chat_id: int, token: str) -> ListView | None:
         """Снимок чата, если кнопка с меткой *token* от него, а не от старого списка."""
@@ -72,12 +84,11 @@ class ViewStore:
         view = await self.current(chat_id, token)
         if view is None or view.item_id(number) is None:
             return None
-        if number in view.marked:
-            view.marked.remove(number)
-        else:
-            view.marked = sorted([*view.marked, number])
-        await self._save(chat_id, view)
-        return view
+        key = self._marks_key(chat_id, token)
+        if not await self._redis.srem(key, number):
+            await self._redis.sadd(key, number)
+            await self._redis.expire(key, VIEW_TTL_SECONDS)
+        return await self.current(chat_id, token)
 
     async def keep_removed(self, item_ids: list[int]) -> str:
         """Запомнить удалённые пункты для «Вернуть»; в ответе метка кнопки."""
@@ -86,10 +97,9 @@ class ViewStore:
         return token
 
     async def take_removed(self, token: str) -> list[int] | None:
-        """Пункты для возврата; ``None``, если время вышло или их уже вернули."""
-        key = self._undo_key(token)
-        raw = await self._redis.get(key)
-        if not raw:
-            return None
-        await self._redis.delete(key)
-        return list(json.loads(raw))
+        """Пункты для возврата; ``None``, если время вышло или их уже вернули.
+
+        Забираются одной командой: второе нажатие «Вернуть» уже ничего не найдёт.
+        """
+        raw = await self._redis.getdel(self._undo_key(token))
+        return list(json.loads(raw)) if raw else None

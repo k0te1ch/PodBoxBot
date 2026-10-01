@@ -32,6 +32,7 @@ TYPED_DIALOG_ID = "topic_suggestion_typed"
 KIND = "kind"
 TEXT = "text"
 CONFIRM = "confirm"
+CONFIRM_TEXT = "topics_form_confirm"
 
 SESSION_TTL = timedelta(minutes=30)
 
@@ -66,11 +67,14 @@ def resolve_text(key: str, answers: dict[str, Any], context: dict[str, Any]) -> 
     lookup = _OWN_KEYS.get(key) or (key.replace(".", "-") if key.startswith("de.") else key)
     if lookup in _BY_KIND:
         lookup = f"{lookup}_{kind}" + ("_admin" if context.get("trusted") else "")
+    # Текст шага подтверждения движок прогоняет через str.format: фигурные
+    # скобки в тексте слушателя иначе стали бы подстановками.
+    answer = html.escape(str(answers.get(TEXT, ""))).replace("{", "{{").replace("}", "}}")
     text = t(
         lookup,
         locale,
         kind=t(f"topics_kind_{kind}", locale),
-        text=html.escape(str(answers.get(TEXT, ""))),
+        text=answer if key == CONFIRM_TEXT else "",
         min=1 if context.get("trusted") else bot_config.TOPICS_MIN_LENGTH,
         max=bot_config.TOPICS_MAX_LENGTH,
     )
@@ -85,7 +89,7 @@ _KIND_STEP = {
 }
 _TEXT_STEPS = [
     {"id": TEXT, "type": "text", "text": "topics_form_ask"},
-    {"id": CONFIRM, "type": "confirm", "text": "topics_form_confirm", "choices": {}},
+    {"id": CONFIRM, "type": "confirm", "text": CONFIRM_TEXT, "choices": {}},
 ]
 
 
