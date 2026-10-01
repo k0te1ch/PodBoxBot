@@ -446,7 +446,10 @@ services:
   grafana:
     logging: *default-logging
     container_name: podboxbot_grafana
-    image: grafana/grafana:latest
+    # Версия закреплена: latest однажды молча обновил Grafana до 13.x, и она
+    # перестала стартовать на старом томе. Том на сервере уже мигрирован 13.1.1,
+    # откатываться на более старую версию нельзя; обновлять осознанно.
+    image: grafana/grafana:13.1.1
     ports:
       - "3000:3000"
     environment:
