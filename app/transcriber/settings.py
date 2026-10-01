@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     WHISPER_BEAM_SIZE: int = 1
     WHISPER_LANGUAGE: str = "ru"
     WHISPER_MODELS_DIR: str | None = None
+    # Аудио расшифровывается кусками такой длины: память не растёт с длиной выпуска.
+    WHISPER_CHUNK_MINUTES: float = 10.0
     # Дольше одна расшифровка идти не должна: зависший процесс не держит очередь.
     WHISPER_TIMEOUT_HOURS: float = 6.0
 

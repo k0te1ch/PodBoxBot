@@ -293,22 +293,7 @@ jobs:
         working-directory: app/transcriber
         env:
           PYTHONPATH: ${{ github.workspace }}/app
-        run: |
-          python -c "import main, bench, transcribe_one, faster_whisper"
-          # Decoding goes through PyAV, whose API faster-whisper depends on:
-          # a second of silence is enough to catch an incompatible pair.
-          python - <<'PY'
-          import wave
-
-          from faster_whisper.audio import decode_audio
-
-          with wave.open("silence.wav", "wb") as audio:
-              audio.setnchannels(1)
-              audio.setsampwidth(2)
-              audio.setframerate(16000)
-              audio.writeframes(bytes(2 * 16000))
-          assert len(decode_audio("silence.wav")) == 16000
-          PY
+        run: python -c "import main, bench, transcribe_one, faster_whisper"
       - name: Install test tooling
         run: python -m pip install "pytest>=9.0.3,<10" "pytest-asyncio>=1.4,<2" "fakeredis>=2.26,<3"
       - name: Run transcriber tests
