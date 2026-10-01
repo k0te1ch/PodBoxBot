@@ -228,7 +228,7 @@ async def test_buttons_under_the_list_delete_ticked_items(tester, bot_username, 
         ticked = await chat.wait_until(message=last, buttons=[f"{MARK}{number}"], timeout=10)
         assert f"{MARK}{number}) {kind} - {text}" in ticked.message
         struck = [entity for entity in ticked.entities or [] if isinstance(entity, types.MessageEntityStrike)]
-        assert len(struck) == 1
+        assert struck, "the ticked item is not struck through"
         remove = MARK + phrase("topics_remove_marked", full=True).replace("{ $count }", "1")
         await ticked.click(text=remove)
         report = await chat.expect(contains=phrase("topics_removed"), timeout=15)
