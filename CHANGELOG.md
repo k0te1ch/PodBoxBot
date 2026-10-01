@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.9.0](https://github.com/k0te1ch/PodBoxBot/compare/v0.8.0...v0.9.0) (2026-10-01)
+
+
+### Features
+
+* **boosty:** add draft and scheduled publish modes ([#97](https://github.com/k0te1ch/PodBoxBot/issues/97)) ([8dac205](https://github.com/k0te1ch/PodBoxBot/commit/8dac20543aadc3b9bf0f70c1595d36863a561047))
+* **bot:** send admins russian release notes instead of the changelog ([#99](https://github.com/k0te1ch/PodBoxBot/issues/99)) ([3b4185e](https://github.com/k0te1ch/PodBoxBot/commit/3b4185e96a371f5fd787f4698c6d8ca22c5195f1))
+* **bot:** use sdk logging and add optional metrics forwarding ([#90](https://github.com/k0te1ch/PodBoxBot/issues/90)) ([544948d](https://github.com/k0te1ch/PodBoxBot/commit/544948d8feef4c03b2165571a3a57ec82388b4bd))
+* **metrics:** add business metrics for the bot and publishers ([#113](https://github.com/k0te1ch/PodBoxBot/issues/113)) ([0a25a0a](https://github.com/k0te1ch/PodBoxBot/commit/0a25a0a6e8eb004e3f581b8ec6546c6061684223))
+* **monitoring:** russian dashboards and a podcast publications board ([#115](https://github.com/k0te1ch/PodBoxBot/issues/115)) ([095ef0f](https://github.com/k0te1ch/PodBoxBot/commit/095ef0fbc2210d577faa49dc7fc532deda2af27d))
+
+
+### Bug Fixes
+
+* **bot:** describe what each platform did in the publish status ([#94](https://github.com/k0te1ch/PodBoxBot/issues/94)) ([536c924](https://github.com/k0te1ch/PodBoxBot/commit/536c924e9e44ba4467726e1768b637595c50c614))
+* **bot:** publish templates without chapters to the site ([#93](https://github.com/k0te1ch/PodBoxBot/issues/93)) ([4478e1e](https://github.com/k0te1ch/PodBoxBot/commit/4478e1ef24f9e3260f32a67431232e798328619b))
+* **bot:** report ftp errors when looking up the episode number ([#92](https://github.com/k0te1ch/PodBoxBot/issues/92)) ([74653d1](https://github.com/k0te1ch/PodBoxBot/commit/74653d160fbd053264684924be1d532d0a9aebf0))
+* **ci:** read the release branch sha before dispatching its checks ([#110](https://github.com/k0te1ch/PodBoxBot/issues/110)) ([9474c07](https://github.com/k0te1ch/PodBoxBot/commit/9474c07f2c7e0394c39fb0bac332a4347c08084d))
+* **monitoring:** let grafana start on volumes with old datasources ([#107](https://github.com/k0te1ch/PodBoxBot/issues/107)) ([0475fb1](https://github.com/k0te1ch/PodBoxBot/commit/0475fb1383db12d4ea5e563878e4a114f712ada6))
+* **monitoring:** scrape redis exporter by its compose service name ([#96](https://github.com/k0te1ch/PodBoxBot/issues/96)) ([a411bc7](https://github.com/k0te1ch/PodBoxBot/commit/a411bc7284252d8ad0aba0b8b3a600f6f5eb5a83))
+* **publishers:** treat empty settings as unset ([#95](https://github.com/k0te1ch/PodBoxBot/issues/95)) ([a184d74](https://github.com/k0te1ch/PodBoxBot/commit/a184d743b17d57a4021711f54ca81ce751325c20))
+
 ## [0.8.0](https://github.com/k0te1ch/PodBoxBot/compare/v0.7.0...v0.8.0) (2026-09-27)
 
 
