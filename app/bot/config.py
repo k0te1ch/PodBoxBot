@@ -69,24 +69,28 @@ class Settings(BaseSettings):
     PATREON_ENABLED: bool = False
     SPONSR_ENABLED: bool = False
 
-    # Темы от слушателей. По умолчанию выключено.
-    # TOPICS_CHAT — где слушатели предлагают темы (@username или числовой id),
-    # пусто — чат форварда. TOPICS_HASHTAG пустой отключает сбор по хештегу.
-    # TOPICS_DAILY_LIMIT: тем от автора за последние 24 часа, 0 без лимита.
-    # Лимит, длина и бан-лист работают в очереди модуля suggest SDK.
+    # Темы и вопросы от слушателей: один список для ведущих. По умолчанию
+    # выключено. TOPICS_CHAT — чат, где слушатели пишут (@username или числовой
+    # id), пусто — чат форварда. Хештеги через запятую, без «#»; пустая строка
+    # выключает сбор этого типа. На принятое сообщение бот ставит реакцию
+    # (TOPICS_ACK_REACTION) и пишет автору эфемерно (TOPICS_ACK_EPHEMERAL).
+    # TOPICS_DAILY_LIMIT: пунктов от автора за последние 24 часа, 0 без лимита.
     TOPICS_ENABLED: bool = False
     TOPICS_CHAT: str | None = None
     TOPICS_HASHTAG: str = "тема"
+    TOPICS_QUESTION_HASHTAG: str = "вопрос"
+    TOPICS_ACK_REACTION: bool = True
+    TOPICS_ACK_EPHEMERAL: bool = True
     TOPICS_DAILY_LIMIT: int = 3
     TOPICS_MIN_LENGTH: int = 10
     TOPICS_MAX_LENGTH: int = 500
-    # Анкета «Предложить тему»: ephemeral — в группе, видна только автору
-    # (запасной путь — личка); private — сразу в личке бота; off — без анкеты.
+    # Анкета «Предложить тему или вопрос»: ephemeral — в группе, видна только
+    # автору (запасной путь — личка); private — сразу в личке бота; off — без
+    # анкеты.
     TOPICS_FORM_MODE: Literal["ephemeral", "private", "off"] = "ephemeral"
-    # Голосование по темам: куда публиковать опрос (пусто — чат тем) и
-    # сколько часов он открыт (0 — пока ведущие не закроют его из /admin).
-    TOPICS_POLL_CHAT: str | None = None
-    TOPICS_POLL_HOURS: int = 24
+    # Чат ведущих (@username или числовой id): в нём админы тоже могут смотреть
+    # и чистить список. Пусто — только в личке бота.
+    TOPICS_HOSTS_CHAT: str | None = None
 
     # DEBUG
     DEBUG: bool = False
@@ -186,6 +190,12 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
+
+def _hashtags(raw: str) -> list[str]:
+    """«тема, topic» → ``["тема", "topic"]``: без «#», в нижнем регистре, без пустых."""
+    return [tag for tag in (part.strip().lstrip("#").lower() for part in raw.split(",")) if tag]
+
+
 # Derived paths
 PROJECT_PATH = Path.cwd()
 SRC_PATH = Path(__file__).parent
@@ -205,13 +215,15 @@ PATREON_ENABLED = settings.PATREON_ENABLED
 SPONSR_ENABLED = settings.SPONSR_ENABLED
 TOPICS_ENABLED = settings.TOPICS_ENABLED
 TOPICS_CHAT = (settings.TOPICS_CHAT or "").strip() or FORWARD_CHAT_USERNAME
-TOPICS_HASHTAG = settings.TOPICS_HASHTAG.strip().lstrip("#").lower()
+TOPICS_HASHTAGS = _hashtags(settings.TOPICS_HASHTAG)
+TOPICS_QUESTION_HASHTAGS = _hashtags(settings.TOPICS_QUESTION_HASHTAG)
+TOPICS_ACK_REACTION = settings.TOPICS_ACK_REACTION
+TOPICS_ACK_EPHEMERAL = settings.TOPICS_ACK_EPHEMERAL
 TOPICS_DAILY_LIMIT = settings.TOPICS_DAILY_LIMIT
 TOPICS_MIN_LENGTH = settings.TOPICS_MIN_LENGTH
 TOPICS_MAX_LENGTH = settings.TOPICS_MAX_LENGTH
 TOPICS_FORM_MODE = settings.TOPICS_FORM_MODE
-TOPICS_POLL_CHAT = (settings.TOPICS_POLL_CHAT or "").strip() or TOPICS_CHAT
-TOPICS_POLL_HOURS = settings.TOPICS_POLL_HOURS
+TOPICS_HOSTS_CHAT = (settings.TOPICS_HOSTS_CHAT or "").strip() or None
 API_ID = settings.TELEGRAM_SERVER_API_ID
 API_HASH = settings.TELEGRAM_SERVER_API_HASH
 

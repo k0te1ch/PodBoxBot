@@ -4,8 +4,9 @@
 старте ``Menus.setup`` валит бота, если какая-то кнопка ведёт в никуда.
 
 * Админ-панель (``/admin``): Бот → перезапустить / логи; сервисное сообщение;
-  заметки ведущих (:mod:`handlers.collector_handler`); темы слушателей
-  (:mod:`handlers.topics_handler`), если включён ``TOPICS_ENABLED``.
+  заметки ведущих (:mod:`handlers.collector_handler`); темы и вопросы
+  слушателей (:mod:`handlers.topics_list_handler`), если включён
+  ``TOPICS_ENABLED``.
 * Меню аудио висит под готовым MP3: FTP, сайт, пересылка в чат, а у
   послешоу — платные площадки (Boosty, VK Donut, Patreon, Sponsr), каждая
   видна, только когда включена флагом ``<ПЛОЩАДКА>_ENABLED``.
@@ -34,9 +35,7 @@ from handlers.collector_handler import collection_submenus
 from handlers.ftp_handler import upload_FTP
 from handlers.paywalled_handler import PATREON, SPONSR, VK, Platform, upload_to
 from handlers.service_handler import open_from_menu as open_service_message
-from handlers.topics_form_handler import form_enabled, post_suggest_button
-from handlers.topics_handler import topics_submenu
-from handlers.topics_polls_handler import polls_submenu
+from handlers.topics_list_handler import topics_submenu
 from handlers.wordpress_handler import upload_WP
 from services.i18n import DEFAULT_LOCALE, translator
 from services.metrics import bot_metrics
@@ -133,19 +132,7 @@ def build_menus() -> BotMenus:
             Submenu("admin_bot", bot_menu, id="bot", visible_if=is_admin),
             Button("admin_service", id="service", handler=open_service_message, visible_if=is_admin),
             *collection_submenus(is_admin),
-            topics_submenu(
-                is_admin,
-                extra_items=(
-                    Button(
-                        "topics_post_button",
-                        id="post_button",
-                        handler=post_suggest_button,
-                        confirm=True,
-                        visible_if=form_enabled,
-                    ),
-                    polls_submenu(),
-                ),
-            ),
+            topics_submenu(is_admin),
         ],
     )
     audio_main = Menu(

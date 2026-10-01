@@ -128,85 +128,84 @@ collector_deleted = Удалено
 collector_missing = Запись уже удалена
 collector_open_message = Открыть сообщение
 
-## Topics from listeners
+## Topics and questions from listeners
 
-admin_topics = 💡 Темы слушателей
-topics_panel = Темы от слушателей. Выбери, какие показать.
-topics_entries = Темы. Нажми на тему, чтобы открыть карточку.
-topics_status_new = 🆕 Новые
-topics_status_later = ⏳ Отложенные
-topics_status_taken = ✅ Взяты в выпуск
-topics_status_rejected = 🚫 Отклонённые
-topics_source_hashtag = из чата
-topics_source_form = из анкеты
-topics_card_title = Тема №{ $id }
-topics_open_message = Открыть сообщение
-topics_take = ✅ Взять в выпуск
-topics_reject = 🚫 Отклонить
-topics_later = ⏳ Позже
-topics_marked_taken = Взята в выпуск
-topics_marked_rejected = Отклонена
-topics_marked_later = Отложена
-topics_missing = Этой темы уже нет
-topics_card_episode = Выпуск: { $note }
-topics_card_banned = 🚷 Автор в бан-листе, новые темы от него не принимаются
-topics_ask_episode =
-    В какой выпуск берём тему №{ $id }?
-    Пришли номер выпуска сообщением (до { $max } символов), автор его увидит. Или возьми тему без номера.
-topics_take_without_episode = ✅ Взять без номера
-topics_marked_taken_episode = Тема взята в выпуск { $note }, автору ушло уведомление.
-topics_ban = 🚷 Заблокировать автора
-topics_unban = Разблокировать автора
+admin_topics = 💡 Темы и вопросы
+topics_panel =
+    Темы и вопросы от слушателей: один список для ведущих.
+    Обсудили пункты? Напиши «удали 1, 3» или отметь номера кнопками под списком.
+topics_show = 📋 Показать список
+topics_add_topic = ➕ Тема
+topics_add_question = ➕ Вопрос
+topics_authors = 🚷 Авторы
+topics_refresh = 🔄 Обновить
+topics_remove_marked = Удалить отмеченные ({ $count })
+topics_undo = ↩️ Вернуть
+topics_kind_topic = ТЕМА
+topics_kind_question = ВОПРОС
+topics_list_title = Список тем и вопросов:
+topics_list_empty = Список тем и вопросов пуст: пока никто ничего не предложил.
+topics_marked = Отмечено: { $numbers }
+topics_marked_count = Отмечено пунктов: { $count }
+topics_marked_none = Ничего не отмечено
+topics_mark_first = Сначала отметь пункты кнопками с номерами
+topics_list_stale = Этот список устарел. Вот свежий: отмечай в нём.
+topics_denied = Эта кнопка только для ведущих
+topics_view_missing = Не помню, какой список показывал последним. Вот свежий: номера бери из него.
+topics_numbers_unknown = В последнем списке пунктов: { $total }, а таких номеров в нём нет: { $numbers }. Ничего не удалил. Свежий список: /topics
+topics_remove_usage = Напиши номера пунктов из последнего списка: /done 1 3 4 или «удали 1, 3, 4». Список: /topics
+topics_removed = Удалил из списка:
+topics_removed_more = … и ещё { $count }
+topics_removed_gone = Уже были удалены раньше: { $numbers }
+topics_removed_nothing = Этих пунктов в списке уже нет, их удалили раньше: { $numbers }
+topics_restored = Вернул в список:
+topics_undo_expired = Вернуть уже нельзя: прошло больше 10 минут или пункты уже вернули
+topics_authors_title =
+    Авторы пунктов из списка и бан-лист. Нажми на автора, чтобы заблокировать его или разблокировать.
+    От заблокированного бот ничего не принимает. Его пункты остаются в списке, пока их не удалишь.
+topics_authors_empty = Блокировать некого: в списке нет пунктов от слушателей, бан-лист пуст.
+topics_author = 🚷 { $name } (пунктов: { $count })
+topics_author_banned = ✅ Разблокировать { $name }
 topics_ban_done = Автор заблокирован
 topics_unban_done = Автор разблокирован
-topics_refused_too_short = Тема слишком короткая: нужно хотя бы { $min } символов.
-topics_refused_too_long = Тема слишком длинная: не больше { $max } символов.
-topics_refused_limit = Пока хватит: не больше { $limit } тем за сутки. Попробуй позже!
-topics_refused_banned = Предлагать темы тебе сейчас нельзя.
-# Уведомления автору: ключи модуля suggest из SDK, тексты свои.
-# $text: начало темы, $note: номер выпуска (вариант -note).
-suggest-notify-taken = Твою тему «{ $text }» взяли в выпуск. Спасибо!
-suggest-notify-taken-note = Твою тему «{ $text }» взяли в выпуск { $note }. Спасибо!
-suggest-notify-rejected = Твою тему «{ $text }» в этот раз не взяли. Спасибо за идею!
-suggest-notify-later = Твою тему «{ $text }» отложили: ведущие вернутся к ней позже.
-topics_post_button = 📌 Кнопка «Предложить тему» в чат
-topics_form_button = 💡 Предложить тему
-topics_form_invite = Есть идея для выпуска? Нажми кнопку и предложи тему ведущим.
+topics_added_topic = Добавил тему в список для ведущих. Спасибо!
+topics_added_question = Добавил вопрос в список для ведущих. Спасибо!
+topics_admin_added =
+    Добавил в список:
+    { $line }
+topics_reply_no_text = В этом сообщении нет текста, добавлять нечего.
+topics_refused_too_short = Слишком коротко: нужно хотя бы { $min } символов.
+topics_refused_too_long = Слишком длинно: не больше { $max } символов.
+topics_refused_limit = Пока хватит: не больше { $limit } тем и вопросов за сутки. Попробуй позже!
+topics_refused_banned = Предлагать темы и вопросы тебе сейчас нельзя.
+topics_refused_duplicate = Это сообщение уже добавляли в список.
+topics_post_button = 📌 Кнопка «Предложить» в чат
+topics_form_button = 💡 Предложить тему или вопрос
+topics_form_invite = Есть тема для выпуска или вопрос ведущим? Нажми кнопку: анкету увидишь только ты.
 topics_form_posted = Кнопка отправлена в { $chat }
 topics_form_post_failed = Не удалось отправить кнопку в чат. Бот состоит в нём и может писать?
-topics_form_command = Предложить тему для выпуска
-topics_form_ask =
+topics_form_command = Предложить тему или вопрос ведущим
+topics_form_command_topic = Предложить тему для выпуска
+topics_form_command_question = Задать вопрос ведущим
+topics_form_kind = Что добавить в список для ведущих?
+topics_form_kind_topic = 💡 Тему
+topics_form_kind_question = ❓ Вопрос
+topics_form_ask_topic =
     Какую тему обсудить в выпуске?
     Напиши её ответом на это сообщение, от { $min } до { $max } символов.
+topics_form_ask_question =
+    Какой вопрос задать ведущим?
+    Напиши его ответом на это сообщение, от { $min } до { $max } символов.
+topics_form_ask_topic_admin =
+    Какую тему добавить в список?
+    Напиши её следующим сообщением, до { $max } символов.
+topics_form_ask_question_admin =
+    Какой вопрос добавить в список?
+    Напиши его следующим сообщением, до { $max } символов.
 topics_form_confirm =
-    Предложить ведущим эту тему?
-    «{ $topic }»
-topics_form_accepted = Спасибо! Тема в очереди, ведущие её увидят.
+    Добавить в список для ведущих?
+    { $kind } - { $text }
 topics_form_cancelled = Хорошо, в другой раз.
-topics_form_expired = Анкета устарела. Начни заново: /topic или кнопка «Предложить тему».
+topics_form_expired = Анкета устарела. Начни заново: /topic или /question.
 topics_form_open_private = Открыть анкету в личке
 topics_form_go_private = Показать анкету здесь не получилось. Открой её в личке бота:
-topics_polls_button = 📊 Голосования
-topics_polls = Голосования по темам. Нажми на голосование, чтобы увидеть голоса и итог.
-topics_poll_new = ➕ Новое голосование
-topics_poll_pick = Отметь от 3 до 5 тем для опроса и нажми «Опубликовать опрос».
-topics_poll_publish = 📊 Опубликовать опрос
-topics_poll_clear = ✖️ Сбросить выбор
-topics_poll_too_many = Больше { $max } тем в опрос не поместится
-topics_poll_pick_count = Отметь от { $min } до { $max } тем
-topics_poll_question = Какую тему взять в следующий выпуск?
-topics_poll_publish_failed = Не удалось опубликовать опрос. Бот может писать в чат?
-topics_poll_published = Опрос опубликован
-topics_poll_line_open = 🟢 { $date } · голосов: { $votes }
-topics_poll_line_closed = 🏁 { $date } · { $winner }
-topics_poll_line_no_winner = 🏁 { $date } · без победителя
-topics_poll_card_title = Голосование №{ $id }
-topics_poll_open = 🟢 идёт
-topics_poll_closed = 🏁 закрыто { $date }
-topics_poll_votes = голосов: { $count }
-topics_poll_no_winner = Никто не проголосовал, тема не выбрана.
-topics_poll_tie = Ничья: взята тема, которая стояла в опросе выше.
-topics_poll_close = 🏁 Закрыть опрос
-topics_poll_closed_toast = Опрос закрыт
-topics_poll_result = Голосование №{ $id } закрыто. Победила тема «{ $topic }» (голосов: { $votes }), она теперь в «Взяты в выпуск».
-topics_poll_result_none = Голосование №{ $id } закрыто без голосов, тема не выбрана.

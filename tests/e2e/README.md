@@ -11,27 +11,31 @@ from the default `pytest` run** (`addopts = -m 'not e2e'` in
 - `test_full_pipeline.py` — full pipeline (no chat forwarding):
   - `test_full_pipeline_ftp` — start → choose type → upload MP3 → template → click **FTP menu → FTP upload**.
   - `test_full_pipeline_wordpress` — same flow ending in **WP menu → WP upload**.
-- `test_listener_topics.py` — listener topics, only with `E2E_TOPICS=1` and a
-  bot started with `TOPICS_ENABLED=true`:
-  - the private-chat form (`/start topic`) puts a topic into the queue, the
-    admin takes it from `/admin` into episode 999 and the author gets the
-    notice with that number;
-  - `/topic` and `/тема` in the private chat open the same form;
+- `test_listener_topics.py` — the list of listener topics and questions,
+  only with `E2E_TOPICS=1` and a bot started with `TOPICS_ENABLED=true`:
+  - `/тема text` and `/вопрос text` in the private chat add items, `/topics`
+    shows them as `N) ТЕМА - text` / `N) ВОПРОС - text`;
+  - the form (`/question` without text, `/start topic` with the kind step)
+    adds an item after the confirm button;
+  - "удали N, M" deletes the items by the numbers of the list shown last,
+    reports what was deleted and shows the rest; "Вернуть" brings them back;
+  - the number buttons under the list tick items and "Удалить отмеченные"
+    deletes them; `/done N` works like the text;
   - with `E2E_TOPICS_CHAT` (a group with the bot as admin and the test
     account, equal to the bot's `TOPICS_CHAT`, `@username` or numeric id):
-    - `#тема` in the group gets a reaction and shows up in the queue;
-    - the ephemeral form (`/topic` sent as an ephemeral command, the topic as
-      an ephemeral reply, the confirm button) puts a topic into the queue;
-    - a poll of three topics is published from `/admin`, gets a vote and is
-      closed with the button: the winner is taken and both the author and
-      the hosts are told.
+    - `#тема` and `#вопрос` in the group get a reaction and an ephemeral
+      note, and show up in the list with the right kind;
+    - the ephemeral form (`/topic` sent as an ephemeral command, the kind
+      button, the text as an ephemeral reply, the confirm button) adds an
+      item;
+    - an admin replies to a chat message with `/вопрос` and it lands on the
+      list.
   Ephemeral messages go through raw Telethon requests, tgtest has no helper
   for them. What other members of the group see, and how a client without
-  ephemeral messages behaves, is still checked by hand. A poll that closes
-  on its timer takes at least an hour (`TOPICS_POLL_HOURS=1`) and is not in
-  the suite.
-  Set `TOPICS_DAILY_LIMIT=0` on the test bot: every run suggests more than
-  three topics from the same account.
+  ephemeral messages behaves, is still checked by hand.
+  The test account is an admin, so the daily limit and the ban list do not
+  apply to it: those refusals are covered by unit tests and need a second,
+  non-admin account to see live. Every test deletes the items it added.
 
 Everything goes through tgtest (0.2+): the MP3 upload uses `chat.send_file`,
 menu edits are checked with `expect_edit` / `wait_until`, and the account

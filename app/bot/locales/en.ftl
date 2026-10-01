@@ -128,85 +128,84 @@ collector_deleted = Deleted
 collector_missing = The entry is already gone
 collector_open_message = Open message
 
-## Topics from listeners
+## Topics and questions from listeners
 
-admin_topics = 💡 Listener topics
-topics_panel = Topics from listeners. Pick which ones to show.
-topics_entries = Topics. Tap one to open its card.
-topics_status_new = 🆕 New
-topics_status_later = ⏳ Postponed
-topics_status_taken = ✅ Taken for an episode
-topics_status_rejected = 🚫 Rejected
-topics_source_hashtag = from the chat
-topics_source_form = from the form
-topics_card_title = Topic #{ $id }
-topics_open_message = Open message
-topics_take = ✅ Take for an episode
-topics_reject = 🚫 Reject
-topics_later = ⏳ Later
-topics_marked_taken = Taken for an episode
-topics_marked_rejected = Rejected
-topics_marked_later = Postponed
-topics_missing = This topic is already gone
-topics_card_episode = Episode: { $note }
-topics_card_banned = 🚷 The author is banned, new topics from them are not accepted
-topics_ask_episode =
-    Which episode takes topic #{ $id }?
-    Send the episode number as a message (up to { $max } characters), the author will see it. Or take the topic without a number.
-topics_take_without_episode = ✅ Take without a number
-topics_marked_taken_episode = The topic is taken for episode { $note }, the author has been notified.
-topics_ban = 🚷 Ban the author
-topics_unban = Unban the author
+admin_topics = 💡 Topics and questions
+topics_panel =
+    Topics and questions from listeners: one list for the hosts.
+    Covered some items? Send "delete 1, 3" or tick the numbers under the list.
+topics_show = 📋 Show the list
+topics_add_topic = ➕ Topic
+topics_add_question = ➕ Question
+topics_authors = 🚷 Authors
+topics_refresh = 🔄 Refresh
+topics_remove_marked = Delete ticked ({ $count })
+topics_undo = ↩️ Restore
+topics_kind_topic = TOPIC
+topics_kind_question = QUESTION
+topics_list_title = Topics and questions:
+topics_list_empty = The list of topics and questions is empty: nobody has suggested anything yet.
+topics_marked = Ticked: { $numbers }
+topics_marked_count = Items ticked: { $count }
+topics_marked_none = Nothing is ticked
+topics_mark_first = Tick the items with the number buttons first
+topics_list_stale = This list is out of date. Here is a fresh one: tick the items there.
+topics_denied = This button is for the hosts only
+topics_view_missing = I do not remember which list I showed last. Here is a fresh one: take the numbers from it.
+topics_numbers_unknown = The last list has { $total } items and no such numbers: { $numbers }. Nothing was deleted. Fresh list: /topics
+topics_remove_usage = Send the item numbers from the last list: /done 1 3 4 or "delete 1, 3, 4". The list: /topics
+topics_removed = Deleted from the list:
+topics_removed_more = … and { $count } more
+topics_removed_gone = Already deleted earlier: { $numbers }
+topics_removed_nothing = These items are no longer on the list, they were deleted earlier: { $numbers }
+topics_restored = Back on the list:
+topics_undo_expired = Too late to restore: more than 10 minutes have passed or the items are already back
+topics_authors_title =
+    Authors of the listed items and the ban list. Tap an author to ban or unban them.
+    The bot accepts nothing from a banned author. Their items stay on the list until you delete them.
+topics_authors_empty = Nobody to ban: the list has no items from listeners and the ban list is empty.
+topics_author = 🚷 { $name } (items: { $count })
+topics_author_banned = ✅ Unban { $name }
 topics_ban_done = The author is banned
 topics_unban_done = The author is unbanned
-topics_refused_too_short = The topic is too short: at least { $min } characters, please.
-topics_refused_too_long = The topic is too long: { $max } characters at most.
-topics_refused_limit = That's enough for now: up to { $limit } topics a day. Try again later!
-topics_refused_banned = You cannot suggest topics right now.
-# Notices to the author: keys of the SDK suggest module, texts of this bot.
-# $text: start of the topic, $note: episode number (the -note variant).
-suggest-notify-taken = Your topic "{ $text }" was taken for an episode. Thank you!
-suggest-notify-taken-note = Your topic "{ $text }" was taken for episode { $note }. Thank you!
-suggest-notify-rejected = Your topic "{ $text }" was not picked this time. Thanks for the idea!
-suggest-notify-later = Your topic "{ $text }" was postponed: the hosts will get back to it later.
-topics_post_button = 📌 Post the "Suggest a topic" button
-topics_form_button = 💡 Suggest a topic
-topics_form_invite = Got an idea for an episode? Tap the button and suggest a topic to the hosts.
+topics_added_topic = Added your topic to the hosts' list. Thank you!
+topics_added_question = Added your question to the hosts' list. Thank you!
+topics_admin_added =
+    Added to the list:
+    { $line }
+topics_reply_no_text = That message has no text, there is nothing to add.
+topics_refused_too_short = Too short: at least { $min } characters, please.
+topics_refused_too_long = Too long: { $max } characters at most.
+topics_refused_limit = That's enough for now: up to { $limit } topics and questions a day. Try again later!
+topics_refused_banned = You cannot suggest topics and questions right now.
+topics_refused_duplicate = This message is already on the list.
+topics_post_button = 📌 Post the "Suggest" button
+topics_form_button = 💡 Suggest a topic or a question
+topics_form_invite = Got a topic for an episode or a question for the hosts? Tap the button: only you will see the form.
 topics_form_posted = Button posted to { $chat }
 topics_form_post_failed = Could not post the button. Is the bot in the chat and allowed to write there?
-topics_form_command = Suggest a topic for an episode
-topics_form_ask =
+topics_form_command = Suggest a topic or a question to the hosts
+topics_form_command_topic = Suggest a topic for an episode
+topics_form_command_question = Ask the hosts a question
+topics_form_kind = What should go on the hosts' list?
+topics_form_kind_topic = 💡 A topic
+topics_form_kind_question = ❓ A question
+topics_form_ask_topic =
     What should the hosts talk about?
     Reply to this message with your topic, { $min } to { $max } characters.
+topics_form_ask_question =
+    What would you like to ask the hosts?
+    Reply to this message with your question, { $min } to { $max } characters.
+topics_form_ask_topic_admin =
+    Which topic should go on the list?
+    Send it as your next message, up to { $max } characters.
+topics_form_ask_question_admin =
+    Which question should go on the list?
+    Send it as your next message, up to { $max } characters.
 topics_form_confirm =
-    Suggest this topic to the hosts?
-    "{ $topic }"
-topics_form_accepted = Thank you! The topic is in the queue, the hosts will see it.
+    Add this to the hosts' list?
+    { $kind } - { $text }
 topics_form_cancelled = OK, maybe next time.
-topics_form_expired = The form has expired. Start again: /topic or the "Suggest a topic" button.
+topics_form_expired = The form has expired. Start again: /topic or /question.
 topics_form_open_private = Open the form in private chat
 topics_form_go_private = Could not show the form here. Open it in a private chat with the bot:
-topics_polls_button = 📊 Polls
-topics_polls = Topic polls. Tap a poll to see the votes and the result.
-topics_poll_new = ➕ New poll
-topics_poll_pick = Tick 3 to 5 topics for the poll and tap "Publish poll".
-topics_poll_publish = 📊 Publish poll
-topics_poll_clear = ✖️ Clear selection
-topics_poll_too_many = A poll takes at most { $max } topics
-topics_poll_pick_count = Tick { $min } to { $max } topics
-topics_poll_question = Which topic should the next episode cover?
-topics_poll_publish_failed = Could not publish the poll. Is the bot allowed to write to the chat?
-topics_poll_published = Poll published
-topics_poll_line_open = 🟢 { $date } · votes: { $votes }
-topics_poll_line_closed = 🏁 { $date } · { $winner }
-topics_poll_line_no_winner = 🏁 { $date } · no winner
-topics_poll_card_title = Poll #{ $id }
-topics_poll_open = 🟢 open
-topics_poll_closed = 🏁 closed { $date }
-topics_poll_votes = votes: { $count }
-topics_poll_no_winner = Nobody voted, no topic was picked.
-topics_poll_tie = A tie: the topic placed higher in the poll wins.
-topics_poll_close = 🏁 Close poll
-topics_poll_closed_toast = Poll closed
-topics_poll_result = Poll #{ $id } is closed. The winner is "{ $topic }" (votes: { $votes }), now under "Taken for an episode".
-topics_poll_result_none = Poll #{ $id } closed without votes, no topic was picked.
