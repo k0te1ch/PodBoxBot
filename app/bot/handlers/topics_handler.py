@@ -39,6 +39,7 @@ from services.topics.runtime import (
     topic_service,
     topics_enabled,
 )
+from utils.menu_context import only_inside
 
 STATUSES_MENU = "topics"
 ENTRIES_MENU = "topics_entries"
@@ -222,7 +223,7 @@ def build_topics_menu(extra_items: tuple = ()) -> ListMenu:
         source=_statuses,
         on_select=_open_status,
         title="topics_panel",
-        items=[Submenu(ENTRIES_MENU, entries, id="entries", visible_if=lambda _ctx: False), *extra_items],
+        items=[Submenu(ENTRIES_MENU, entries, id="entries", visible_if=only_inside(ENTRIES_MENU)), *extra_items],
     )
 
 

@@ -3,6 +3,8 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from sagenza_tgbot_sdk.menus.callback import Action, MenuCallback
+from sagenza_tgbot_sdk.menus.routing import MenuRouter
 from sagenza_tgbot_sdk.menus.testing import crawl
 
 import config
@@ -86,6 +88,52 @@ async def test_statuses_show_counts_and_open_their_list(fake_redis):
     ]
     ctx.show.assert_awaited_once_with(th.ENTRIES_MENU)
     assert [i.text.split(" ", 1)[1] for i in entries] == ["отложенная тема"]
+
+
+def _pressed(callback: MenuCallback, username="admin"):
+    """Контекст нажатия таким, каким его собирает роутер меню SDK."""
+    ctx = menus.menus.context(_admin_event(username), locale="ru", menu_id=callback.m, page=callback.p)
+    ctx.put = AsyncMock()
+    ctx.answer = AsyncMock()
+    return ctx
+
+
+def _targets(markup) -> set[str]:
+    return {MenuCallback.unpack(b.callback_data).m for row in markup.inline_keyboard for b in row}
+
+
+@pytest.mark.asyncio
+async def test_list_buttons_are_routed_though_the_list_has_no_button_of_its_own(fake_redis):
+    """Список тем открывает хендлер статуса. Роутер SDK при этом обязан
+    пропускать нажатия внутри списка: тему, страницы, «Назад» из карточки."""
+    topic = await _add("тема про гостей")
+    router = MenuRouter(menus.menus)
+
+    select = MenuCallback(m=th.ENTRIES_MENU, a=Action.SELECT, v=str(topic.id))
+    ctx = _pressed(select)
+    assert await router.dispatch(ctx, select)
+    assert "тема про гостей" in ctx.put.await_args.args[0]
+
+    page = MenuCallback(m=th.ENTRIES_MENU, a=Action.OPEN)
+    ctx = _pressed(page)
+    assert await router.dispatch(ctx, page)
+    assert _targets(ctx.put.await_args.args[1]) == {th.ENTRIES_MENU, th.STATUSES_MENU}
+
+
+@pytest.mark.asyncio
+async def test_list_has_no_button_among_statuses_and_stays_admin_only(fake_redis):
+    await _add()
+    router = MenuRouter(menus.menus)
+
+    statuses = MenuCallback(m=th.STATUSES_MENU, a=Action.OPEN)
+    ctx = _pressed(statuses)
+    assert await router.dispatch(ctx, statuses)
+    assert th.ENTRIES_MENU not in _targets(ctx.put.await_args.args[1])
+
+    select = MenuCallback(m=th.ENTRIES_MENU, a=Action.SELECT, v="1")
+    stranger = _pressed(select, username="stranger")
+    assert not await router.dispatch(stranger, select)
+    stranger.put.assert_not_awaited()
 
 
 @pytest.mark.asyncio
