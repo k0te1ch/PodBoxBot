@@ -478,3 +478,59 @@ async def test_deep_link_is_routed_only_with_its_payload(bot):
     assert await _handled_by(fh.start_in_private, "/start topic", bot)
     assert not await _handled_by(fh.start_in_private, "/start other", bot)
     assert not await _handled_by(fh.start_in_private, "/start", bot)
+
+
+# --- анкета и диалог загрузки выпуска в одной личке ---------------------------------
+
+
+async def _start_upload(bot, state, monkeypatch, at: float) -> None:
+    from dialog_engine.integrations.aiogram import DefaultSender
+
+    from forms.upload_file import upload_file_runner
+
+    monkeypatch.setattr(upload_file_runner.engine, "_clock", lambda: at)
+    await upload_file_runner.start(state, DefaultSender(bot, ADMIN.id), context={"lang": "ru"})
+
+
+async def _start_form(bot, state, monkeypatch, at: float) -> None:
+    monkeypatch.setattr(form.TYPED.private_runner.engine, "_clock", lambda: at)
+    await fh.start_private_form(bot, state, ADMIN.id, ADMIN, Kind.TOPIC, trusted=True, metrics=None)
+
+
+@pytest.mark.asyncio
+async def test_form_expects_text_only_while_it_is_open(fake_redis, private_bot, state, monkeypatch):
+    assert not await fh._expects_text(form.TYPED, state)
+
+    await _start_form(private_bot, state, monkeypatch, at=1000.0)
+
+    assert await fh._expects_text(form.TYPED, state)
+    assert not await fh._expects_text(form.FULL, state)
+
+
+@pytest.mark.asyncio
+async def test_unfinished_upload_does_not_block_a_form_opened_later(fake_redis, private_bot, state, monkeypatch):
+    await _start_upload(private_bot, state, monkeypatch, at=1000.0)
+    await _start_form(private_bot, state, monkeypatch, at=2000.0)
+
+    assert await fh._expects_text(form.TYPED, state)
+
+
+@pytest.mark.asyncio
+async def test_forgotten_form_does_not_eat_the_text_of_an_upload_started_later(
+    fake_redis, private_bot, state, monkeypatch
+):
+    await _start_form(private_bot, state, monkeypatch, at=1000.0)
+    await _start_upload(private_bot, state, monkeypatch, at=2000.0)
+
+    assert not await fh._expects_text(form.TYPED, state)
+
+
+@pytest.mark.asyncio
+async def test_expired_upload_does_not_block_the_form(fake_redis, private_bot, state, monkeypatch):
+    from forms.upload_file import upload_file_runner
+
+    await _start_form(private_bot, state, monkeypatch, at=1000.0)
+    await _start_upload(private_bot, state, monkeypatch, at=2000.0)
+    monkeypatch.setattr(upload_file_runner.engine, "_clock", lambda: 2000.0 + upload_file_runner.engine.ttl + 1)
+
+    assert await fh._expects_text(form.TYPED, state)

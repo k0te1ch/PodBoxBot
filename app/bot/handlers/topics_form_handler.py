@@ -41,10 +41,9 @@ from aiogram.types import (
     User,
 )
 from aiogram.utils.deep_linking import create_start_link
-from dialog_engine import DialogError
+from dialog_engine import DialogEngine, DialogError, DialogSession
 from dialog_engine.integrations.aiogram import (
     DefaultSender,
-    DialogActiveFilter,
     DialogCallbackFilter,
     DialogSender,
     DialogTurn,
@@ -290,6 +289,31 @@ def _is_answer(message: Message) -> bool:
     return _in_topics_chat(message) and message.ephemeral_message_id is not None
 
 
+def _touched(session: DialogSession, engine: DialogEngine) -> float:
+    """Когда с диалогом работали последний раз: движок отсчитывает от этого срок сессии."""
+    if session.expires_at is None or engine.ttl is None:
+        return 0.0
+    return session.expires_at - engine.ttl
+
+
+async def _expects_text(form: Form, state: FSMContext) -> bool:
+    """Ждёт ли анкета текст от этого человека.
+
+    В личке у админа может одновременно идти диалог загрузки выпуска, и он
+    тоже ждёт текст (шаблон). Сообщение достаётся тому диалогу, с которым
+    работали последним: иначе забытая анкета съела бы шаблон выпуска, а
+    незаконченная загрузка не давала бы добавить тему.
+    """
+    session, _ui = await form.storage.load(state)
+    if session is None or not session.is_active:
+        return False
+    upload, _ui = await upload_file_runner.storage.load(state)
+    upload_engine = upload_file_runner.engine
+    if upload is None or not upload.is_active or upload_engine.is_expired(upload):
+        return True
+    return _touched(session, form.private_runner.engine) >= _touched(upload, upload_engine)
+
+
 async def on_text(form: Form, msg: Message, state: FSMContext) -> None:
     await form.runner(_in_group(msg)).on_text(msg.text or "", state, _sender(msg))
 
@@ -313,10 +337,10 @@ def _register(form: Form) -> None:
     async def button(callback: CallbackQuery, state: FSMContext, metrics: Any = None):
         await on_button(form, callback, state, metrics)
 
-    # Идёт диалог загрузки выпуска: текст админа в личке — ответ ему, а не
-    # брошенной анкете.
-    uploading = DialogActiveFilter(upload_file_runner.storage)
-    router.message.register(text, form_enabled, F.text, _is_answer, ~uploading, DialogActiveFilter(form.storage))
+    async def expects_text(_msg: Message, state: FSMContext) -> bool:
+        return await _expects_text(form, state)
+
+    router.message.register(text, form_enabled, F.text, _is_answer, expects_text)
     router.callback_query.register(button, form_enabled, DialogCallbackFilter(form.dialog_id))
 
 
