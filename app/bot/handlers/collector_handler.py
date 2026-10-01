@@ -26,6 +26,7 @@ from filters.dispatcher_filters import IsAdmin, IsPrivate
 from services import redis
 from services.collector import Entry, EntryStore, pick_tag, strip_hashtags
 from services.i18n import t
+from utils.menu_context import only_inside
 
 PREVIEW_CHARS = 40
 
@@ -149,7 +150,14 @@ def build_collection_menu(collection: Collection) -> ListMenu:
         source=groups,
         on_select=open_group,
         title=f"{collection.name}_groups",
-        items=[Submenu(f"{collection.name}_entries", entries_menu, id="entries", visible_if=lambda _ctx: False)],
+        items=[
+            Submenu(
+                f"{collection.name}_entries",
+                entries_menu,
+                id="entries",
+                visible_if=only_inside(collection.entries_menu),
+            )
+        ],
     )
 
 
