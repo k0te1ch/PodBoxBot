@@ -151,6 +151,25 @@ async def test_publish_needs_three_topics(fake_redis, bot):
 
     bot.send_poll.assert_not_awaited()
     ctx.answer.assert_awaited_with(t("topics_poll_pick_count", min=3, max=5), alert=True)
+    # Экран «Точно?» сменяется выбором тем, а не остаётся висеть после отказа.
+    ctx.show.assert_awaited_with(ph.PICK_MENU)
+
+
+@pytest.mark.asyncio
+async def test_failed_publish_returns_to_the_pick_list(fake_redis, bot):
+    topics = [await _add(f"тема номер {i}") for i in range(3)]
+    bot.send_poll = AsyncMock(side_effect=TelegramBadRequest(method=MagicMock(), message="not enough rights"))
+    ctx = _ctx(bot)
+    for topic in topics:
+        ctx.value = str(topic.id)
+        await ph._toggle(ctx)
+
+    await ph.publish(ctx)
+
+    ctx.answer.assert_awaited_with(t("topics_poll_publish_failed"), alert=True)
+    ctx.show.assert_awaited_with(ph.PICK_MENU)
+    assert await poll_store().list() == []
+    assert len(await ph._picked(ctx)) == 3
 
 
 @pytest.mark.asyncio

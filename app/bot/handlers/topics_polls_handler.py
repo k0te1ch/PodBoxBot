@@ -127,8 +127,10 @@ async def publish(ctx: MenuContext) -> None:
     repository = topic_service().repository
     topics = [topic for topic_id in await _picked(ctx) if (topic := await repository.get(topic_id)) is not None]
     topics = [topic for topic in topics if topic.status in (TopicStatus.NEW, TopicStatus.LATER)]
+    # Отказ возвращает к выбору тем: иначе на экране остался бы вопрос «Точно?».
     if not MIN_OPTIONS <= len(topics) <= MAX_OPTIONS:
         await ctx.answer(ctx.text("topics_poll_pick_count", min=MIN_OPTIONS, max=MAX_OPTIONS), alert=True)
+        await ctx.show(PICK_MENU)
         return
     bot: Bot = ctx.data["bot"]
     options = [preview(topic.text, OPTION_CHARS) for topic in topics]
@@ -144,6 +146,7 @@ async def publish(ctx: MenuContext) -> None:
     except TelegramAPIError as error:
         logger.error(f"topic poll to {bot_config.TOPICS_POLL_CHAT} failed: {error!r}")
         await ctx.answer(ctx.text("topics_poll_publish_failed"), alert=True)
+        await ctx.show(PICK_MENU)
         return
     poll = await poll_store().add(
         TopicPoll(
