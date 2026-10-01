@@ -124,6 +124,8 @@ async def report(bot: Bot, result: Result) -> None:
 
 
 async def _to_admins(bot: Bot, send: Any) -> None:
+    if not bot_config.ADMINS_ID:
+        logger.warning("transcript: ADMINS_ID is empty, nobody to tell about the result")
     for chat_id in bot_config.ADMINS_ID:
         try:
             await send(chat_id)
