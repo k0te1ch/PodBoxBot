@@ -195,6 +195,12 @@ topics_form_ask_topic =
 topics_form_ask_question =
     Какой вопрос задать ведущим?
     Напиши его ответом на это сообщение, от { $min } до { $max } символов.
+topics_form_ask_topic_admin =
+    Какую тему добавить в список?
+    Напиши её следующим сообщением, до { $max } символов.
+topics_form_ask_question_admin =
+    Какой вопрос добавить в список?
+    Напиши его следующим сообщением, до { $max } символов.
 topics_form_confirm =
     Добавить в список для ведущих?
     { $kind } - { $text }

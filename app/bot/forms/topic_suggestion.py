@@ -37,7 +37,8 @@ SESSION_TTL = timedelta(minutes=30)
 
 # Тексты движка про конец сессии зовут к /start — анкете нужен свой.
 _OWN_KEYS = {"de.alert.no_session": "topics_form_expired", "de.alert.expired": "topics_form_expired"}
-# Вопрос анкеты зависит от типа пункта: «Какую тему…» или «Какой вопрос…».
+# Вопрос анкеты зависит от типа пункта («Какую тему…» или «Какой вопрос…») и от
+# того, кто спрашивает: админу не нужна минимальная длина.
 _BY_KIND = {"topics_form_ask"}
 
 
@@ -64,7 +65,7 @@ def resolve_text(key: str, answers: dict[str, Any], context: dict[str, Any]) -> 
     kind = kind_of(answers, context)
     lookup = _OWN_KEYS.get(key) or (key.replace(".", "-") if key.startswith("de.") else key)
     if lookup in _BY_KIND:
-        lookup = f"{lookup}_{kind}"
+        lookup = f"{lookup}_{kind}" + ("_admin" if context.get("trusted") else "")
     text = t(
         lookup,
         locale,

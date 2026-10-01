@@ -217,7 +217,7 @@ async def test_admin_form_in_private_is_trusted(fake_redis, private_bot, state):
     await topic_list().repository.ban(ADMIN.id, "@admin")
 
     await fh.start_private_form(bot, state, ADMIN.id, ADMIN, Kind.QUESTION, trusted=True, metrics=None)
-    assert bot.send_message.await_args.kwargs["text"] == t("topics_form_ask_question", min=1, max=50)
+    assert bot.send_message.await_args.kwargs["text"] == t("topics_form_ask_question_admin", max=50)
     await fh.on_text(form.TYPED, _private(bot, "Юг?", user=ADMIN), state)
     confirm = bot.edit_message_text.await_args.kwargs
     await _press(bot, state, form.TYPED, confirm["reply_markup"], t("de-button-confirm"), user=ADMIN)

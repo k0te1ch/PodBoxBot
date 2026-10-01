@@ -99,7 +99,7 @@ async def test_add_buttons_of_the_menu_open_the_admin_form(fake_redis, bot, kind
     await lh._add_from_menu(kind)(ctx)
 
     ctx.answer.assert_awaited_once_with()
-    assert bot.send_message.await_args.kwargs["text"] == t(ask, min=1, max=50)
+    assert bot.send_message.await_args.kwargs["text"] == t(f"{ask}_admin", max=50)
     session, _ui = await form.TYPED.storage.load(state)
     assert (session.context["trusted"], session.context[form.KIND]) == (True, kind.value)
 

@@ -152,7 +152,8 @@ async def test_form_asks_for_the_kind_and_adds_the_item(tester, bot_username, ph
         await chat.command("start topic")
         await chat.expect(contains=phrase("topics_form_kind"))
         await chat.click(phrase("topics_form_kind_question", full=True))
-        await chat.expect_edit(contains=phrase("topics_form_ask_question"), timeout=10)
+        # Тестовый аккаунт админ: у него свой текст вопроса, без минимальной длины.
+        await chat.expect_edit(contains=phrase("topics_form_ask_question_admin"), timeout=10)
         await chat.send(question)
         await chat.wait_until(contains=f"{kind} - {question}", timeout=10)
         await chat.click(phrase("de-button-confirm", full=True))
@@ -171,7 +172,7 @@ async def test_command_without_text_opens_the_form_of_its_kind(tester, bot_usern
     kind = phrase(kind_key, full=True)
     async with tester.conversation(bot_username) as chat:
         await chat.command(command)
-        await chat.expect(contains=phrase(f"topics_form_ask_{command}"))
+        await chat.expect(contains=phrase(f"topics_form_ask_{command}_admin"))
         await chat.send(text)
         await chat.wait_until(contains=f"{kind} - {text}", timeout=10)
         await chat.click(phrase("de-button-confirm", full=True))

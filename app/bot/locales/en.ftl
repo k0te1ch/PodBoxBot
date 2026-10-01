@@ -195,6 +195,12 @@ topics_form_ask_topic =
 topics_form_ask_question =
     What would you like to ask the hosts?
     Reply to this message with your question, { $min } to { $max } characters.
+topics_form_ask_topic_admin =
+    Which topic should go on the list?
+    Send it as your next message, up to { $max } characters.
+topics_form_ask_question_admin =
+    Which question should go on the list?
+    Send it as your next message, up to { $max } characters.
 topics_form_confirm =
     Add this to the hosts' list?
     { $kind } - { $text }
