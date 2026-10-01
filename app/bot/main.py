@@ -1,4 +1,5 @@
 import asyncio
+import functools
 import os
 
 from aiogram import BaseMiddleware, Bot, Dispatcher
@@ -16,13 +17,16 @@ from sagenza_tgbot_sdk import SdkSettings, setup_sdk
 from sagenza_tgbot_sdk.health import HealthModule
 from sagenza_tgbot_sdk.host_watch import HostWatchModule, HostWatchSettings
 from sagenza_tgbot_sdk.logs import LoggingModule, LoggingSettings
-from sagenza_tgbot_sdk.metrics import MetricsModule, MetricsSettings
+from sagenza_tgbot_sdk.metrics import MetricsModule
 from sagenza_tgbot_sdk.notify import NotifyModule
 from sagenza_tgbot_sdk.status import StatusModule
 
 from handlers import ROUTERS, bot_menus
+from middlewares.base.admin_activity_middleware import AdminActivityMiddleware
 from middlewares.base.user_context_middleware import UserContextMiddleware
 from services import init_services, redis
+from services.kafka.handlers.upload_event import record_publish_metrics
+from services.metrics import bot_metrics
 from services.none_module import _NoneModule
 from services.rss import RssWatcher
 from utils.error_reporting import register_error_handler
@@ -106,6 +110,7 @@ async def on_startup():
         running_version = None
         logger.debug(f"could not read bot version: {e!r}")
     logger.info(f"PodBoxBot v{running_version or '?'} (aiogram {aiogram_version})")
+    bot_metrics.set_version(running_version)
 
     # Запускаем стартап задачи параллельно с поллингом.
     # send_release_note и kafka-консьюмеры независимы — изолируем падения
@@ -128,22 +133,30 @@ async def on_startup():
     # poll-loop теоретически может завершиться. Супервайзер ловит любой выход
     # и перезапускает consumer — так бот не остаётся «полуживым» (Telegram
     # отвечает, а приём result-событий молча мёртв) после ребута хоста.
+    # Третье поле: площадка в метриках публикаций (топик её однозначно задаёт).
     result_topics = [
-        ("publisher.ftp.result", "publisher.ftp.result.group"),
-        ("publisher.wordpress.result", "publisher.wordpress.result.group"),
-        ("publisher.boosty.result", "publisher.boosty.result.group"),
-        ("publisher.vk.result", "publisher.vk.result.group"),
-        ("publisher.patreon.result", "publisher.patreon.result.group"),
-        ("publisher.sponsr.result", "publisher.sponsr.result.group"),
+        ("publisher.ftp.result", "publisher.ftp.result.group", "ftp"),
+        ("publisher.wordpress.result", "publisher.wordpress.result.group", "wp"),
+        ("publisher.boosty.result", "publisher.boosty.result.group", "boosty"),
+        ("publisher.vk.result", "publisher.vk.result.group", "vk"),
+        ("publisher.patreon.result", "publisher.patreon.result.group", "patreon"),
+        ("publisher.sponsr.result", "publisher.sponsr.result.group", "sponsr"),
     ]
-    for topic, group_id in result_topics:
+    for topic, group_id, platform in result_topics:
         consumer = KafkaConsumer(
             kafka_server=KAFKA_SERVER,
             schema_registry_url=SCHEMA_REGISTRY_URL,
             topic=topic,
             group_id=group_id,
         )
-        _task = asyncio.create_task(_supervise_consumer(consumer, kafka_router.route))  # noqa: RUF006
+        handler = functools.partial(_route_result, kafka_router.route, platform)
+        _task = asyncio.create_task(_supervise_consumer(consumer, handler))  # noqa: RUF006
+
+
+async def _route_result(route, platform: str, event: dict) -> None:
+    """Считает итог публикации в метриках и передаёт событие роутеру."""
+    await record_publish_metrics(event, platform)
+    await route(event)
 
 
 async def _supervise_consumer(consumer: "KafkaConsumer", handler, restart_delay: float = 5.0) -> None:
@@ -158,10 +171,12 @@ async def _supervise_consumer(consumer: "KafkaConsumer", handler, restart_delay:
         try:
             await consumer.start(handler)
             logger.warning(f"[supervisor] consumer for {consumer.topic} exited; restarting in {restart_delay:.0f}s")
+            bot_metrics.consumer_restarted(consumer.topic)
         except Exception as e:
             logger.exception(
                 f"[supervisor] consumer for {consumer.topic} crashed: {e!r}; restarting in {restart_delay:.0f}s"
             )
+            bot_metrics.consumer_restarted(consumer.topic)
         await asyncio.sleep(restart_delay)
 
 
@@ -195,7 +210,8 @@ def _setup_sdk(dp: Dispatcher) -> None:
     host_watch = HostWatchSettings(threshold_percent=DISK_ALERT_PERCENT, interval_seconds=DISK_CHECK_INTERVAL)
     modules = [
         LoggingModule(LoggingSettings(configure=False)),
-        MetricsModule(MetricsSettings(bot_name="podboxbot")),
+        # Реестр бота с бизнес-метриками и метриками процесса (services/metrics.py).
+        MetricsModule(metrics=bot_metrics.sdk),
         HealthModule(),
         StatusModule(),
         HostWatchModule(host_watch),
@@ -216,7 +232,11 @@ def _get_dp_obj(bot, redis):
         storage = MemoryStorage()
         logger.debug("Used by MemoryStorage")
     dp = Dispatcher(storage=storage)
-    _add_middlewares_to_observers([dp.message, dp.callback_query], [UserContextMiddleware()])
+    _add_middlewares_to_observers(
+        [dp.message, dp.callback_query], [UserContextMiddleware(), AdminActivityMiddleware(ADMINS_ID)]
+    )
+    bot_metrics.use_redis(None if isinstance(redis, _NoneModule) else redis)
+    bot_metrics.set_admins(len(ADMINS_ID))
     register_error_handler(dp)
     _setup_sdk(dp)
     dp.include_routers(*ROUTERS)

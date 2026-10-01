@@ -55,4 +55,4 @@ async def upload_FTP(ctx: MenuContext):
         logger.error(f"UploadEvent validation failed: {e.json()}")
         return await ctx.answer("Ошибка валидации данных", alert=True)
 
-    await publish_request(ctx, UPLOAD_TOPIC, "upload_event.avsc", event, status=msg, title=title)
+    await publish_request(ctx, UPLOAD_TOPIC, "upload_event.avsc", event, status=msg, title=title, platform="ftp")

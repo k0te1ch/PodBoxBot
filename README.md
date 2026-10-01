@@ -165,13 +165,52 @@ docker compose version   # должно показать v2.x
 ### Вторая Prometheus для метрик
 
 Бот отдаёт метрики на `bot:8080/metrics`, публишеры пушат свои в Pushgateway;
-оттуда их скрейпит Prometheus этого стека. Чтобы те же метрики бота и
-публишеров уходили ещё в одну Prometheus, в `.env` задаются
-`COMPOSE_PROFILES=personal-metrics` и `PERSONAL_METRICS_REMOTE_WRITE_URL`
-(адрес `.../api/v1/write` приёмника с включённым remote-write receiver).
-Поднимается сервис `metrics-forwarder` (Alloy,
-`configs/metrics/personal-forwarder.alloy`). Метрики хоста, Redis и Kafka во
-вторую Prometheus не уходят.
+оттуда их скрейпит Prometheus этого стека. Сервис `metrics-forwarder` (Alloy,
+`configs/metrics/personal-forwarder.alloy`) шлёт копию метрик бота и
+публишеров ещё в одну Prometheus. Метрики хоста, Redis и Kafka туда не уходят.
+
+| Переменная `.env` | По умолчанию | Что делает |
+|---|---|---|
+| `PERSONAL_METRICS_REMOTE_WRITE_URL` | пусто | адрес `.../api/v1/write` приёмника (Prometheus с `--web.enable-remote-write-receiver`). Пусто: пересыльщик пишет одну строку в лог и ждёт |
+| `PERSONAL_METRICS_SOURCE` | `podboxbot` | метка `source` у всех пересланных рядов |
+
+Сервис стартует вместе со стеком. После изменения адреса:
+`docker compose up -d metrics-forwarder`.
+
+### Какие метрики есть
+
+Бот (`bot:8080/metrics`), кроме апдейтов и ошибок из SDK:
+
+- `sagenza_event_upload_step_total{step, outcome}`: шаги диалога загрузки
+  (`done`, `invalid`, `cancelled`, `expired`, `download_failed`, `number_failed`);
+- `sagenza_event_episode_prepared_total{type_episode, source}`: готовые mp3
+  из диалога и из RSS;
+- `sagenza_event_publish_requested_total{platform, type_episode, attempt}`:
+  нажатия кнопок публикации, `attempt="repeat"` у повторных;
+- `sagenza_event_episode_published_total{platform, type_episode, action}`,
+  `sagenza_event_publish_failed_total{platform, type_episode, stage}`,
+  `sagenza_event_publish_retry_total{platform, stage}`;
+- `podboxbot_time_to_publish_seconds{platform, type_episode}` и
+  `podboxbot_time_to_publish_all_seconds{type_episode}`: от получения mp3 до
+  первой публикации на площадке и на всех площадках эпизода (нужен Redis);
+- `podboxbot_episode_audio_size_bytes`, `podboxbot_episode_audio_duration_seconds`,
+  `podboxbot_mp3_download_seconds`;
+- `sagenza_event_rss_poll_total{result}`, `sagenza_event_rss_episode_total{type_episode, via}`,
+  `podboxbot_rss_last_success_timestamp_seconds`, `podboxbot_rss_consecutive_failures`;
+- `sagenza_event_admin_action_total{action}`, `podboxbot_active_admins{window}`,
+  `podboxbot_admin_last_action_timestamp_seconds`, `podboxbot_admins_configured`;
+- `podboxbot_last_publish_timestamp_seconds{platform}`, `podboxbot_build_info{version}`,
+  `sagenza_event_kafka_consumer_restart_total{topic}`;
+- `process_*`, `python_*`: память, CPU и GC процесса бота.
+
+Публишеры (Pushgateway, `<имя>` это `ftp`, `wp`, `boosty`, `vk`, `patreon`, `sponsr`):
+`<имя>_upload_{success,failure}_total{target}`, `<имя>_upload_retry_total{target, stage}`,
+`<имя>_upload_duration_seconds{target}`, `<имя>_upload_error_total{stage, error}`,
+`<имя>_last_success_timestamp_seconds`, у Boosty ещё `boosty_session_ok`,
+`boosty_session_expires_at_timestamp_seconds`, `boosty_session_refresh_total{result}`.
+
+В метках нет id пользователей, логинов и текстов: только площадка, тип эпизода,
+шаг, действие и класс ошибки; `target` это имя файла или номер эпизода.
 
 ### Апгрейд
 

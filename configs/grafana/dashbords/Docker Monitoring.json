@@ -10,12 +10,12 @@
 				"enable": true,
 				"hide": true,
 				"iconColor": "rgba(0, 211, 255, 1)",
-				"name": "Annotations & Alerts",
+				"name": "Аннотации и алерты",
 				"type": "dashboard"
 			}
 		]
 	},
-	"description": "Docker Monitoring",
+	"description": "Ресурсы сервера: память, CPU, диски, сеть.",
 	"editable": true,
 	"fiscalYearStartMonth": 0,
 	"graphTooltip": 1,
@@ -32,7 +32,7 @@
 			},
 			"id": 17,
 			"panels": [],
-			"title": "Host Info",
+			"title": "Сервер",
 			"type": "row"
 		},
 		{
@@ -47,7 +47,7 @@
 							"options": {
 								"match": "null",
 								"result": {
-									"text": "N/A"
+									"text": "нет данных"
 								}
 							},
 							"type": "special"
@@ -84,7 +84,9 @@
 				"orientation": "horizontal",
 				"percentChangeColorMode": "standard",
 				"reduceOptions": {
-					"calcs": ["mean"],
+					"calcs": [
+						"mean"
+					],
 					"fields": "",
 					"values": false
 				},
@@ -106,8 +108,9 @@
 					"refId": "A"
 				}
 			],
-			"title": "Uptime",
-			"type": "stat"
+			"title": "Prometheus работает",
+			"type": "stat",
+			"description": "Сколько времени прошло с запуска Prometheus."
 		},
 		{
 			"datasource": {
@@ -120,7 +123,7 @@
 						{
 							"options": {
 								"0": {
-									"text": "N/A"
+									"text": "нет данных"
 								}
 							},
 							"type": "value"
@@ -161,7 +164,9 @@
 				"orientation": "horizontal",
 				"percentChangeColorMode": "standard",
 				"reduceOptions": {
-					"calcs": ["mean"],
+					"calcs": [
+						"mean"
+					],
 					"fields": "",
 					"values": false
 				},
@@ -181,8 +186,9 @@
 					"refId": "A"
 				}
 			],
-			"title": "Alerts",
-			"type": "stat"
+			"title": "Сработавших алертов",
+			"type": "stat",
+			"description": "Сколько правил Prometheus сейчас в состоянии firing (алерты Grafana считаются отдельно)."
 		},
 		{
 			"datasource": {
@@ -196,7 +202,7 @@
 							"options": {
 								"match": "null",
 								"result": {
-									"text": "N/A"
+									"text": "нет данных"
 								}
 							},
 							"type": "special"
@@ -237,7 +243,9 @@
 				"orientation": "horizontal",
 				"percentChangeColorMode": "standard",
 				"reduceOptions": {
-					"calcs": ["mean"],
+					"calcs": [
+						"mean"
+					],
 					"fields": "",
 					"values": false
 				},
@@ -259,8 +267,9 @@
 					"refId": "A"
 				}
 			],
-			"title": "Targets Online",
-			"type": "stat"
+			"title": "Целей опроса в сети",
+			"type": "stat",
+			"description": "Сколько эндпоинтов метрик Prometheus сейчас снимает успешно."
 		},
 		{
 			"datasource": {
@@ -274,7 +283,7 @@
 							"options": {
 								"match": "null",
 								"result": {
-									"text": "N/A"
+									"text": "нет данных"
 								}
 							},
 							"type": "special"
@@ -317,7 +326,9 @@
 				"orientation": "horizontal",
 				"percentChangeColorMode": "standard",
 				"reduceOptions": {
-					"calcs": ["lastNotNull"],
+					"calcs": [
+						"lastNotNull"
+					],
 					"fields": "",
 					"values": false
 				},
@@ -341,8 +352,9 @@
 					"step": 10
 				}
 			],
-			"title": "Memory usage",
-			"type": "stat"
+			"title": "Занято памяти",
+			"type": "stat",
+			"description": "Доля занятой оперативной памяти сервера (без буферов и кэша)."
 		},
 		{
 			"datasource": {
@@ -357,7 +369,7 @@
 							"options": {
 								"match": "null",
 								"result": {
-									"text": "N/A"
+									"text": "нет данных"
 								}
 							},
 							"type": "special"
@@ -400,7 +412,9 @@
 				"orientation": "horizontal",
 				"percentChangeColorMode": "standard",
 				"reduceOptions": {
-					"calcs": ["lastNotNull"],
+					"calcs": [
+						"lastNotNull"
+					],
 					"fields": "",
 					"values": false
 				},
@@ -425,8 +439,9 @@
 					"step": 10
 				}
 			],
-			"title": "CPU usage",
-			"type": "stat"
+			"title": "Загрузка CPU",
+			"type": "stat",
+			"description": "Средняя загрузка процессора за минуту."
 		},
 		{
 			"datasource": {
@@ -441,7 +456,7 @@
 							"options": {
 								"match": "null",
 								"result": {
-									"text": "N/A"
+									"text": "нет данных"
 								}
 							},
 							"type": "special"
@@ -484,7 +499,9 @@
 				"orientation": "horizontal",
 				"percentChangeColorMode": "standard",
 				"reduceOptions": {
-					"calcs": ["lastNotNull"],
+					"calcs": [
+						"lastNotNull"
+					],
 					"fields": "",
 					"values": false
 				},
@@ -508,8 +525,9 @@
 					"step": 10
 				}
 			],
-			"title": "Filesystem usage",
-			"type": "stat"
+			"title": "Занято диска",
+			"type": "stat",
+			"description": "Заполнение разделов сервера без служебных точек Docker."
 		},
 		{
 			"datasource": {
@@ -648,7 +666,7 @@
 					"format": "time_series",
 					"interval": "2m",
 					"intervalFactor": 2,
-					"legendFormat": "RECEIVE",
+					"legendFormat": "вход {{device}}",
 					"range": true,
 					"refId": "A"
 				},
@@ -656,16 +674,17 @@
 					"datasource": {
 						"uid": "prometheus"
 					},
-					"expr": "- sum(rate(container_network_transmit_bytes_total{id=\"/\"}[$interval])) by (id)",
+					"expr": "- sum(rate(node_network_transmit_bytes_total{device!~\"lo\"}[$interval])) by (device)",
 					"format": "time_series",
 					"interval": "2m",
 					"intervalFactor": 2,
-					"legendFormat": "TRANSMIT",
+					"legendFormat": "выход {{device}}",
 					"refId": "B"
 				}
 			],
-			"title": "Node Network Traffic",
-			"type": "timeseries"
+			"title": "Сетевой трафик сервера",
+			"type": "timeseries",
+			"description": "Входящий (вверх) и исходящий (вниз) трафик по интерфейсам."
 		},
 		{
 			"datasource": {
@@ -788,7 +807,7 @@
 					"format": "time_series",
 					"interval": "2m",
 					"intervalFactor": 2,
-					"legendFormat": "Used Memory",
+					"legendFormat": "занято",
 					"refId": "B"
 				},
 				{
@@ -799,12 +818,13 @@
 					"format": "time_series",
 					"interval": "2m",
 					"intervalFactor": 2,
-					"legendFormat": "Available Memory",
+					"legendFormat": "доступно",
 					"refId": "A"
 				}
 			],
-			"title": "Node Mermory",
-			"type": "timeseries"
+			"title": "Память сервера",
+			"type": "timeseries",
+			"description": "Занятая и свободная оперативная память."
 		},
 		{
 			"datasource": {
@@ -972,18 +992,23 @@
 					"format": "time_series",
 					"interval": "2m",
 					"intervalFactor": 2,
-					"legendFormat": "Free Storage",
+					"legendFormat": "свободно",
 					"refId": "A"
 				}
 			],
-			"title": "Filesystem Available",
-			"type": "timeseries"
+			"title": "Свободно на дисках",
+			"type": "timeseries",
+			"description": "Свободное место на дисках сервера."
 		}
 	],
 	"preload": false,
 	"refresh": "10s",
 	"schemaVersion": 41,
-	"tags": ["docker", "node-exporter", "Prometheus"],
+	"tags": [
+		"docker",
+		"node-exporter",
+		"Prometheus"
+	],
 	"templating": {
 		"list": [
 			{
@@ -994,7 +1019,7 @@
 					"text": "1m",
 					"value": "1m"
 				},
-				"label": "interval",
+				"label": "Интервал",
 				"name": "interval",
 				"options": [
 					{
@@ -1060,7 +1085,7 @@
 	},
 	"timepicker": {},
 	"timezone": "browser",
-	"title": "Docker and Host Monitoring",
+	"title": "Сервер и Docker",
 	"uid": "64nrElFmk",
 	"version": 35
 }
