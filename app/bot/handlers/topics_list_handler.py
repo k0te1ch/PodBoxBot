@@ -8,9 +8,11 @@
 
 * Показать: ``/topics`` (``/список``) или ``/admin`` → «Темы и вопросы».
 * Удалить обсуждённое: «удали 1, 3, 4», «удали пункты 2-5», ``/done 1 3 4``
-  или кнопки с номерами под списком и «Удалить отмеченные». Отмеченный пункт
-  получает галочку и в тексте списка (``✅ 1) ВОПРОС - …``), и на кнопке. Бот
-  отвечает, что удалил, даёт кнопку «Вернуть» и сразу показывает остаток.
+  или кнопки с номерами под списком и «Удалить отмеченные (N)». Отмеченный
+  к удалению пункт зачёркивается в тексте списка и получает значок корзины
+  там же и на кнопке (значок один на всё: ``MARK`` в
+  :mod:`services.topics.listing`). Бот отвечает, что удалил, даёт кнопку
+  «Вернуть» и сразу показывает остаток.
 * Номера относятся к списку, который бот показал в этом чате последним
   (:mod:`services.topics.views`): пункты, добавленные позже, номера не
   сдвигают. Кнопки под старым списком отвечают, что он устарел.
@@ -28,7 +30,7 @@ from collections.abc import Awaitable
 from typing import Any
 
 from aiogram import Bot, F, Router
-from aiogram.exceptions import TelegramBadRequest
+from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
 from aiogram.filters import Command, CommandObject
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
@@ -50,6 +52,7 @@ from handlers.topics_list_view import (
     ListCallback,
     authors_view,
     is_private,
+    last_page_markup,
     marked_text,
     numbered_lines,
     remark,
@@ -69,6 +72,7 @@ from services.topics.runtime import (
     topics_enabled,
     view_store,
 )
+from services.topics.views import ListView
 
 TOPICS_MENU = "topics"
 LIST_COMMANDS = ("topics", "список")
@@ -144,8 +148,25 @@ async def _mark(callback: CallbackQuery, data: ListCallback, locale: str) -> Non
     await callback.answer(marked_text(view, locale))
     # Отметка видна и в тексте списка, и на кнопке: правится всё сообщение.
     text = mark_lines(message.text or "", view.marked)
-    markup = remark(message.reply_markup, view)
+    markup = remark(message.reply_markup, view, locale)
     await _edit(message.edit_text(text, reply_markup=markup, link_preview_options=NO_PREVIEW))
+    if view.last_message_id not in (None, message.message_id):
+        await _recount(callback, view, locale)
+
+
+async def _recount(callback: CallbackQuery, view: ListView, locale: str) -> None:
+    """Счётчик «Удалить отмеченные (N)» живёт под последним сообщением
+    списка: отметка в другом сообщении обновляет и его."""
+    message = callback.message
+    markup = last_page_markup(view, locale, private=is_private(message))
+    try:
+        await _edit(
+            callback.bot.edit_message_reply_markup(
+                chat_id=message.chat.id, message_id=view.last_message_id, reply_markup=markup
+            )
+        )
+    except TelegramAPIError as error:
+        logger.info(f"topics: could not update the counter under the list: {error!r}")
 
 
 async def _remove_marked(callback: CallbackQuery, data: ListCallback, locale: str, metrics: Any) -> None:

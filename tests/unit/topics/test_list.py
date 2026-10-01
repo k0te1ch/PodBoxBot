@@ -2,6 +2,7 @@
 
 import asyncio
 import html
+import re
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock
 
@@ -21,6 +22,7 @@ from handlers.topics_list_handler import ListCallback
 from services.i18n import t
 from services.metrics import bot_metrics
 from services.topics import Kind, listing
+from services.topics.listing import MARK
 from services.topics.runtime import topic_list, view_store
 
 ADMIN_ID = 1
@@ -84,6 +86,10 @@ def _data(markup: InlineKeyboardMarkup, label: str) -> ListCallback:
     return ListCallback.unpack(button.callback_data)
 
 
+def _remove_label(count: int = 0) -> str:
+    return MARK + t("topics_remove_marked", count=count)
+
+
 async def _ids() -> list[int]:
     return [item.id for item in await topic_list().repository.items()]
 
@@ -114,7 +120,7 @@ async def test_list_command_shows_the_list_with_buttons(three, bot):
     )
     assert _labels(shown["reply_markup"]) == [
         ["1", "2", "3"],
-        [t("topics_remove_marked"), t("topics_refresh")],
+        [_remove_label(), t("topics_refresh")],
         [t("topics_add_topic"), t("topics_add_question")],
         [t("topics_authors")],
     ]
@@ -149,7 +155,7 @@ async def test_long_list_goes_in_several_messages_with_own_number_buttons(fake_r
     assert last["text"].startswith("5) ТЕМА")
     assert _labels(first["reply_markup"]) == [["1", "2"]]
     assert _labels(second["reply_markup"]) == [["3", "4"]]
-    assert _labels(last["reply_markup"])[:2] == [["5"], [t("topics_remove_marked"), t("topics_refresh")]]
+    assert _labels(last["reply_markup"])[:2] == [["5"], [_remove_label(), t("topics_refresh")]]
 
 
 @pytest.mark.asyncio
@@ -307,17 +313,28 @@ async def test_long_removal_report_is_cut(fake_redis, add_item, bot, monkeypatch
 # --- кнопки ---------------------------------------------------------------------
 
 
-def _shown(bot, sent: dict):
-    """Сообщение списка таким, каким его потом отдаёт Telegram: текст без разметки."""
-    return _message(bot, html.unescape(sent["text"]), markup=sent["reply_markup"])
+def _plain(shown_html: str) -> str:
+    """Текст сообщения, каким его отдаёт Telegram: без разметки."""
+    return html.unescape(re.sub(r"</?s>", "", shown_html))
+
+
+def _shown(bot, sent: dict, message_id: int = 1):
+    """Сообщение списка таким, каким его потом получает бот вместе с нажатием."""
+    message = _message(bot, _plain(sent["text"]), markup=sent["reply_markup"])
+    message.message_id = message_id
+    return message
 
 
 def _apply_edit(message) -> InlineKeyboardMarkup:
     """Правка, которую бот сделал в сообщении списка, применяется к нему самому."""
     edit = message.edit_text.await_args
-    message.text = html.unescape(edit.args[0])
+    message.text = _plain(edit.args[0])
     message.reply_markup = edit.kwargs["reply_markup"]
     return message.reply_markup
+
+
+def _edited(message) -> str:
+    return message.edit_text.await_args.args[0]
 
 
 @pytest.mark.asyncio
@@ -326,41 +343,41 @@ async def test_marking_and_deleting_with_buttons(three, bot):
     under_list = _shown(bot, _sent(bot)[0])
 
     first = await _click(bot, _data(under_list.reply_markup, "1"), under_list)
-    marked = _apply_edit(under_list)
-    assert _labels(marked)[0] == ["✅ 1", "2", "3"]
-    # Отметка видна и в самом списке: галочка перед номером, остальные строки прежние.
-    assert under_list.text == (
+    # Отмеченный к удалению пункт зачёркнут и со значком, остальные строки прежние.
+    assert _edited(under_list) == (
         "Список тем и вопросов:\n"
-        "✅ 1) ВОПРОС - Почему небо голубое?\n"
+        f"{MARK}1) <s>ВОПРОС - Почему небо голубое?</s>\n"
         "2) ВОПРОС - Почему птицы летают?\n"
         "3) ТЕМА - Как съездили в отпуск"
     )
+    marked = _apply_edit(under_list)
+    assert _labels(marked)[:2] == [[f"{MARK}1", "2", "3"], [_remove_label(1), t("topics_refresh")]]
     first.answer.assert_awaited_once_with(t("topics_marked", numbers="1"))
 
     await _click(bot, _data(marked, "3"), under_list)
-    marked = _apply_edit(under_list)
-    assert _labels(marked)[0] == ["✅ 1", "2", "✅ 3"]
-    assert under_list.text.splitlines()[1:] == [
-        "✅ 1) ВОПРОС - Почему небо голубое?",
+    assert _edited(under_list).splitlines()[1:] == [
+        f"{MARK}1) <s>ВОПРОС - Почему небо голубое?</s>",
         "2) ВОПРОС - Почему птицы летают?",
-        "✅ 3) ТЕМА - Как съездили в отпуск",
+        f"{MARK}3) <s>ТЕМА - Как съездили в отпуск</s>",
     ]
+    marked = _apply_edit(under_list)
+    assert _labels(marked)[:2] == [[f"{MARK}1", "2", f"{MARK}3"], [_remove_label(2), t("topics_refresh")]]
 
     # Снять отметку можно той же кнопкой: строка возвращается к обычному виду.
-    unmark = await _click(bot, _data(marked, "✅ 3"), under_list)
+    unmark = await _click(bot, _data(marked, f"{MARK}3"), under_list)
+    assert _edited(under_list).splitlines()[3] == "3) ТЕМА - Как съездили в отпуск"
     marked = _apply_edit(under_list)
-    assert _labels(marked)[0] == ["✅ 1", "2", "3"]
-    assert under_list.text.splitlines()[3] == "3) ТЕМА - Как съездили в отпуск"
+    assert _labels(marked)[:2] == [[f"{MARK}1", "2", "3"], [_remove_label(1), t("topics_refresh")]]
     unmark.answer.assert_awaited_once_with(t("topics_marked", numbers="1"))
 
     bot.send_message.reset_mock()
-    await _click(bot, _data(marked, t("topics_remove_marked")), under_list)
+    await _click(bot, _data(marked, _remove_label(1)), under_list)
 
     assert await _ids() == [three[1].id, three[2].id]
     removed, rest = _texts(bot)
     assert "1) ВОПРОС - Почему небо голубое?" in removed
-    # Отчёт и свежий список без галочек.
-    assert "✅" not in removed and "✅" not in rest
+    # Отчёт и свежий список без отметок.
+    assert MARK not in removed and MARK not in rest and "<s>" not in removed + rest
 
 
 @pytest.mark.asyncio
@@ -370,11 +387,10 @@ async def test_unmarking_everything_restores_the_plain_list(three, bot):
     under_list = _shown(bot, sent)
 
     await _click(bot, _data(under_list.reply_markup, "2"), under_list)
-    await _click(bot, _data(_apply_edit(under_list), "✅ 2"), under_list)
-    _apply_edit(under_list)
+    await _click(bot, _data(_apply_edit(under_list), f"{MARK}2"), under_list)
 
-    assert under_list.text == sent["text"]
-    assert _labels(under_list.reply_markup) == _labels(sent["reply_markup"])
+    assert _edited(under_list) == sent["text"]
+    assert _labels(_apply_edit(under_list)) == _labels(sent["reply_markup"])
 
 
 @pytest.mark.asyncio
@@ -385,28 +401,57 @@ async def test_marked_text_stays_escaped(fake_redis, add_item, bot):
 
     await _click(bot, _data(under_list.reply_markup, "1"), under_list)
 
-    edited = under_list.edit_text.await_args.args[0]
-    assert edited == "Список тем и вопросов:\n✅ 1) ТЕМА - &lt;b&gt;жир&lt;/b&gt; &amp; co"
+    assert _edited(under_list) == f"Список тем и вопросов:\n{MARK}1) <s>ТЕМА - &lt;b&gt;жир&lt;/b&gt; &amp; co</s>"
 
 
 @pytest.mark.asyncio
-async def test_mark_changes_only_the_message_with_that_item(fake_redis, add_item, bot, monkeypatch):
+async def test_mark_in_another_message_updates_the_counter_under_the_last_one(fake_redis, add_item, bot, monkeypatch):
     monkeypatch.setattr(listing, "MAX_PAGE_ITEMS", 2)
     for index in range(1, 5):
         await add_item(f"тема номер {index}")
+    bot.send_message.side_effect = [MagicMock(message_id=10), MagicMock(message_id=11)]
+    bot.edit_message_reply_markup = AsyncMock()
     await lh.send_list(bot, ADMIN_ID, "ru", private=True)
-    first, second = (_shown(bot, sent) for sent in _sent(bot))
+    first, second = (_shown(bot, sent, message_id) for sent, message_id in zip(_sent(bot), (10, 11), strict=True))
 
-    await _click(bot, _data(second.reply_markup, "3"), second)
-    _apply_edit(second)
-
-    assert second.text == "✅ 3) ТЕМА - тема номер 3\n4) ТЕМА - тема номер 4"
-    first.edit_text.assert_not_awaited()
-    # Отметка с другого сообщения не теряется, когда отмечают пункт здесь.
     await _click(bot, _data(first.reply_markup, "1"), first)
-    _apply_edit(first)
-    assert first.text.splitlines()[1] == "✅ 1) ТЕМА - тема номер 1"
+
+    assert _edited(first).splitlines()[1] == f"{MARK}1) <s>ТЕМА - тема номер 1</s>"
+    second.edit_text.assert_not_awaited()
+    # Кнопка «Удалить отмеченные (N)» под последним сообщением: её счётчик обновлён.
+    recount = bot.edit_message_reply_markup.await_args.kwargs
+    assert (recount["chat_id"], recount["message_id"]) == (ADMIN_ID, 11)
+    assert _labels(recount["reply_markup"])[:2] == [["3", "4"], [_remove_label(1), t("topics_refresh")]]
+
+    # Отметка в самом последнем сообщении правит только его, и прежняя отметка не теряется.
+    bot.edit_message_reply_markup.reset_mock()
+    await _click(bot, _data(second.reply_markup, "3"), second)
+    assert _edited(second) == f"{MARK}3) <s>ТЕМА - тема номер 3</s>\n4) ТЕМА - тема номер 4"
+    assert _labels(_apply_edit(second))[:2] == [[f"{MARK}3", "4"], [_remove_label(2), t("topics_refresh")]]
+    bot.edit_message_reply_markup.assert_not_awaited()
     assert (await view_store().last(ADMIN_ID)).marked == [1, 3]
+
+
+@pytest.mark.asyncio
+async def test_failed_counter_update_does_not_break_the_mark(fake_redis, add_item, bot, monkeypatch):
+    from aiogram.exceptions import TelegramBadRequest
+    from aiogram.methods import EditMessageReplyMarkup
+
+    monkeypatch.setattr(listing, "MAX_PAGE_ITEMS", 1)
+    for index in range(1, 3):
+        await add_item(f"тема номер {index}")
+    bot.send_message.side_effect = [MagicMock(message_id=10), MagicMock(message_id=11)]
+    gone = TelegramBadRequest(
+        method=EditMessageReplyMarkup(chat_id=1, message_id=11), message="message to edit not found"
+    )
+    bot.edit_message_reply_markup = AsyncMock(side_effect=gone)
+    await lh.send_list(bot, ADMIN_ID, "ru", private=True)
+    first = _shown(bot, _sent(bot)[0], 10)
+
+    await _click(bot, _data(first.reply_markup, "1"), first)
+
+    assert (await view_store().last(ADMIN_ID)).marked == [1]
+    assert MARK in _edited(first)
 
 
 @pytest.mark.asyncio
@@ -414,14 +459,14 @@ async def test_delete_button_needs_marks(three, bot):
     await lh.show_list(_message(bot, "/topics"), bot)
     markup = _sent(bot)[0]["reply_markup"]
 
-    press = await _click(bot, _data(markup, t("topics_remove_marked")), _message(bot, markup=markup))
+    press = await _click(bot, _data(markup, _remove_label()), _message(bot, markup=markup))
 
     press.answer.assert_awaited_once_with(t("topics_mark_first"), show_alert=True)
     assert len(await _ids()) == 3
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("label", ["2", "🗑 Удалить отмеченные"])
+@pytest.mark.parametrize("label", ["2", _remove_label()])
 async def test_buttons_of_an_old_list_say_it_is_stale(three, bot, label):
     await lh.show_list(_message(bot, "/topics"), bot)
     old = _sent(bot)[0]["reply_markup"]
@@ -595,7 +640,7 @@ async def test_hosts_chat_gets_the_list_without_private_only_buttons(three, bot,
 
     [shown] = _sent(bot)
     assert shown["chat_id"] == HOSTS_ID
-    assert _labels(shown["reply_markup"]) == [["1", "2", "3"], [t("topics_remove_marked"), t("topics_refresh")]]
+    assert _labels(shown["reply_markup"]) == [["1", "2", "3"], [_remove_label(), t("topics_refresh")]]
 
     # Старая кнопка «➕» из лички в чате ведущих ничего не открывает.
     press = await _click(bot, ListCallback(a=lh.ADD_TOPIC), in_hosts_chat)

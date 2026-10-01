@@ -4,7 +4,7 @@ import pytest
 
 from services.i18n import t
 from services.topics import Author, Item, Kind, Source, listing
-from services.topics.listing import list_pages, mark_lines, parse_numbers, parse_removal
+from services.topics.listing import MARK, list_pages, mark_lines, parse_numbers, parse_removal
 
 
 def _item(text: str, kind: Kind = Kind.TOPIC) -> Item:
@@ -64,23 +64,30 @@ def test_page_holds_no_more_items_than_buttons_fit(monkeypatch):
     assert [page.numbers for page in pages] == [[1, 2, 3], [4, 5, 6], [7]]
 
 
-def test_marked_items_get_a_tick_and_the_rest_keep_the_plain_look():
+def test_marked_items_are_struck_through_and_the_rest_keep_the_plain_look():
     shown = "Список тем и вопросов:\n1) ВОПРОС - Почему небо голубое?\n2) ТЕМА - Как съездили в отпуск"
 
-    marked = mark_lines(shown, [2])
-
-    assert marked == "Список тем и вопросов:\n1) ВОПРОС - Почему небо голубое?\n✅ 2) ТЕМА - Как съездили в отпуск"
-    assert mark_lines(marked, [1]) == (
-        "Список тем и вопросов:\n✅ 1) ВОПРОС - Почему небо голубое?\n2) ТЕМА - Как съездили в отпуск"
+    assert MARK == "🗑 "
+    assert mark_lines(shown, [2]) == (
+        "Список тем и вопросов:\n1) ВОПРОС - Почему небо голубое?\n🗑 2) <s>ТЕМА - Как съездили в отпуск</s>"
     )
-    assert mark_lines(marked, []) == shown
+    # Telegram отдаёт текст уже показанного сообщения без разметки, но со значком.
+    was_marked = "Список тем и вопросов:\n1) ВОПРОС - Почему небо голубое?\n🗑 2) ТЕМА - Как съездили в отпуск"
+    assert mark_lines(was_marked, [1]) == (
+        "Список тем и вопросов:\n🗑 1) <s>ВОПРОС - Почему небо голубое?</s>\n2) ТЕМА - Как съездили в отпуск"
+    )
+    assert mark_lines(was_marked, []) == shown
 
 
-def test_ticks_do_not_touch_numbers_inside_the_item_text():
+def test_marks_do_not_touch_numbers_inside_the_item_text():
     shown = "12) ТЕМА - итоги: 1) отпуск 2) ремонт"
 
     assert mark_lines(shown, [1, 2]) == shown
-    assert mark_lines(shown, [12]) == f"✅ {shown}"
+    assert mark_lines(shown, [12]) == f"{MARK}12) <s>ТЕМА - итоги: 1) отпуск 2) ремонт</s>"
+
+
+def test_marked_text_is_escaped_inside_the_strike_through():
+    assert mark_lines("1) ТЕМА - a < b & c", [1]) == f"{MARK}1) <s>ТЕМА - a &lt; b &amp; c</s>"
 
 
 @pytest.mark.parametrize(

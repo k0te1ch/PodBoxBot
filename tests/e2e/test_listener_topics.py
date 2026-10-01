@@ -27,6 +27,9 @@ import pytest
 from telethon import events
 from telethon.tl import functions, types
 
+# Значок пункта, отмеченного к удалению: тот же, что MARK в services/topics/listing.py.
+MARK = "🗑 "
+
 pytestmark = pytest.mark.skipif(os.getenv("E2E_TOPICS") != "1", reason="set E2E_TOPICS=1 against a bot with topics on")
 
 
@@ -220,10 +223,14 @@ async def test_buttons_under_the_list_delete_ticked_items(tester, bot_username, 
         listing, last = await _show_list(chat, phrase)
         number = _number(listing, kind, text)
         await last.click(text=str(number))
-        # Отметка видна и на кнопке, и в тексте списка: галочка перед номером.
-        ticked = await chat.wait_until(message=last, buttons=[f"✅ {number}"], timeout=10)
-        assert f"✅ {number}) {kind} - {text}" in ticked.message
-        await chat.click(phrase("topics_remove_marked", full=True))
+        # Отметка видна и на кнопке, и в тексте списка: значок перед номером,
+        # сам пункт зачёркнут, а кнопка удаления показывает, сколько отмечено.
+        ticked = await chat.wait_until(message=last, buttons=[f"{MARK}{number}"], timeout=10)
+        assert f"{MARK}{number}) {kind} - {text}" in ticked.message
+        struck = [entity for entity in ticked.entities or [] if isinstance(entity, types.MessageEntityStrike)]
+        assert len(struck) == 1
+        remove = MARK + phrase("topics_remove_marked", full=True).replace("{ $count }", "1")
+        await ticked.click(text=remove)
         report = await chat.expect(contains=phrase("topics_removed"), timeout=15)
         assert text in report.message
         rest = await chat.get_reply(timeout=15)

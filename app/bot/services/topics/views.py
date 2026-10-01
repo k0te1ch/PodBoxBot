@@ -25,6 +25,10 @@ class ListView:
     """Пункты в показанном порядке: номер ``n`` — это ``ids[n - 1]``."""
     marked: list[int] = field(default_factory=list)
     """Номера, отмеченные кнопками под списком, по возрастанию."""
+    last_message_id: int | None = None
+    """Последнее сообщение списка: под ним кнопка «Удалить отмеченные (N)»."""
+    last_numbers: list[int] = field(default_factory=list)
+    """Номера пунктов в этом сообщении: по ним пересобирается его клавиатура."""
 
     def item_id(self, number: int) -> int | None:
         return self.ids[number - 1] if 1 <= number <= len(self.ids) else None
@@ -59,7 +63,9 @@ class ViewStore:
 
     async def remember(self, chat_id: int, view: ListView) -> None:
         """Запомнить показанный список; прежний снимок чата заменяется."""
-        raw = json.dumps({"token": view.token, "ids": view.ids})
+        raw = json.dumps(
+            {"token": view.token, "ids": view.ids, "last": view.last_message_id, "numbers": view.last_numbers}
+        )
         await self._redis.set(self._view_key(chat_id), raw, ex=VIEW_TTL_SECONDS)
         if view.marked:
             key = self._marks_key(chat_id, view.token)
@@ -72,7 +78,13 @@ class ViewStore:
             return None
         data = json.loads(raw)
         marks = await self._redis.smembers(self._marks_key(chat_id, data["token"]))
-        return ListView(token=data["token"], ids=list(data["ids"]), marked=sorted(int(mark) for mark in marks))
+        return ListView(
+            token=data["token"],
+            ids=list(data["ids"]),
+            marked=sorted(int(mark) for mark in marks),
+            last_message_id=data.get("last"),
+            last_numbers=list(data.get("numbers", [])),
+        )
 
     async def current(self, chat_id: int, token: str) -> ListView | None:
         """Снимок чата, если кнопка с меткой *token* от него, а не от старого списка."""

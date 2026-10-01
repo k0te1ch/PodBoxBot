@@ -1,9 +1,10 @@
 """Как список выглядит текстом и как из текста понять, что удалить.
 
 Список — нумерованные строки ``1) ВОПРОС - текст``. Длинный список режется на
-несколько сообщений, нумерация сквозная. Пункт, отмеченный кнопкой под
-списком, получает галочку перед номером: ``✅ 1) ВОПРОС - текст``. Удаление:
-«удали 1, 3, 4», «удали пункты 2-5» или аргументы команды ``/done 1 3 4``.
+несколько сообщений, нумерация сквозная. Пункт, отмеченный к удалению
+кнопкой под списком, получает значок :data:`MARK` перед номером и
+зачёркивается: ``🗑 1) ВОПРОС - текст``. Удаление: «удали 1, 3, 4», «удали
+пункты 2-5» или аргументы команды ``/done 1 3 4``.
 """
 
 import html
@@ -18,7 +19,9 @@ MAX_PAGE_CHARS = 3500
 # Под каждым сообщением кнопка на пункт, а кнопок в клавиатуре не больше 100.
 MAX_PAGE_ITEMS = 40
 MAX_RANGE = 500
-MARK = "✅ "
+# Значок пункта, отмеченного к удалению: в тексте списка, на кнопке с его
+# номером и на кнопке «Удалить отмеченные». Меняется в одном месте.
+MARK = "🗑 "
 
 _NUMBER = r"\d+(?:\s*[-–—]\s*\d+)?"
 _SEPARATOR = r"(?:\s*[,;]\s*|\s+(?:и|and)\s+|\s+)"
@@ -28,7 +31,7 @@ _NOUN = r"(?:пункт(?:ы|а|ов)?|номер(?:а|ов)?|№|#)"
 _REMOVAL = re.compile(rf"\s*{_VERB}\s*{_NOUN}?\s*:?\s*({_NUMBERS})\s*[.!]?\s*", re.IGNORECASE)
 _ONLY_NUMBERS = re.compile(rf"\s*({_NUMBERS})\s*")
 _RANGE = re.compile(r"(\d+)(?:\s*[-–—]\s*(\d+))?")
-_NUMBERED_LINE = re.compile(rf"(?:{MARK})?(\d+)\) ")
+_NUMBERED_LINE = re.compile(rf"(?:{re.escape(MARK)})?(\d+)\) (.*)")
 
 
 @dataclass
@@ -70,19 +73,21 @@ def list_pages(items: list[Item], locale: str = DEFAULT_LOCALE) -> list[Page]:
 
 
 def mark_lines(shown: str, marked: list[int]) -> str:
-    """Текст сообщения списка с галочками у отмеченных пунктов, в HTML.
+    """Текст сообщения списка с отметками у выбранных к удалению пунктов, в HTML.
 
     *shown*: текст уже показанного сообщения, каким его отдаёт Telegram (без
-    разметки). Строки пунктов узнаются по номеру в начале; у отмеченных
-    появляется галочка, у остальных она снимается, заголовок не меняется.
+    разметки). Строки пунктов узнаются по номеру в начале. Отмеченный пункт
+    получает значок :data:`MARK` и зачёркивается, остальные выглядят как
+    обычно, заголовок не меняется.
     """
     lines = []
     for line in shown.split("\n"):
-        found = _NUMBERED_LINE.match(line)
-        if found:
-            plain = line.removeprefix(MARK)
-            line = f"{MARK}{plain}" if int(found.group(1)) in marked else plain
-        lines.append(html.escape(line))
+        found = _NUMBERED_LINE.fullmatch(line)
+        if found is None:
+            lines.append(html.escape(line))
+            continue
+        number, body = found.group(1), html.escape(found.group(2))
+        lines.append(f"{MARK}{number}) <s>{body}</s>" if int(number) in marked else f"{number}) {body}")
     return "\n".join(lines)
 
 

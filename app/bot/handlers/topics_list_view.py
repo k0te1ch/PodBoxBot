@@ -61,6 +61,12 @@ def _control(key: str, action: str, locale: str, token: str = "") -> InlineKeybo
     return InlineKeyboardButton(text=t(key, locale), callback_data=ListCallback(a=action, v=token).pack())
 
 
+def _remove_button(view: ListView, locale: str) -> InlineKeyboardButton:
+    """«Удалить отмеченные (N)»: число показывает, сколько пунктов уйдёт."""
+    label = MARKED_PREFIX + t("topics_remove_marked", locale, count=len(view.marked))
+    return InlineKeyboardButton(text=label, callback_data=ListCallback(a=REMOVE, v=view.token).pack())
+
+
 def page_markup(view: ListView, page: Page, locale: str, *, last: bool, private: bool) -> InlineKeyboardMarkup | None:
     """Кнопки под сообщением списка: номера его пунктов, а под последним ещё
     и действия со списком."""
@@ -68,7 +74,7 @@ def page_markup(view: ListView, page: Page, locale: str, *, last: bool, private:
     rows = [numbers[i : i + NUMBERS_PER_ROW] for i in range(0, len(numbers), NUMBERS_PER_ROW)]
     if last:
         refresh = _control("topics_refresh", REFRESH, locale)
-        rows.append([_control("topics_remove_marked", REMOVE, locale, view.token), refresh] if view.ids else [refresh])
+        rows.append([_remove_button(view, locale), refresh] if view.ids else [refresh])
         if private:
             rows.append(
                 [
@@ -80,18 +86,27 @@ def page_markup(view: ListView, page: Page, locale: str, *, last: bool, private:
     return InlineKeyboardMarkup(inline_keyboard=rows) if rows else None
 
 
-def remark(markup: InlineKeyboardMarkup, view: ListView) -> InlineKeyboardMarkup:
-    """Та же клавиатура с отметками из *view* на кнопках номеров."""
+def remark(markup: InlineKeyboardMarkup, view: ListView, locale: str) -> InlineKeyboardMarkup:
+    """Та же клавиатура с отметками из *view*: на кнопках номеров и в счётчике
+    «Удалить отмеченные (N)»."""
+    prefix = f"{ListCallback.__prefix__}:"
 
     def relabel(button: InlineKeyboardButton) -> InlineKeyboardButton:
         data = button.callback_data or ""
-        if not data.startswith(f"{ListCallback.__prefix__}:{MARK}:"):
-            return button
-        return _number_button(view, ListCallback.unpack(data).n)
+        if data.startswith(f"{prefix}{MARK}:"):
+            return _number_button(view, ListCallback.unpack(data).n)
+        if data.startswith(f"{prefix}{REMOVE}:"):
+            return _remove_button(view, locale)
+        return button
 
     return InlineKeyboardMarkup(
         inline_keyboard=[[relabel(button) for button in row] for row in markup.inline_keyboard]
     )
+
+
+def last_page_markup(view: ListView, locale: str, *, private: bool) -> InlineKeyboardMarkup | None:
+    """Клавиатура последнего сообщения списка под текущие отметки."""
+    return page_markup(view, Page("", view.last_numbers), locale, last=True, private=private)
 
 
 def marked_text(view: ListView, locale: str) -> str:
@@ -110,7 +125,10 @@ async def send_list(bot: Bot, chat_id: int, locale: str, *, private: bool) -> Li
     pages = list_pages(items, locale)
     for index, page in enumerate(pages):
         markup = page_markup(view, page, locale, last=index == len(pages) - 1, private=private)
-        await bot.send_message(chat_id=chat_id, text=page.text, reply_markup=markup, link_preview_options=NO_PREVIEW)
+        sent = await bot.send_message(
+            chat_id=chat_id, text=page.text, reply_markup=markup, link_preview_options=NO_PREVIEW
+        )
+    view.last_message_id, view.last_numbers = int(sent.message_id), pages[-1].numbers
     # Снимок запоминается после показа: если отправка сорвалась, «удали N»
     # по-прежнему относится к списку, который человек видит целиком.
     await views.remember(chat_id, view)
