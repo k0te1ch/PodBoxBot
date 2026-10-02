@@ -35,10 +35,10 @@ class Settings(BaseSettings):
     # TELEGRAM BOT SETTINGS
     TELEGRAM_API_TOKEN: str
     SKIP_UPDATES: bool = False
-    # Username публичной группы/канала (формат @groupname), куда бот
-    # форвардит анонсы. Раньше тут был числовой chat_id, но бот не мог
-    # достучаться до приватного чата ("Bad Request: chat not found"),
-    # поэтому форвард переведён на отправку по username.
+    # Группа или канал, куда бот форвардит анонсы: username (формат
+    # @groupname) или числовой id. По id бот достучится только до чата, в
+    # котором состоит, иначе Telegram ответит "Bad Request: chat not found".
+    # У приватной группы username нет, для неё годится только id.
     FORWARD_CHAT_USERNAME: str
 
     TELEGRAM_SERVER_API_ID: str
@@ -155,9 +155,12 @@ class Settings(BaseSettings):
     @classmethod
     def normalize_forward_username(cls, v: str) -> str:
         # Telegram ждёт username в формате @groupname. Допускаем, что в
-        # .env его укажут без @ — приводим к каноничному виду.
+        # .env его укажут без @ — приводим к каноничному виду. Числовой id
+        # чата (-100…) остаётся как есть.
         v = v.strip()
-        return v if v.startswith("@") else f"@{v}"
+        if v.startswith("@") or v.lstrip("-").isdigit():
+            return v
+        return f"@{v}"
 
     @field_validator(
         "ADMINS",
