@@ -38,3 +38,20 @@ def test_generate_podcast_text(podcast_info):
 
     result = generate_podcast_text(podcast_info)
     assert result == expected_output
+
+
+@patch("utils.podcast_methods.SUPPORT_LINK", "https://support.link")
+@pytest.mark.parametrize("chapters", [None, []], ids=["no chapters key", "empty chapters"])
+def test_text_without_chapters_has_no_timeline(podcast_info, chapters):
+    # A template without Chapters is valid: the post is built without the timeline block.
+    del podcast_info["chapters"]
+    if chapters is not None:
+        podcast_info["chapters"] = chapters
+
+    assert generate_podcast_text(podcast_info) == (
+        "<b>Название эпизода</b>\n\n"
+        "<i>Описание:</i>\n"
+        "Это описание эпизода.\n\n"
+        "Всё это вы услышите в 42-м эпизоде подкаста «Разговорный жанр».\n\n"
+        '<i><b><a href="https://support.link">🍩 Поддержать подкаст</a></b></i>'
+    )
