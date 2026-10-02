@@ -34,7 +34,8 @@ def generate_podcast_text(info: dict[str, Any]) -> str | None:
                      - number (str): номер эпизода
                      - title (str): название эпизода
                      - comment (str): описание эпизода
-                     - chapters (list[tuple[str, str]]): главы с временем и названием (например, [("00:00:07", "Вступление"), ...])
+                     - chapters (list[tuple[str, str]], optional): главы с временем и названием (например,
+                       [("00:00:07", "Вступление"), ...]); у шаблона без Chapters их нет, тогда в тексте нет таймлайна
                      - support_link (str, optional): ссылка на поддержку (необязательно, иначе используется SUPPORT_LINK)
 
     Returns:
@@ -42,7 +43,7 @@ def generate_podcast_text(info: dict[str, Any]) -> str | None:
     """
     try:
         # Валидация ключей
-        required_keys = ["number", "title", "comment", "chapters"]
+        required_keys = ["number", "title", "comment"]
         if not all(key in info for key in required_keys):
             missing = [key for key in required_keys if key not in info]
             logger.error(f"Отсутствуют обязательные поля: {', '.join(missing)}")
@@ -52,7 +53,7 @@ def generate_podcast_text(info: dict[str, Any]) -> str | None:
         episode_number = info.get("number")
         title = info.get("title")
         summary = info.get("comment")
-        chapters = info.get("chapters")
+        chapters = info.get("chapters") or []
         support_link = info.get("support_link", SUPPORT_LINK)
 
         # Проверка типов данных
@@ -60,14 +61,15 @@ def generate_podcast_text(info: dict[str, Any]) -> str | None:
             logger.error("Некорректный формат глав. Ожидается список списков (время, название)")
             return None
 
-        # Форматирование таймлайна
-        formatted_chapters = "\n".join(f"{time} — {chapter}" for time, chapter in chapters) if chapters else "Нет глав"
+        # Шаблон без Chapters: без пустого заголовка «Таймлайн».
+        formatted_chapters = "\n".join(f"{time} — {chapter}" for time, chapter in chapters)
+        timeline = f"<i>Таймлайн:</i>\n{formatted_chapters}\n\n" if formatted_chapters else ""
 
         # Создание текста
         podcast_text = (
             f"<b>{title}</b>\n\n"
             f"<i>Описание:</i>\n{summary}\n\n"
-            f"<i>Таймлайн:</i>\n{formatted_chapters}\n\n"
+            f"{timeline}"
             f"Всё это вы услышите в {episode_number}-м эпизоде подкаста «Разговорный жанр».\n\n"
             f'<i><b><a href="{support_link}">🍩 Поддержать подкаст</a></b></i>'
         )

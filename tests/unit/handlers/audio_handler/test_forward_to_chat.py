@@ -64,6 +64,25 @@ async def test_success_reports_every_step():
 
 
 @pytest.mark.asyncio
+async def test_episode_without_chapters_is_forwarded():
+    # The template of this episode had no Chapters and no Tags.
+    stored = {"type_episode": "main", "info": {"number": "42", "title": "42. Title", "comment": "About"}}
+    bot = _bot()
+    ctx = _ctx(bot)
+    with (
+        patch.object(audio_handler, "load_template_info", new=AsyncMock(return_value=stored)),
+        patch.object(audio_handler, "FORWARD_CHAT_USERNAME", "@chat"),
+        patch.object(audio_handler, "Message", MagicMock),
+    ):
+        await audio_handler.forward_to_chat(ctx)
+
+    caption = bot.send_audio.call_args.kwargs["caption"]
+    assert caption.startswith("<b>42. Title</b>")
+    assert "Таймлайн" not in caption
+    ctx.answer.assert_awaited_once_with(t("forwarded"))
+
+
+@pytest.mark.asyncio
 async def test_long_text_goes_as_reply_under_short_caption():
     bot = _bot()
     ctx = _ctx(bot)
