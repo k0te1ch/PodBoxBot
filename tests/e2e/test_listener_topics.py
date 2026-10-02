@@ -281,7 +281,9 @@ async def test_ephemeral_form_in_group_adds_the_item(tester, bot_username, phras
         confirm = await inbox.next(text)
         send = _button_data(confirm, phrase("de-button-confirm", full=True))
         await client(functions.ephemeral.GetCallbackAnswerRequest(peer=peer, id=confirm.id, data=send))
-        await inbox.next(phrase("topics_added_topic"))
+        # The test account is an admin: the bot answers it the way it answers hosts.
+        added = await inbox.next(phrase("topics_admin_added"))
+        assert f"{kind} - {text}" in added.message
 
     async with tester.conversation(bot_username) as chat:
         await _delete(chat, phrase, (kind, text))

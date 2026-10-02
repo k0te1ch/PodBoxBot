@@ -66,7 +66,10 @@ def resolve_text(key: str, answers: dict[str, Any], context: dict[str, Any]) -> 
     kind = kind_of(answers, context)
     lookup = _OWN_KEYS.get(key) or (key.replace(".", "-") if key.startswith("de.") else key)
     if lookup in _BY_KIND:
-        lookup = f"{lookup}_{kind}" + ("_admin" if context.get("trusted") else "")
+        # В группе админ отвечает анкете так же, как слушатель: ответом на её
+        # сообщение. Свой текст вопроса у него только в личке.
+        in_private = context.get("chat_id") is None
+        lookup = f"{lookup}_{kind}" + ("_admin" if context.get("trusted") and in_private else "")
     # Текст шага подтверждения движок прогоняет через str.format: фигурные
     # скобки в тексте слушателя иначе стали бы подстановками.
     answer = html.escape(str(answers.get(TEXT, ""))).replace("{", "{{").replace("}", "}}")
