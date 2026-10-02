@@ -45,6 +45,13 @@ class SharedSettings(BaseSettings):
     TIMEZONE: str = "UTC"
     DEBUG: bool = False
 
+    # Алерты в Telegram напрямую из publisher'а (тем же токеном бота, что и
+    # алерты Grafana). Публишер шлёт их, когда доступ к площадке скоро истечёт
+    # или уже слетел, — это не привязано к конкретной публикации, поэтому идёт
+    # не через result-топик, а прямым сообщением админам.
+    TELEGRAM_API_TOKEN: str | None = None
+    ADMINS_ID: list[int] = Field(default_factory=list)
+
     # Kafka
     KAFKA_SERVER: str = "kafka:9092"
     SCHEMA_REGISTRY_URL: str = "http://schema-registry:8081"
@@ -89,7 +96,7 @@ class SharedSettings(BaseSettings):
     BOOSTY_RETRY_BACKOFF: float = 10.0
 
     # VK Donut: официальный VK API, пост на стене сообщества только для донов
-    VK_ACCESS_TOKEN: str | None = None  # user-токен админа сообщества (scope wall,docs,offline)
+    VK_ACCESS_TOKEN: str | None = None  # статичный user-токен (режим token)
     VK_GROUP_ID: int | None = None  # id сообщества без минуса
     VK_API_VERSION: str = "5.199"
     VK_DONUT_PAID_DURATION: int = -1  # -1 — пост навсегда только для донов, иначе дни до открытия
@@ -99,6 +106,18 @@ class SharedSettings(BaseSettings):
     VK_RESULT_TOPIC: str = "publisher.vk.result"
     VK_RETRY_ATTEMPTS: int = 3
     VK_RETRY_BACKOFF: float = 10.0
+    # Откуда берётся ключ: token — статичный VK_ACCESS_TOKEN (по умолчанию,
+    # прежнее поведение); vkid — самообновляемая пара токенов VK ID (vk_auth).
+    VK_AUTH_MODE: Literal["token", "vkid"] = "token"
+    VK_AUTH_FILE: str = "/app/data/vk_auth.json"  # хранилище пары токенов VK ID
+    VK_CLIENT_ID: int | None = None  # id приложения VK ID (не секрет)
+    VK_CLIENT_SECRET: str | None = None  # защищённый ключ конфиденциального приложения
+    VK_REDIRECT_URI: str = ""  # доверенный redirect приложения VK ID
+    VK_SCOPE: str = "wall video docs groups"  # запрашиваемые права VK ID
+    # Фоновое обслуживание доступа (режим vkid): как часто обновлять и проверять
+    # доступ и за сколько дней до конца срока refresh_token предупреждать админов.
+    VK_MAINTENANCE_INTERVAL_HOURS: float = 6.0
+    VK_REFRESH_WARN_DAYS: int = 14
 
     # Patreon: публичный API v2 постов не создаёт, работаем как веб-редактор
     PATREON_SESSION_FILE: str = "/app/data/patreon_session.json"  # куки session_id + User-Agent
