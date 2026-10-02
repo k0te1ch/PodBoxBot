@@ -398,10 +398,13 @@ async def post_suggest_button(ctx: MenuContext) -> None:
     except TelegramAPIError as error:
         logger.error(f"topic button to {bot_config.TOPICS_CHAT} failed: {error!r}")
         await ctx.answer(ctx.text("topics_form_post_failed"), alert=True)
-        return
-    # Ответ на нажатие без разметки: чат назван по имени, а не по id.
-    card = await chat_card.resolve(bot, bot_config.TOPICS_CHAT)
-    await ctx.answer(ctx.text("topics_form_posted", chat=card.quoted))
+    else:
+        # Ответ на нажатие без разметки: чат назван по имени, а не по id.
+        card = await chat_card.resolve(bot, bot_config.TOPICS_CHAT)
+        await ctx.answer(ctx.text("topics_form_posted", chat=card.quoted))
+    # После «Да» на месте меню висит вопрос подтверждения: возвращаем меню,
+    # иначе второе «Да» отправило бы кнопку ещё раз.
+    await ctx.show(ctx.menu_id)
 
 
 def _commands(topic_key: str, *, ephemeral: bool = False) -> list[BotCommand]:
