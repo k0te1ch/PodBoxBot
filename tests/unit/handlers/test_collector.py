@@ -4,6 +4,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from aiogram.filters import CommandObject
+from sagenza_tgbot_sdk.menus.callback import Action, MenuCallback
+from sagenza_tgbot_sdk.menus.routing import MenuRouter
 
 from handlers import collector_handler as col
 from handlers import menus
@@ -107,6 +109,45 @@ async def test_groups_menu_shows_counts_and_entry_card(fake_redis):
     text, markup = ctx.put.await_args.args
     assert "про гостя" in text
     assert len(markup.inline_keyboard) == 2
+
+
+def _pressed(callback: MenuCallback):
+    """Контекст нажатия таким, каким его собирает роутер меню SDK."""
+    event = MagicMock()
+    event.from_user.username = "admin"
+    event.from_user.language_code = "ru"
+    ctx = menus.menus.context(event, locale="ru", menu_id=callback.m, page=callback.p)
+    ctx.put = AsyncMock()
+    ctx.answer = AsyncMock()
+    return ctx
+
+
+def _targets(markup) -> set[str]:
+    return {MenuCallback.unpack(b.callback_data).m for row in markup.inline_keyboard for b in row}
+
+
+@pytest.mark.asyncio
+async def test_entry_list_buttons_are_routed_though_the_list_has_no_button_of_its_own(fake_redis):
+    """Список заметок открывает хендлер группы. Роутер SDK при этом обязан
+    пропускать нажатия внутри списка: запись, страницы, «Назад» из карточки."""
+    saved = await col.NOTES.store.add(Entry(tag="тема", text="про гостя", author="@admin"))
+    router = MenuRouter(menus.menus)
+    entries, groups = col.NOTES.entries_menu, col.NOTES.groups_menu
+
+    select = MenuCallback(m=entries, a=Action.SELECT, v=str(saved.id))
+    ctx = _pressed(select)
+    assert await router.dispatch(ctx, select)
+    assert "про гостя" in ctx.put.await_args.args[0]
+
+    page = MenuCallback(m=entries, a=Action.OPEN)
+    ctx = _pressed(page)
+    assert await router.dispatch(ctx, page)
+    assert _targets(ctx.put.await_args.args[1]) == {entries, groups}
+
+    opened = MenuCallback(m=groups, a=Action.OPEN)
+    ctx = _pressed(opened)
+    assert await router.dispatch(ctx, opened)
+    assert entries not in _targets(ctx.put.await_args.args[1])
 
 
 @pytest.mark.asyncio
