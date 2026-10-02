@@ -106,7 +106,7 @@ rss_prepare = To platforms (FTP, site, Boosty)
 rss_skip = Skip
 rss_chat_post = New episode is out: { $title }
     { $link }
-rss_done_chat = announcement sent to the chat
+rss_done_chat = announcement sent to { $chat }
 rss_done_prepare = mp3 downloaded, pick a platform in the menu under the file
 rss_done_skip = skipped
 rss_cannot_prepare = no mp3 or episode number, upload the file with /start

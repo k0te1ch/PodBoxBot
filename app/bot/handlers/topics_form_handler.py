@@ -80,6 +80,7 @@ from services.topics.runtime import (
     topic_list,
     topics_enabled,
 )
+from utils import chat_card
 
 # Диалоги админа в личке, которые тоже ждут текст.
 OTHER_DIALOGS = (upload_file_runner, service_message_runner)
@@ -398,7 +399,9 @@ async def post_suggest_button(ctx: MenuContext) -> None:
         logger.error(f"topic button to {bot_config.TOPICS_CHAT} failed: {error!r}")
         await ctx.answer(ctx.text("topics_form_post_failed"), alert=True)
         return
-    await ctx.answer(ctx.text("topics_form_posted", chat=bot_config.TOPICS_CHAT))
+    # Ответ на нажатие без разметки: чат назван по имени, а не по id.
+    card = await chat_card.resolve(bot, bot_config.TOPICS_CHAT)
+    await ctx.answer(ctx.text("topics_form_posted", chat=card.quoted))
 
 
 def _commands(topic_key: str, *, ephemeral: bool = False) -> list[BotCommand]:
