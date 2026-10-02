@@ -127,8 +127,9 @@ def _anchor(callback: CallbackQuery) -> MessageAnchor | None:
 
 
 def _context(user: User | None, chat_id: int | None, kind: Kind | None, *, trusted: bool = False) -> dict[str, Any]:
-    """Контекст анкеты. *trusted*: анкету открыл админ в личке, пункт пойдёт
-    в список без лимита и бана. Контекст лежит в FSM бота, подделать его нельзя."""
+    """Контекст анкеты. *trusted*: анкету открыл админ, в личке или в чате тем,
+    пункт пойдёт в список без лимита и бана. Контекст лежит в FSM бота,
+    подделать его нельзя."""
     context: dict[str, Any] = {"lang": language_of(user), "chat_id": chat_id, "trusted": trusted}
     if kind is not None:
         context[KIND] = kind.value
@@ -158,7 +159,9 @@ async def _start_ephemeral(
     await _forget_forms(state)
     try:
         await form.group_runner.start(
-            state, EphemeralSender.for_event(event), context=_context(event.from_user, chat_id, kind)
+            state,
+            EphemeralSender.for_event(event),
+            context=_context(event.from_user, chat_id, kind, trusted=is_admin(event)),
         )
     except (TelegramAPIError, DialogError) as error:
         logger.info(f"ephemeral topic form in {chat_id} failed, falling back to private: {error!r}")

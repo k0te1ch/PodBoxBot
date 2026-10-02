@@ -279,6 +279,35 @@ async def test_group_form_is_ephemeral_end_to_end(fake_redis, bot, state):
 
 
 @pytest.mark.asyncio
+async def test_admin_form_in_group_ignores_the_limit_and_the_ban(fake_redis, bot, state):
+    sent = MagicMock(ephemeral_message_id=77)
+    sent.chat.id = GROUP_ID
+    bot.send_message = AsyncMock(return_value=sent)
+    bot.edit_ephemeral_message_text = AsyncMock()
+    # The admin is over the daily limit and on the ban list: neither applies.
+    for text in ("первая тема", "вторая тема"):
+        await fh.private_command(_private(bot, user=ADMIN), _command("тема", text), state, bot)
+    await topic_list().repository.ban(ADMIN.id, "@admin")
+
+    await fh.group_command(_message(bot, "/topic", ephemeral_id=5, user=ADMIN), _command("topic"), state, bot)
+    ask_kind = bot.send_message.await_args.kwargs
+    on_form = _message(bot, ephemeral_id=77, user=ADMIN)
+    pick = _button(ask_kind["reply_markup"], t("topics_form_kind_question"))
+    await fh.on_button(form.FULL, _callback(bot, pick.callback_data, message=on_form, user=ADMIN), state)
+    # In the group the admin answers the form the same way a listener does.
+    assert bot.edit_ephemeral_message_text.await_args.kwargs["text"] == t("topics_form_ask_question", min=1, max=50)
+
+    await fh.on_text(form.FULL, _message(bot, "Юг?", ephemeral_id=6, user=ADMIN), state)
+    confirm = bot.edit_ephemeral_message_text.await_args.kwargs
+    send = _button(confirm["reply_markup"], t("de-button-confirm"))
+    await fh.on_button(form.FULL, _callback(bot, send.callback_data, message=on_form, user=ADMIN), state)
+
+    added = (await _items())[-1]
+    assert (added.text, added.kind, added.source, added.chat_id) == ("Юг?", Kind.QUESTION, Source.ADMIN, GROUP_ID)
+    assert bot.edit_ephemeral_message_text.await_args.kwargs["text"] == t("topics_admin_added", line="ВОПРОС - Юг?")
+
+
+@pytest.mark.asyncio
 async def test_question_command_in_group_skips_the_kind_step(fake_redis, bot, state):
     sent = MagicMock(ephemeral_message_id=77)
     sent.chat.id = GROUP_ID
