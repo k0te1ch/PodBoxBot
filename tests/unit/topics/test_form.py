@@ -447,6 +447,20 @@ async def test_admin_posts_the_button_to_the_chat(bot, monkeypatch, mode, has_ca
 
 
 @pytest.mark.asyncio
+async def test_posted_button_toast_names_the_chat_by_its_title(bot, monkeypatch):
+    monkeypatch.setattr(config, "TOPICS_CHAT", "-1001234567890")
+    chat = MagicMock(username=None, photo=None)
+    chat.title = "Listeners chat"
+    bot.get_chat = AsyncMock(return_value=chat)
+    ctx = MagicMock(data={"bot": bot}, answer=AsyncMock(), text=lambda key, **kw: t(key, **kw))
+
+    await fh.post_suggest_button(ctx)
+
+    assert bot.send_message.await_args.kwargs["chat_id"] == "-1001234567890"
+    ctx.answer.assert_awaited_once_with(t("topics_form_posted", chat="«Listeners chat»"))
+
+
+@pytest.mark.asyncio
 async def test_failed_post_is_reported_to_admin(bot):
     bot.send_message.side_effect = _bad_request()
     ctx = MagicMock(data={"bot": bot}, answer=AsyncMock(), text=lambda key, **kw: t(key, **kw))

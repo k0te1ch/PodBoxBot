@@ -76,7 +76,26 @@ async def test_service_message_sent_after_confirm(state, bot):
     await service_handler.on_button(callback, state, bot, "ru")
 
     assert _sent_to_chat(bot) == ["Эфир переносится на завтра"]
-    callback.message.edit_text.assert_awaited_once_with(t("service_sent", "ru", chat=FORWARD_CHAT_USERNAME))
+    assert callback.message.edit_text.await_args.args == (t("service_sent", "ru", chat=FORWARD_CHAT_USERNAME),)
+
+
+@pytest.mark.asyncio
+async def test_service_message_names_the_chat_by_its_title(state, bot):
+    # A private group: no username, so the id from the settings is all the admin had before.
+    chat = MagicMock(username=None, photo=None)
+    chat.title = "Listeners <chat>"
+    bot.get_chat = AsyncMock(return_value=chat)
+    title = "<b>Listeners &lt;chat&gt;</b>"
+
+    await service_handler.service_command(_message("/service"), state, bot, "ru")
+    assert bot.send_message.call_args.kwargs["text"] == t("service_ask_text", "ru", chat=title)
+    await service_handler.on_text(_message("Эфир переносится на завтра"), state, bot)
+    assert bot.edit_message_text.call_args.kwargs["text"] == t("service_confirm", "ru", chat=title)
+    callback = _callback(_last_buttons(bot)[t("de-button-confirm", "ru")])
+    await service_handler.on_button(callback, state, bot, "ru")
+
+    assert callback.message.edit_text.await_args.args == (t("service_sent", "ru", chat=title),)
+    assert callback.message.edit_text.await_args.kwargs["link_preview_options"].is_disabled is True
 
 
 @pytest.mark.asyncio
@@ -98,7 +117,7 @@ async def test_service_message_reports_send_failure(state, bot):
 
     await service_handler.on_button(callback, state, bot, "ru")
 
-    callback.message.edit_text.assert_awaited_once_with(t("service_failed", "ru"))
+    assert callback.message.edit_text.await_args.args == (t("service_failed", "ru"),)
 
 
 @pytest.mark.asyncio
@@ -138,7 +157,7 @@ async def test_rss_to_chat_posts_link(bot):
     assert _sent_to_chat(bot) == [t("rss_chat_post", "ru", title=EPISODE.title, link=EPISODE.link)]
     text = callback.message.edit_text.await_args.args[0]
     assert text.startswith("notification")
-    assert t("rss_done_chat", "ru") in text
+    assert t("rss_done_chat", "ru", chat=FORWARD_CHAT_USERNAME) in text
     assert callback.message.edit_text.await_args.kwargs["reply_markup"] is None
 
 

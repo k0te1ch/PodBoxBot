@@ -106,7 +106,7 @@ rss_prepare = На площадки (FTP, сайт, Boosty)
 rss_skip = Не надо
 rss_chat_post = Вышел новый эпизод: { $title }
     { $link }
-rss_done_chat = анонс отправлен в чат
+rss_done_chat = анонс отправлен в { $chat }
 rss_done_prepare = mp3 скачан, выбери площадку в меню под файлом
 rss_done_skip = не выкладываем
 rss_cannot_prepare = нет mp3 или номера эпизода, загрузи файл через /start

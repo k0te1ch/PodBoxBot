@@ -5,6 +5,7 @@
 
 Ход пересылки виден в отдельном статус-сообщении: отправка аудио, закреп,
 проверка закрепа и итог. Ошибки Telegram переводятся в понятную админу причину.
+Чат в статусе назван по имени и показан карточкой (:mod:`utils.chat_card`).
 """
 
 import re
@@ -20,6 +21,7 @@ from sagenza_tgbot_sdk.menus import MenuContext
 from config import FORWARD_CHAT_USERNAME, FORWARD_PIN_SILENT
 from services.i18n import t
 from services.metrics import TELEGRAM, bot_metrics
+from utils import chat_card
 from utils.menu_context import username as username_of
 from utils.podcast_methods import generate_podcast_text
 from utils.template_store import load as load_template_info
@@ -39,10 +41,13 @@ def visible_length(html_text: str) -> int:
     return len(unescape(_TAG.sub("", html_text)))
 
 
-def explain_telegram_error(error: TelegramAPIError, action: str) -> str:
-    """Переводит ошибку Telegram в причину, понятную админу."""
+def explain_telegram_error(error: TelegramAPIError, action: str, chat: str | None = None) -> str:
+    """Переводит ошибку Telegram в причину, понятную админу.
+
+    *chat*: как назвать чат в тексте (HTML); по умолчанию значение из настроек.
+    """
     text = str(error).lower()
-    chat = escape(FORWARD_CHAT_USERNAME)
+    chat = chat or escape(FORWARD_CHAT_USERNAME)
     if isinstance(error, TelegramForbiddenError):
         return f"{action}: бота нет в чате {chat} или ему запрещено писать туда. Добавьте бота в чат."
     if "not enough rights" in text or "chat_admin_required" in text:
@@ -58,14 +63,14 @@ def explain_telegram_error(error: TelegramAPIError, action: str) -> str:
     return f"{action}: {escape(str(error))}"
 
 
-async def _status(status: Message, text: str) -> None:
+async def _status(status: chat_card.CardMessage, text: str) -> None:
     try:
-        await status.edit_text(text, parse_mode=ParseMode.HTML)
+        await status.edit(text)
     except TelegramAPIError as e:
         logger.warning(f"forward status not updated: {e}")
 
 
-async def _send_episode(bot: Bot, audio_file_id: str, podcast_text: str) -> Message:
+async def _send_episode(bot: Bot, audio_file_id: str, podcast_text: str, chat: str | None = None) -> Message:
     """Отправляет аудио в чат; слишком длинный текст уходит отдельным ответом."""
     long_text = visible_length(podcast_text) > CAPTION_LIMIT
     caption = podcast_text.split("\n", 1)[0] if long_text else podcast_text
@@ -77,7 +82,7 @@ async def _send_episode(bot: Bot, audio_file_id: str, podcast_text: str) -> Mess
             parse_mode=ParseMode.HTML,
         )
     except TelegramAPIError as e:
-        raise ForwardError(explain_telegram_error(e, "Аудио не отправлено")) from e
+        raise ForwardError(explain_telegram_error(e, "Аудио не отправлено", chat)) from e
     if not isinstance(sent, Message) or sent.audio is None:
         raise ForwardError("Аудио не отправлено: Telegram не вернул сообщение с аудио.")
 
@@ -90,11 +95,11 @@ async def _send_episode(bot: Bot, audio_file_id: str, podcast_text: str) -> Mess
                 reply_to_message_id=sent.message_id,
             )
         except TelegramAPIError as e:
-            raise ForwardError(explain_telegram_error(e, "Аудио в чате, но текст поста не отправлен")) from e
+            raise ForwardError(explain_telegram_error(e, "Аудио в чате, но текст поста не отправлен", chat)) from e
     return sent
 
 
-async def _pin_and_check(bot: Bot, message_id: int) -> None:
+async def _pin_and_check(bot: Bot, message_id: int, chat: str | None = None) -> None:
     """Закрепляет сообщение и убеждается, что закреплено именно оно."""
     try:
         await bot.pin_chat_message(
@@ -103,7 +108,7 @@ async def _pin_and_check(bot: Bot, message_id: int) -> None:
             disable_notification=FORWARD_PIN_SILENT,
         )
     except TelegramAPIError as e:
-        raise ForwardError(explain_telegram_error(e, "Аудио в чате, но не закреплено")) from e
+        raise ForwardError(explain_telegram_error(e, "Аудио в чате, но не закреплено", chat)) from e
 
     try:
         chat = await bot.get_chat(FORWARD_CHAT_USERNAME)
@@ -120,7 +125,8 @@ async def forward_to_chat(ctx: MenuContext):
     username = username_of(ctx)
     message = ctx.message
     bot: Bot = ctx.data["bot"]
-    chat = escape(FORWARD_CHAT_USERNAME)
+    card = await chat_card.resolve(bot, FORWARD_CHAT_USERNAME)
+    chat = card.html
     logger.debug(f"[{username}]: Forwarding to chat {FORWARD_CHAT_USERNAME}")
 
     status = None
@@ -135,14 +141,14 @@ async def forward_to_chat(ctx: MenuContext):
 
         type_episode = stored.get("type_episode")
         await bot_metrics.publish_requested(TELEGRAM, type_episode, file_name=file_name)
-        status = await message.answer(f"⏳ Пересылка в {chat}: отправляю аудио…", parse_mode=ParseMode.HTML)
+        status = await chat_card.send(bot, message, card, f"⏳ Пересылка в {chat}: отправляю аудио…")
         podcast_text = generate_podcast_text(stored["info"])
         if not podcast_text:
             raise ForwardError("Не удалось собрать текст поста из шаблона эпизода.")
 
-        sent = await _send_episode(bot, message.audio.file_id, podcast_text)
+        sent = await _send_episode(bot, message.audio.file_id, podcast_text, chat)
         await _status(status, f"⏳ Пересылка в {chat}: аудио отправлено, закрепляю…")
-        await _pin_and_check(bot, sent.message_id)
+        await _pin_and_check(bot, sent.message_id, chat)
 
         logger.success(f"[{username}]: Successfully forwarded audio")
         await bot_metrics.publish_succeeded(TELEGRAM, type_episode, "published", file_name=file_name)

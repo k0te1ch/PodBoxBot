@@ -64,6 +64,40 @@ async def test_success_reports_every_step():
 
 
 @pytest.mark.asyncio
+async def test_status_names_the_chat_by_its_title():
+    # The forward chat is a private group set by its numeric id.
+    chat = MagicMock(username=None, photo=None, pinned_message=MagicMock(message_id=5))
+    chat.title = "Listeners <chat>"
+    bot = _bot(get_chat=AsyncMock(return_value=chat))
+    ctx = _ctx(bot)
+    with (
+        patch.object(audio_handler, "load_template_info", new=AsyncMock(return_value={"info": {"number": "42"}})),
+        patch.object(audio_handler, "generate_podcast_text", return_value="text"),
+        patch.object(audio_handler, "FORWARD_CHAT_USERNAME", "-1001234567890"),
+        patch.object(audio_handler, "Message", MagicMock),
+    ):
+        await audio_handler.forward_to_chat(ctx)
+
+    assert "<b>Listeners &lt;chat&gt;</b>" in ctx.message.answer.await_args.args[0]
+    assert _last_status(ctx) == "✅ Эпизод опубликован в <b>Listeners &lt;chat&gt;</b> и закреплён."
+    assert "-1001234567890" not in _last_status(ctx)
+    assert bot.send_audio.await_args.kwargs["chat_id"] == "-1001234567890"
+
+
+@pytest.mark.asyncio
+async def test_error_about_the_chat_names_it_by_its_title():
+    chat = MagicMock(username="show_chat", photo=None)
+    chat.title = "Show chat"
+    error = TelegramForbiddenError(method=MagicMock(), message="Forbidden: bot was kicked from the supergroup chat")
+    bot = _bot(get_chat=AsyncMock(return_value=chat), send_audio=AsyncMock(side_effect=error))
+    ctx = _ctx(bot)
+    await _forward(ctx)
+
+    assert '<a href="https://t.me/show_chat">Show chat</a>' in _last_status(ctx)
+    assert ctx.status.edit_text.await_args.kwargs["link_preview_options"].url == "https://t.me/show_chat"
+
+
+@pytest.mark.asyncio
 async def test_episode_without_chapters_is_forwarded():
     # The template of this episode had no Chapters and no Tags.
     stored = {"type_episode": "main", "info": {"number": "42", "title": "42. Title", "comment": "About"}}

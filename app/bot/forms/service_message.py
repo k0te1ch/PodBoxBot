@@ -6,6 +6,7 @@
 """
 
 from datetime import timedelta
+from html import escape
 from typing import Any
 
 from dialog_engine import DialogEngine
@@ -24,7 +25,9 @@ SESSION_TTL = timedelta(hours=1)
 def resolve_text(key: str, answers: dict[str, Any], context: dict[str, Any]) -> str:
     """Ключ схемы → строка из ``locales/*.ftl``; неизвестный ключ движок заменит своим текстом."""
     lookup = key.replace(".", "-") if key.startswith("de.") else key
-    text = t(lookup, context.get("lang", "ru"), chat=FORWARD_CHAT_USERNAME)
+    # Как назвать чат, решает хендлер: он спрашивает у Telegram название.
+    chat = context.get("chat") or escape(FORWARD_CHAT_USERNAME)
+    text = t(lookup, context.get("lang", "ru"), chat=chat)
     return key if text == lookup else text
 
 

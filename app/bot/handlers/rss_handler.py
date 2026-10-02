@@ -11,6 +11,7 @@
 
 import os
 import time
+from html import escape
 from pathlib import Path
 
 import aiofiles
@@ -26,6 +27,7 @@ from services.i18n import t
 from services.metrics import bot_metrics
 from services.redis import redis
 from services.rss import ACTION_CHAT, ACTION_PREPARE, ACTION_SKIP, Episode, load_episode
+from utils import chat_card
 from utils.podcast_methods import generate_file_name
 from utils.template_store import save as save_template_info
 
@@ -54,7 +56,8 @@ async def _to_chat(bot: Bot, episode: Episode, locale: str) -> str:
     except Exception as e:
         logger.error(f"rss: announce to {FORWARD_CHAT_USERNAME} failed: {e!r}")
         return t("forward_failed", locale)
-    return t("rss_done_chat", locale)
+    card = await chat_card.resolve(bot, FORWARD_CHAT_USERNAME)
+    return t("rss_done_chat", locale, chat=escape(card.quoted))
 
 
 async def _prepare(callback: CallbackQuery, bot: Bot, episode: Episode, locale: str) -> str:
