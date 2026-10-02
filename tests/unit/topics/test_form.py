@@ -433,7 +433,7 @@ async def test_button_opens_ephemeral_form_or_private_link(fake_redis, bot, stat
 @pytest.mark.parametrize(("mode", "has_callback"), [("ephemeral", True), ("private", False)])
 async def test_admin_posts_the_button_to_the_chat(bot, monkeypatch, mode, has_callback):
     monkeypatch.setattr(config, "TOPICS_FORM_MODE", mode)
-    ctx = MagicMock(data={"bot": bot}, answer=AsyncMock(), text=lambda key, **kw: t(key, **kw))
+    ctx = MagicMock(data={"bot": bot}, answer=AsyncMock(), show=AsyncMock(), text=lambda key, **kw: t(key, **kw))
 
     await fh.post_suggest_button(ctx)
 
@@ -444,6 +444,8 @@ async def test_admin_posts_the_button_to_the_chat(bot, monkeypatch, mode, has_ca
     assert (button.callback_data == fh.SUGGEST_CALLBACK) is has_callback
     assert (button.url == LINK) is not has_callback
     ctx.answer.assert_awaited_once_with(t("topics_form_posted", chat="@test_group"))
+    # The confirmation question is replaced by the menu again.
+    ctx.show.assert_awaited_once_with(ctx.menu_id)
 
 
 @pytest.mark.asyncio
@@ -452,7 +454,7 @@ async def test_posted_button_toast_names_the_chat_by_its_title(bot, monkeypatch)
     chat = MagicMock(username=None, photo=None)
     chat.title = "Listeners chat"
     bot.get_chat = AsyncMock(return_value=chat)
-    ctx = MagicMock(data={"bot": bot}, answer=AsyncMock(), text=lambda key, **kw: t(key, **kw))
+    ctx = MagicMock(data={"bot": bot}, answer=AsyncMock(), show=AsyncMock(), text=lambda key, **kw: t(key, **kw))
 
     await fh.post_suggest_button(ctx)
 
@@ -463,7 +465,7 @@ async def test_posted_button_toast_names_the_chat_by_its_title(bot, monkeypatch)
 @pytest.mark.asyncio
 async def test_failed_post_is_reported_to_admin(bot):
     bot.send_message.side_effect = _bad_request()
-    ctx = MagicMock(data={"bot": bot}, answer=AsyncMock(), text=lambda key, **kw: t(key, **kw))
+    ctx = MagicMock(data={"bot": bot}, answer=AsyncMock(), show=AsyncMock(), text=lambda key, **kw: t(key, **kw))
 
     await fh.post_suggest_button(ctx)
 

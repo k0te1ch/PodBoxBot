@@ -20,6 +20,9 @@ async def restart(ctx: MenuContext):
     bot_metrics.admin_action("restart")
 
     await ctx.answer(t("bot_restarting", ctx.locale), alert=True)
+    # После «Да» на месте меню висит вопрос подтверждения: возвращаем меню,
+    # иначе после перезапуска под сообщением осталось бы «Точно?».
+    await ctx.show(ctx.menu_id)
     restart_bot()
 
 

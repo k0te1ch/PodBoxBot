@@ -214,6 +214,8 @@ async def test_restart_button():
 
     act.assert_called_once()
     ctx.answer.assert_awaited_once_with(t("bot_restarting"), alert=True)
+    # The confirmation question is replaced by the menu before the restart.
+    ctx.show.assert_awaited_once_with(ctx.menu_id)
 
 
 @pytest.mark.asyncio
