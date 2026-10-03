@@ -25,6 +25,14 @@ updates:
         update-types:
           - minor
           - patch
+    ignore:
+      # redis идёт в паре с aiogram: хранилище состояний работает только с теми
+      # версиями, что aiogram объявляет в своём extra `redis` (для 3.31 это
+      # >=6.2,<8). Мажорную версию поднимаем руками вместе с aiogram; границу
+      # сторожит tests/unit/services/test_shutdown.py.
+      - dependency-name: redis
+        update-types:
+          - version-update:semver-major
     commit-message:
       prefix: chore
       include: scope
