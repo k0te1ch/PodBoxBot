@@ -3,7 +3,7 @@
 * Сообщение с ``#тема`` или ``#вопрос`` (``TOPICS_HASHTAG``,
   ``TOPICS_QUESTION_HASHTAG``) в чате тем (``TOPICS_CHAT``) становится пунктом
   списка; тип пункта задаёт хештег. Принятое бот отмечает реакцией 👍
-  (``TOPICS_ACK_REACTION``) и пишет автору эфемерно, что добавил его в список
+  (``TOPICS_ACK_REACTION``, эмодзи из ``TOPICS_ACK_EMOJI``) и пишет автору эфемерно, что добавил его в список
   (``TOPICS_ACK_EPHEMERAL``). При отказе (лимит, длина, бан) автор получает
   эфемерный ответ: это видит только он. Пост от имени канала считается по
   каналу: у него свой лимит, и его можно забанить.
@@ -46,7 +46,6 @@ from services.topics.runtime import (
 
 TOPIC_COMMANDS = ("topic", "тема")
 QUESTION_COMMANDS = ("question", "вопрос")
-ACK_REACTION = "👍"
 
 
 def kind_of_command(command: str) -> Kind:
@@ -79,7 +78,7 @@ async def react(message: Message) -> None:
     if not bot_config.TOPICS_ACK_REACTION:
         return
     try:
-        await message.react([ReactionTypeEmoji(emoji=ACK_REACTION)])
+        await message.react([ReactionTypeEmoji(emoji=bot_config.TOPICS_ACK_EMOJI)])
     except TelegramAPIError as error:
         logger.info(f"topics: reaction on {message.message_id} failed: {error!r}")
 

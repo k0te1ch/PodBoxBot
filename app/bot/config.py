@@ -16,6 +16,89 @@ if TYPE_CHECKING:
     from loguru import Record
 
 
+# Эмодзи, которые Telegram принимает как реакцию от бота (ReactionTypeEmoji,
+# Bot API 10.3). Остальные отклоняются с REACTION_INVALID.
+REACTION_EMOJI = frozenset(
+    [
+        "❤",
+        "👍",
+        "👎",
+        "🔥",
+        "\U0001f970",
+        "👏",
+        "😁",
+        "🤔",
+        "🤯",
+        "😱",
+        "🤬",
+        "😢",
+        "🎉",
+        "🤩",
+        "🤮",
+        "💩",
+        "🙏",
+        "👌",
+        "🕊",
+        "🤡",
+        "\U0001f971",
+        "\U0001f974",
+        "😍",
+        "🐳",
+        "❤\u200d🔥",
+        "🌚",
+        "🌭",
+        "💯",
+        "🤣",
+        "⚡",
+        "🍌",
+        "🏆",
+        "💔",
+        "🤨",
+        "😐",
+        "🍓",
+        "🍾",
+        "💋",
+        "🖕",
+        "😈",
+        "😴",
+        "😭",
+        "🤓",
+        "👻",
+        "👨\u200d💻",
+        "👀",
+        "🎃",
+        "🙈",
+        "😇",
+        "😨",
+        "🤝",
+        "✍",
+        "🤗",
+        "\U0001fae1",
+        "🎅",
+        "🎄",
+        "☃",
+        "💅",
+        "🤪",
+        "🗿",
+        "🆒",
+        "💘",
+        "🙉",
+        "🦄",
+        "😘",
+        "💊",
+        "🙊",
+        "😎",
+        "👾",
+        "🤷\u200d♂",
+        "🤷",
+        "🤷\u200d♀",
+        "😡",
+    ]
+)
+DEFAULT_REACTION = "👍"
+VARIATION_SELECTOR = "️"
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -73,13 +156,16 @@ class Settings(BaseSettings):
     # выключено. TOPICS_CHAT — чат, где слушатели пишут (@username или числовой
     # id), пусто — чат форварда. Хештеги через запятую, без «#»; пустая строка
     # выключает сбор этого типа. На принятое сообщение бот ставит реакцию
-    # (TOPICS_ACK_REACTION) и пишет автору эфемерно (TOPICS_ACK_EPHEMERAL).
+    # (TOPICS_ACK_REACTION, эмодзи в TOPICS_ACK_EMOJI) и пишет автору эфемерно
+    # (TOPICS_ACK_EPHEMERAL). Эмодзи годится только из списка реакций Telegram
+    # (REACTION_EMOJI ниже): например, 👍 🫡 👌 🔥 можно, а ✅ нельзя.
     # TOPICS_DAILY_LIMIT: пунктов от автора за последние 24 часа, 0 без лимита.
     TOPICS_ENABLED: bool = False
     TOPICS_CHAT: str | None = None
     TOPICS_HASHTAG: str = "тема"
     TOPICS_QUESTION_HASHTAG: str = "вопрос"
     TOPICS_ACK_REACTION: bool = True
+    TOPICS_ACK_EMOJI: str = DEFAULT_REACTION
     TOPICS_ACK_EPHEMERAL: bool = True
     TOPICS_DAILY_LIMIT: int = 3
     TOPICS_MIN_LENGTH: int = 10
@@ -179,6 +265,18 @@ class Settings(BaseSettings):
                 return []
         return v
 
+    @field_validator("TOPICS_ACK_EMOJI")
+    @classmethod
+    def allowed_reaction(cls, v: str) -> str:
+        # Незнакомое эмодзи Telegram отклонит на каждой реакции (REACTION_INVALID),
+        # и бот перестанет отмечать принятые сообщения. Поэтому замена на 👍
+        # здесь, с предупреждением в логе, а не отказ на каждом сообщении.
+        emoji = v.strip().replace(VARIATION_SELECTOR, "")
+        if emoji in REACTION_EMOJI:
+            return emoji
+        logger.warning(f"TOPICS_ACK_EMOJI={v!r} is not a Telegram reaction, using {DEFAULT_REACTION}")
+        return DEFAULT_REACTION
+
     @field_validator("DEVELOPER", mode="before")
     @classmethod
     def parse_developer(cls, v: Any) -> int | None:
@@ -221,6 +319,7 @@ TOPICS_CHAT = (settings.TOPICS_CHAT or "").strip() or FORWARD_CHAT_USERNAME
 TOPICS_HASHTAGS = _hashtags(settings.TOPICS_HASHTAG)
 TOPICS_QUESTION_HASHTAGS = _hashtags(settings.TOPICS_QUESTION_HASHTAG)
 TOPICS_ACK_REACTION = settings.TOPICS_ACK_REACTION
+TOPICS_ACK_EMOJI = settings.TOPICS_ACK_EMOJI
 TOPICS_ACK_EPHEMERAL = settings.TOPICS_ACK_EPHEMERAL
 TOPICS_DAILY_LIMIT = settings.TOPICS_DAILY_LIMIT
 TOPICS_MIN_LENGTH = settings.TOPICS_MIN_LENGTH
