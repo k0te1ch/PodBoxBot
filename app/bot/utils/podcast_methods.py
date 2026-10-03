@@ -1,5 +1,6 @@
 from datetime import date, datetime
 from enum import Enum
+from html import escape
 from pathlib import Path
 from typing import Any
 
@@ -61,8 +62,13 @@ def generate_podcast_text(info: dict[str, Any]) -> str | None:
             logger.error("Некорректный формат глав. Ожидается список списков (время, название)")
             return None
 
+        # Пост уходит как HTML, а название, описание и главы пишет человек (или
+        # они приходят из RSS): знак «<» в них иначе ломал отправку целиком.
+        episode_number, title, summary = (escape(str(value)) for value in (episode_number, title, summary))
+        support_link = escape(str(support_link))
+
         # Шаблон без Chapters: без пустого заголовка «Таймлайн».
-        formatted_chapters = "\n".join(f"{time} — {chapter}" for time, chapter in chapters)
+        formatted_chapters = "\n".join(f"{escape(str(time))} — {escape(str(chapter))}" for time, chapter in chapters)
         timeline = f"<i>Таймлайн:</i>\n{formatted_chapters}\n\n" if formatted_chapters else ""
 
         # Создание текста
