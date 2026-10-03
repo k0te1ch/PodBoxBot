@@ -23,7 +23,7 @@ async def upload_WP(ctx: MenuContext) -> None:
     stored = await load_template_info(file_name)
     if stored is None:
         logger.bind(username=username).warning(f"template info not found for {file_name}")
-        return await ctx.answer(t("invalid_input", ctx.locale), alert=True)
+        return await ctx.answer(t("episode_file_gone", ctx.locale), alert=True)
 
     info = stored["info"]
     type_episode = stored.get("type_episode")
@@ -59,6 +59,6 @@ async def upload_WP(ctx: MenuContext) -> None:
         )
     except ValidationError as e:
         logger.error(f"Ошибка валидации WordPressEvent: {e.json()}")
-        return await ctx.answer("Ошибка валидации данных", alert=True)
+        return await ctx.answer("В описании выпуска не хватает данных для этой площадки", alert=True)
 
     await publish_request(ctx, WP_UPLOAD_TOPIC, "wordpress_event.avsc", event, status=msg, title="Сайт", platform="wp")

@@ -21,7 +21,7 @@ async def upload_FTP(ctx: MenuContext):
     logger.debug(f"[{username}]: Начало загрузки на FTP")
 
     if not message.audio:
-        await ctx.answer("Ошибка: нет файла для загрузки", alert=True)
+        await ctx.answer("Под этим сообщением нет файла", alert=True)
         return
 
     file_name = message.audio.file_name
@@ -54,6 +54,6 @@ async def upload_FTP(ctx: MenuContext):
         )
     except ValidationError as e:
         logger.error(f"UploadEvent validation failed: {e.json()}")
-        return await ctx.answer("Ошибка валидации данных", alert=True)
+        return await ctx.answer("В описании выпуска не хватает данных для этой площадки", alert=True)
 
     await publish_request(ctx, UPLOAD_TOPIC, "upload_event.avsc", event, status=msg, title="FTP", platform="ftp")

@@ -51,7 +51,7 @@ def upload_to(platform: Platform):
         stored = await load_template_info(file_name)
         if stored is None:
             log.warning(f"template info not found for {file_name}")
-            return await ctx.answer(t("invalid_input", ctx.locale), alert=True)
+            return await ctx.answer(t("episode_file_gone", ctx.locale), alert=True)
 
         info = stored["info"]
         msg = await boards.open(message, platform.key, board_title(info, file_name))
@@ -72,7 +72,7 @@ def upload_to(platform: Platform):
             )
         except ValidationError as e:
             log.error(f"Ошибка валидации {platform.event_cls.__name__}: {e.json()}")
-            return await ctx.answer("Ошибка валидации данных", alert=True)
+            return await ctx.answer("В описании выпуска не хватает данных для этой площадки", alert=True)
 
         await publish_request(
             ctx, platform.topic, platform.schema, event, status=msg, title=platform.title, platform=platform.key

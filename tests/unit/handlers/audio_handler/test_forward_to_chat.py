@@ -79,7 +79,7 @@ async def test_status_names_the_chat_by_its_title():
         await audio_handler.forward_to_chat(ctx)
 
     assert "<b>Listeners &lt;chat&gt;</b>" in ctx.message.answer.await_args.args[0]
-    assert _last_status(ctx) == "✅ Эпизод опубликован в <b>Listeners &lt;chat&gt;</b> и закреплён."
+    assert _last_status(ctx) == "✅ Выпуск в <b>Listeners &lt;chat&gt;</b>, сообщение закреплено"
     assert "-1001234567890" not in _last_status(ctx)
     assert bot.send_audio.await_args.kwargs["chat_id"] == "-1001234567890"
 
@@ -160,7 +160,7 @@ async def test_bot_not_in_chat_is_explained_to_admin():
     ctx = _ctx(bot)
     await _forward(ctx)
 
-    assert "Добавьте бота в чат" in _last_status(ctx)
+    assert "Добавь бота в чат" in _last_status(ctx)
     bot.pin_chat_message.assert_not_awaited()
 
 
@@ -189,7 +189,7 @@ async def test_empty_post_text_is_reported_before_sending():
     [
         ("Bad Request: chat not found", "не найден"),
         ("Bad Request: message caption is too long", "1024"),
-        ("Bad Request: wrong file identifier/HTTP URL specified", "Загрузите эпизод заново"),
+        ("Bad Request: wrong file identifier/HTTP URL specified", "Оформи выпуск заново"),
         ("Bad Request: can't parse entities: unclosed tag", "разметку"),
     ],
 )

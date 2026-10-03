@@ -218,3 +218,20 @@ async def test_failures_alert_once(bot, redis):
     with patch.object(watcher, "fetch", AsyncMock(return_value=None)):
         await watcher.tick()
     assert watcher.failures == 0
+
+
+@pytest.mark.asyncio
+async def test_notification_is_quiet_and_goes_to_admins_only():
+    """Новый выпуск в ленте: предложение выложить, без звука и только админам."""
+    bot = MagicMock(send_message=AsyncMock())
+    watcher = RssWatcher(bot, AsyncMock(), "https://example.com/feed", [1, 2], 600, 6)
+    episode = Episode(
+        guid="g", title="5 < 6", number="5", enclosure_url="https://x/0005_rz_1.mp3", type_episode="main"
+    )
+
+    await watcher.notify(episode)
+
+    assert [call.args[0] for call in bot.send_message.await_args_list] == [1, 2]
+    for call in bot.send_message.await_args_list:
+        assert call.kwargs["disable_notification"] is True
+        assert "5 &lt; 6" in call.args[1]
