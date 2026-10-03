@@ -66,7 +66,7 @@ async def _facts(metrics: Any, locale: str) -> list[tuple[str, str]]:
 def _publication_rows(recent: list[Board]) -> list[list[str]]:
     return [
         [escape(board.title.split(":")[0]), escape(platform_title(row.platform)), row.text, board.when(row)]
-        for board in recent[:MAX_PUBLICATIONS]
+        for board in recent
         for row in board.rows.values()
     ]
 
@@ -79,7 +79,7 @@ async def render(metrics: Any, locale: str) -> tuple[str, str]:
         [[escape(name), escape(value)] for name, value in facts],
     )
     text = "\n".join([f"<b>{escape(t('status_title', locale))}</b>", *(f"{escape(n)}: {escape(v)}" for n, v in facts)])
-    rows = _publication_rows(boards.recent())
+    rows = _publication_rows(await boards.recent(MAX_PUBLICATIONS))
     heading = t("status_publications", locale)
     if rows:
         columns = [t(f"status_column_{name}", locale) for name in ("episode", "platform", "state", "when")]

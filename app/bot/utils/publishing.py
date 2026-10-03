@@ -30,7 +30,7 @@ def board_title(info: dict | None, file_name: str) -> str:
 
 async def _set_board(status: StatusRef, platform: str | None, state: str, text: str, error: str | None = None) -> bool:
     """Состояние площадки в табло публикации; False, если табло для этого сообщения нет."""
-    board = boards.get(status.chat_id, status.message_id)
+    board = await boards.get(status.chat_id, status.message_id)
     if board is None or platform is None:
         return False
     await boards.update(board, platform, state, text, error=error)

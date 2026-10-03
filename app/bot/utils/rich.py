@@ -23,10 +23,17 @@ NO_PREVIEW = LinkPreviewOptions(is_disabled=True)
 NOT_MODIFIED = "message is not modified"
 # Telegram отменил правку, потому что её догнала следующая: в сообщении уже более новое.
 SUPERSEDED = "canceled by new edit"
+# Сообщения больше нет: его удалили из чата.
+GONE = ("message to edit not found", "MESSAGE_ID_INVALID")
 
 
 def enabled() -> bool:
     return bool(getattr(bot_config, "RICH_MESSAGES", True))
+
+
+def is_gone(error: Exception) -> bool:
+    """Telegram отказал, потому что сообщения, которое правят, уже нет."""
+    return any(reason in str(error) for reason in GONE)
 
 
 def cell(text: object) -> str:
@@ -68,7 +75,8 @@ async def edit(
     """Правит сообщение на месте: rich, а если нельзя, обычным текстом.
 
     «Ничего не изменилось» от Telegram не ошибка. Остальные отказы летят
-    наружу: вызывающий решает, важна ли эта правка.
+    наружу: вызывающий решает, важна ли эта правка. Если сообщения уже нет
+    (:func:`is_gone`), обычным текстом его тоже не поправить: отказ летит сразу.
     """
     if enabled():
         try:
@@ -82,6 +90,8 @@ async def edit(
         except TelegramBadRequest as error:
             if NOT_MODIFIED in str(error) or SUPERSEDED in str(error):
                 return
+            if is_gone(error):
+                raise
             logger.warning(f"rich message was not edited, falling back to text: {error!r}")
     try:
         await bot.edit_message_text(

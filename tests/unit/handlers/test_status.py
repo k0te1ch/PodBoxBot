@@ -37,7 +37,7 @@ async def test_status_lists_the_bot_facts(boards):
 async def test_status_shows_recent_publications_by_platform(boards):
     board = Board(MagicMock(), 1, 2, "Выпуск 1002: публикация")
     board.rows["wp"] = Row("wp", DONE, "✅ черновик сохранён")
-    boards._by_audio[(1, 50)] = board
+    boards._remember(board)
 
     html, text = await status_handler.render(None, "ru")
 
