@@ -4,6 +4,7 @@ import pytest
 
 from config import FILES_PATH
 from handlers import ftp_handler
+from services.publish_board import StatusRef
 from shared.kafka.models.upload_event import UploadEvent
 
 
@@ -31,7 +32,7 @@ def publish(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_sends_upload_event_with_episode_type_from_sidecar(monkeypatch, publish):
+async def test_sends_upload_event_with_episode_type_from_sidecar(monkeypatch, publish, publish_board_stub):
     stored = {"info": {"number": "42"}, "type_episode": "aftershow"}
     monkeypatch.setattr(ftp_handler, "load_template_info", AsyncMock(return_value=stored))
     ctx = _ctx()
@@ -48,11 +49,13 @@ async def test_sends_upload_event_with_episode_type_from_sidecar(monkeypatch, pu
     assert event.type_episode == "aftershow"
     assert (event.status, event.event_type) == ("pending", "request")
     assert (event.chat_id, event.message_id) == ("100", "7")
-    assert publish.await_args.kwargs["status"] is ctx.message.answer.return_value
+    # Статус идёт в общее табло публикации этого файла.
+    assert publish.await_args.kwargs["status"] == StatusRef(100, 7)
+    publish_board_stub.assert_awaited_once_with(ctx.message, "ftp", "Выпуск 42: публикация")
 
 
 @pytest.mark.asyncio
-async def test_missing_sidecar_still_uploads_to_the_root(monkeypatch, publish):
+async def test_missing_sidecar_still_uploads_to_the_root(monkeypatch, publish, publish_board_stub):
     monkeypatch.setattr(ftp_handler, "load_template_info", AsyncMock(return_value=None))
     ctx = _ctx("0768_rz_30092026.mp3")
 
@@ -61,6 +64,7 @@ async def test_missing_sidecar_still_uploads_to_the_root(monkeypatch, publish):
     event = publish.await_args.args[3]
     assert event.type_episode is None
     assert event.file_name == "0768_rz_30092026.mp3"
+    assert publish_board_stub.await_args.args[2] == "0768_rz_30092026.mp3: публикация"
 
 
 @pytest.mark.asyncio

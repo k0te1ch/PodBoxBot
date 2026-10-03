@@ -115,7 +115,6 @@ boosty_upload = Publish the aftershow on Boosty
 vk_upload = Publish the aftershow for VK Donut
 patreon_upload = Publish the aftershow on Patreon
 sponsr_upload = Publish the aftershow on Sponsr
-paywalled_publishing = ⏳ Publishing the aftershow on { $platform }...
 forwarded = Forwarded to the chat!
 forward_failed = Forwarding failed, try again later
 
@@ -193,6 +192,12 @@ topics_remove_marked = Delete ticked ({ $count })
 topics_undo = ↩️ Restore
 topics_kind_topic = TOPIC
 topics_kind_question = QUESTION
+topics_list_heading = Topics and questions
+topics_column_number = No.
+topics_column_kind = Kind
+topics_column_text = Text
+topics_column_author = From
+topics_column_when = When
 topics_list_title = Topics and questions:
 topics_list_empty = The list of topics and questions is empty: nobody has suggested anything yet.
 topics_marked = Ticked: { $numbers }
@@ -259,3 +264,23 @@ topics_form_cancelled = OK, maybe next time.
 topics_form_expired = The form has expired. Start again: /topic or /question.
 topics_form_open_private = Open the form in private chat
 topics_form_go_private = Could not show the form here. Open it in a private chat with the bot:
+
+## /status
+
+status_title = PodBoxBot: status
+status_version = Version
+status_uptime = Uptime
+status_updates = Updates handled
+status_errors = Errors
+status_rss = Feed watcher
+status_topics = Topics and questions on the list
+status_on = on
+status_off = off
+status_publications = Recent publications
+status_publications_none = No publications since the bot started
+status_column_what = What
+status_column_value = Value
+status_column_episode = Episode
+status_column_platform = Platform
+status_column_state = State
+status_column_when = When

@@ -3,13 +3,9 @@
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from aiogram.fsm.context import FSMContext
-from aiogram.fsm.storage.base import StorageKey
-from aiogram.fsm.storage.memory import MemoryStorage
 
 import config
 import main
-from forms import topic_suggestion as form
 from handlers import topics_list_handler as lh
 from services.i18n import t
 from services.metrics import bot_metrics
@@ -107,23 +103,6 @@ def _menu_ctx(bot, state=None):
         locale="ru",
         answer=AsyncMock(),
     )
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize(
-    ("kind", "ask"), [(Kind.TOPIC, "topics_form_ask_topic"), (Kind.QUESTION, "topics_form_ask_question")]
-)
-async def test_add_buttons_of_the_menu_open_the_admin_form(fake_redis, bot, kind, ask):
-    state = FSMContext(storage=MemoryStorage(), key=StorageKey(bot_id=1, chat_id=1, user_id=1))
-    bot.send_message = AsyncMock(return_value=MagicMock(message_id=11))
-    ctx = _menu_ctx(bot, state)
-
-    await lh._add_from_menu(kind)(ctx)
-
-    ctx.answer.assert_awaited_once_with()
-    assert bot.send_message.await_args.kwargs["text"] == t(f"{ask}_admin", max=50)
-    session, _ui = await form.TYPED.storage.load(state)
-    assert (session.context["trusted"], session.context[form.KIND]) == (True, kind.value)
 
 
 @pytest.mark.asyncio

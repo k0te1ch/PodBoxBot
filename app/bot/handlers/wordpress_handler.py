@@ -5,9 +5,10 @@ from pydantic import ValidationError
 from sagenza_tgbot_sdk.menus import MenuContext
 
 from services.i18n import t
+from services.publish_board import boards
 from shared.kafka.models.wordpress_event import WordPressEvent
 from utils.menu_context import username as username_of
-from utils.publishing import publish_request
+from utils.publishing import board_title, publish_request
 from utils.template_store import load as load_template_info
 
 WP_UPLOAD_TOPIC = "publisher.wordpress.upload"
@@ -35,15 +36,14 @@ async def upload_WP(ctx: MenuContext) -> None:
         }
     )
 
-    # Отправляем сообщение-статус
-    msg = await message.answer("⏳ Отправка поста на сайт...")
+    msg = await boards.open(message, "wp", board_title(info, file_name))
 
     try:
         event = WordPressEvent(
             event_type="request",
             username=username,
             status="pending",
-            chat_id=str(msg.chat.id),
+            chat_id=str(msg.chat_id),
             message_id=str(msg.message_id),
             number=info["number"],
             title=info["title"],

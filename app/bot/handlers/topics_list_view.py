@@ -13,12 +13,14 @@ from aiogram.filters.callback_data import CallbackData
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, LinkPreviewOptions, MaybeInaccessibleMessage
 from loguru import logger
 
+from config import TIMEZONE
 from services.i18n import t
 from services.topics import Item
 from services.topics.listing import MARK as MARKED_PREFIX
-from services.topics.listing import MAX_PAGE_CHARS, Page, item_line, list_pages
+from services.topics.listing import MAX_PAGE_CHARS, Page, item_line, list_pages, table_html
 from services.topics.runtime import count_event, report_list_size, topic_list, view_store
 from services.topics.views import ListView
+from utils import rich
 
 MARK = "m"
 REMOVE = "d"
@@ -76,13 +78,14 @@ def page_markup(view: ListView, page: Page, locale: str, *, last: bool, private:
         refresh = _control("topics_refresh", REFRESH, locale)
         rows.append([_remove_button(view, locale), refresh] if view.ids else [refresh])
         if private:
+            # Авторы и бан живут в разделе «Темы и вопросы» главного меню:
+            # под списком только то, что нужно, пока его читают.
             rows.append(
                 [
                     _control("topics_add_topic", ADD_TOPIC, locale),
                     _control("topics_add_question", ADD_QUESTION, locale),
                 ]
             )
-            rows.append([_control("topics_authors", AUTHORS, locale)])
     return InlineKeyboardMarkup(inline_keyboard=rows) if rows else None
 
 
@@ -117,23 +120,53 @@ def marked_text(view: ListView, locale: str) -> str:
     return text if len(text) <= MAX_TOAST_CHARS else t("topics_marked_count", locale, count=len(view.marked))
 
 
-async def send_list(bot: Bot, chat_id: int, locale: str, *, private: bool) -> ListView:
-    """Показать список и запомнить его: номера следующей команды «удали» — отсюда."""
+async def send_list(
+    bot: Bot, chat_id: int, locale: str, *, private: bool, replace: MaybeInaccessibleMessage | None = None
+) -> ListView:
+    """Показать список и запомнить его: номера следующей команды «удали» — отсюда.
+
+    *replace*: сообщение прежнего списка. Если новый список умещается в одно
+    сообщение, он рисуется на его месте, а не присылается следом: кнопка
+    «Обновить» не двигает чат.
+    """
     items = await topic_list().repository.items()
     views = view_store()
     view = views.new_view([item.id for item in items])
-    pages = list_pages(items, locale)
+    pages = list_pages(items, locale, timezone=TIMEZONE)
+    in_place = replace is not None and len(pages) == 1
     for index, page in enumerate(pages):
         markup = page_markup(view, page, locale, last=index == len(pages) - 1, private=private)
-        sent = await bot.send_message(
-            chat_id=chat_id, text=page.text, reply_markup=markup, link_preview_options=NO_PREVIEW
-        )
-    view.last_message_id, view.last_numbers = int(sent.message_id), pages[-1].numbers
+        if in_place:
+            await rich.edit(bot, chat_id, replace.message_id, page.html, page.text, markup)
+            message_id = replace.message_id
+        else:
+            sent = await rich.send(bot, chat_id, page.html, page.text, markup)
+            message_id = sent.message_id
+    view.last_message_id, view.last_numbers = int(message_id), pages[-1].numbers
     # Снимок запоминается после показа: если отправка сорвалась, «удали N»
     # по-прежнему относится к списку, который человек видит целиком.
     await views.remember(chat_id, view)
     report_list_size(items)
     return view
+
+
+async def marked_page(view: ListView, numbers: list[int], locale: str) -> Page:
+    """Сообщение списка с пунктами *numbers* под текущие отметки *view*.
+
+    Пункт, который уже удалили из другого места, остаётся строкой с тем же
+    номером: номера показанного списка не сдвигаются.
+    """
+    by_id = {item.id: item for item in await topic_list().repository.items()}
+    numbered = [(number, by_id[view.item_id(number)]) for number in numbers if view.item_id(number) in by_id]
+    title = bool(numbers) and numbers[0] == 1
+    lines = [t("topics_list_title", locale)] if title else []
+    for number, item in numbered:
+        if number in view.marked:
+            lines.append(f"{MARKED_PREFIX}{number}) <s>{item_line(number, item, locale).split(') ', 1)[1]}</s>")
+        else:
+            lines.append(item_line(number, item, locale))
+    html = table_html(numbered, view.marked, locale, title=title, timezone=TIMEZONE)
+    return Page("\n".join(lines), [number for number, _item in numbered], html)
 
 
 def numbered_lines(title: str, numbered: list[tuple[int, Item]], locale: str) -> str:

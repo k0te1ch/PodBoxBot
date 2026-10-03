@@ -38,7 +38,7 @@ def publish(monkeypatch):
         (paywalled_handler.SPONSR, SponsrEvent),
     ],
 )
-async def test_sends_aftershow_event_to_platform_topic(monkeypatch, publish, platform, event_cls):
+async def test_sends_aftershow_event_to_platform_topic(monkeypatch, publish, platform, event_cls, publish_board_stub):
     monkeypatch.setattr(paywalled_handler, "load_template_info", AsyncMock(return_value={"info": INFO}))
     ctx = _ctx()
 
@@ -52,7 +52,7 @@ async def test_sends_aftershow_event_to_platform_topic(monkeypatch, publish, pla
     assert event.path.endswith("0042_postshow.mp3")
     assert (event.chat_id, event.message_id) == ("100", "7")
     assert event.chapters == [["00:00", "Начало"]]
-    assert platform.title in ctx.message.answer.await_args.args[0]
+    assert publish_board_stub.await_args.args[1] == platform.key
 
 
 @pytest.mark.asyncio

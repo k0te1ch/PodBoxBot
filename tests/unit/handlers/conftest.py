@@ -1,4 +1,5 @@
 from collections.abc import Awaitable, Callable
+from unittest.mock import AsyncMock
 
 import pytest
 from aiogram.fsm.context import FSMContext
@@ -130,3 +131,18 @@ def fake_redis(monkeypatch) -> FakeRedis:
     fake = FakeRedis()
     monkeypatch.setattr(collector_handler, "redis", fake)
     return fake
+
+
+BOARD = (100, 7)
+"""Чат и сообщение табло публикации, которое «открывают» кнопки площадок в тестах."""
+
+
+@pytest.fixture(autouse=True)
+def publish_board_stub(monkeypatch):
+    """Кнопки площадок открывают табло публикации; само табло проверяется в
+    tests/unit/services/test_publish_board.py."""
+    from services.publish_board import StatusRef, boards
+
+    opened = AsyncMock(return_value=StatusRef(*BOARD))
+    monkeypatch.setattr(boards, "open", opened)
+    return opened

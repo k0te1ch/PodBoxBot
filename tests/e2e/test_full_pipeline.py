@@ -65,10 +65,10 @@ async def test_full_pipeline_ftp(tester, bot_username, sample_mp3, episode_templ
         await chat.expect_edit(buttons=[phrase("ftp_upload", full=True)], timeout=10)
 
         await chat.click(phrase("ftp_upload", full=True))
-        # Статус-сообщение правится прогрессом публишера, ловим любой текст
+        # Табло публикации правится событиями публишера, ловим любой текст
         # и ждём итога, который приходит через Kafka.
         status = await chat.expect()
-        await chat.wait_for_text("успешно загружен", timeout=120, message=status)
+        await chat.wait_for_text("файл загружен", timeout=120, message=status)
 
 
 @pytest.mark.e2e
@@ -95,4 +95,4 @@ async def test_full_pipeline_wordpress(tester, bot_username, sample_mp3, episode
         # а затем итог: в e2e-стенде WordPress направлен в никуда, после всех
         # повторов бот обязан сообщить об ошибке с шагом, а не молчать.
         status = await chat.expect()
-        await chat.wait_for_text("ошибка публикации", timeout=240, message=status)
+        await chat.wait_for_text("ошибка на шаге", timeout=240, message=status)

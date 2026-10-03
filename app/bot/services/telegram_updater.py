@@ -7,6 +7,9 @@ Publisher'ы присылают в result-топик события трёх в�
 * ``result`` со статусом ``success`` / ``failure`` / ``retrying``.
 
 Всё это правит одно и то же сообщение, которое бот отправил при нажатии кнопки.
+Если это табло публикации (:mod:`services.publish_board`), событие меняет в
+нём строку своей площадки. Если табло нет (бот перезапускался), сообщение
+правится целиком обычным текстом, как раньше.
 Текст — HTML с экранированием: в Markdown имена файлов вида ``001_rz_...mp3`` и
 тексты ошибок ломали разметку, и Telegram отказывался править сообщение.
 """
@@ -18,6 +21,10 @@ from aiogram import Bot
 from aiogram.enums import ParseMode
 from aiogram.exceptions import TelegramBadRequest, TelegramRetryAfter
 from loguru import logger
+
+from services import publish_board
+from services.publish_board import boards
+from utils.status_message import bar
 
 STAGE_TITLES = {
     "upload": "загрузка файла на FTP",
@@ -38,6 +45,9 @@ PLATFORM_PLACES = {
     "patreon": "на Patreon",
     "sponsr": "на Sponsr",
 }
+
+# Ключ, под которым площадка едет вместе с событием: её задаёт топик результата.
+PLATFORM_KEY = "_platform"
 
 # Сколько раз переждать flood-лимит Telegram для итогового сообщения.
 FINAL_EDIT_ATTEMPTS = 3
@@ -99,6 +109,34 @@ def _success_text(event: dict) -> str:
     return f"✅ Эпизод {episode}: публикация{where} завершена"
 
 
+def _row_success(event: dict) -> str:
+    """Итог для строки табло: без «Эпизод N», номер уже в заголовке."""
+    metadata = event.get("metadata") or {}
+    action = metadata.get("action")
+    if action == "published":
+        return "✅ опубликовано"
+    if action == "draft":
+        text = "✅ черновик сохранён, подписчики его пока не видят"
+        if publish_at := metadata.get("publish_at"):
+            text += f"; дата публикации в черновике: {escape(publish_at)}"
+        return text
+    if action == "scheduled":
+        when = f" на {escape(publish_at)}" if (publish_at := metadata.get("publish_at")) else ""
+        return f"✅ отложенная публикация запланирована{when}"
+    return "✅ файл загружен" if not event.get("number") else "✅ готово"
+
+
+def _row_progress(event: dict) -> str:
+    """Ход для строки табло: шаг или проценты загрузки файла."""
+    if event.get("status") == "pending" and (stage := _stage(event)):
+        return f"⏳ {escape(stage_title(stage))}"
+    percent = _percent(event.get("progress"))
+    text = f"📤 {percent:.0f}% {bar(percent / 100)}"
+    if speed := event.get("transfer_speed"):
+        text += f" {speed / 1024 / 1024:.1f} МБ/с"
+    return text
+
+
 def _percent(progress) -> float:
     """Доля 0..1 из publisher'а или уже готовые проценты."""
     if isinstance(progress, float) and progress <= 1:
@@ -118,6 +156,12 @@ class TelegramUpdater:
         chat_id, message_id = event.get("chat_id"), event.get("message_id")
         if not chat_id or not message_id:
             logger.warning(f"Missing chat_id or message_id in event: {event}")
+            return
+        if board := self._board(event):
+            if finished:
+                await boards.update(board, event[PLATFORM_KEY], publish_board.DONE, _row_success(event))
+            else:
+                await boards.update(board, event[PLATFORM_KEY], publish_board.RUNNING, _row_progress(event))
             return
         if self._is_finished(chat_id, message_id):
             logger.debug(f"Progress after the final status ignored: {event}")
@@ -139,6 +183,16 @@ class TelegramUpdater:
         chat_id, message_id = event.get("chat_id"), event.get("message_id")
         if not chat_id or not message_id:
             logger.warning(f"Missing chat_id or message_id in event: {event}")
+            return
+
+        if board := self._board(event):
+            url = (event.get("metadata") or {}).get("url")
+            if success:
+                await boards.update(board, event[PLATFORM_KEY], publish_board.DONE, _row_success(event), url=url)
+            else:
+                stage = _stage(event)
+                text = f"❌ ошибка на шаге «{escape(stage_title(stage))}»" if stage else "❌ ошибка"
+                await boards.update(board, event[PLATFORM_KEY], publish_board.FAILED, text, error=error)
             return
 
         number = event.get("number")
@@ -171,6 +225,13 @@ class TelegramUpdater:
         attempt = metadata.get("attempt", "?")
         attempts = metadata.get("attempts", "?")
         stage = metadata.get("stage", "?")
+        if board := self._board(event):
+            text = (
+                f"🔁 попытка {escape(attempt)}/{escape(attempts)} не удалась "
+                f"на шаге «{escape(stage_title(stage))}», повторяю"
+            )
+            await boards.update(board, event[PLATFORM_KEY], publish_board.RETRY, text, error=event.get("error"))
+            return
         text = (
             f"🔁 {_subject(event)}: попытка {escape(attempt)}/{escape(attempts)} "
             f"не удалась на шаге <code>{escape(stage)}</code>, повторяю"
@@ -178,6 +239,13 @@ class TelegramUpdater:
         if error := event.get("error"):
             text += f"\n<code>{escape(error)}</code>"
         await self._edit(chat_id, message_id, text)
+
+    @staticmethod
+    def _board(event: dict) -> publish_board.Board | None:
+        """Табло публикации этого сообщения, если оно есть и площадка известна."""
+        if not event.get(PLATFORM_KEY):
+            return None
+        return boards.get(event.get("chat_id"), event.get("message_id"))
 
     def _is_finished(self, chat_id, message_id) -> bool:
         return (str(chat_id), str(message_id)) in self._finished

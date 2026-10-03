@@ -115,7 +115,6 @@ boosty_upload = Опубликовать aftershow на Boosty
 vk_upload = Опубликовать aftershow для донов VK
 patreon_upload = Опубликовать aftershow на Patreon
 sponsr_upload = Опубликовать aftershow на Sponsr
-paywalled_publishing = ⏳ Публикация aftershow на { $platform }...
 forwarded = Переслали в чат!
 forward_failed = Ошибка при пересылке, попробуйте позже
 
@@ -193,6 +192,12 @@ topics_remove_marked = Удалить отмеченные ({ $count })
 topics_undo = ↩️ Вернуть
 topics_kind_topic = ТЕМА
 topics_kind_question = ВОПРОС
+topics_list_heading = Темы и вопросы
+topics_column_number = №
+topics_column_kind = Тип
+topics_column_text = Текст
+topics_column_author = От кого
+topics_column_when = Когда
 topics_list_title = Список тем и вопросов:
 topics_list_empty = Список тем и вопросов пуст: пока никто ничего не предложил.
 topics_marked = Отмечено: { $numbers }
@@ -259,3 +264,23 @@ topics_form_cancelled = Хорошо, в другой раз.
 topics_form_expired = Анкета устарела. Начни заново: /topic или /question.
 topics_form_open_private = Открыть анкету в личке
 topics_form_go_private = Показать анкету здесь не получилось. Открой её в личке бота:
+
+## /status
+
+status_title = PodBoxBot: состояние
+status_version = Версия
+status_uptime = Работает
+status_updates = Обработано сообщений
+status_errors = Ошибок
+status_rss = Слежение за лентой
+status_topics = Тем и вопросов в списке
+status_on = включено
+status_off = выключено
+status_publications = Последние публикации
+status_publications_none = После запуска бота публикаций не было
+status_column_what = Что
+status_column_value = Значение
+status_column_episode = Выпуск
+status_column_platform = Площадка
+status_column_state = Состояние
+status_column_when = Когда
