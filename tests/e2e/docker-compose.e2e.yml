@@ -36,6 +36,9 @@ services:
       FTP_LOGIN: e2e
       FTP_PASSWORD: e2e
       WP_URL: http://127.0.0.1:9
+      # Telethon не знает rich-сообщений и видит их пустыми: e2e читает
+      # списки и статусы обычным текстом.
+      RICH_MESSAGES: "false"
   publisher_ftp:
     depends_on:
       sftp:

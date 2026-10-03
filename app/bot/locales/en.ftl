@@ -51,7 +51,7 @@ status_tags = Setting tags and the cover
 status_tags_done = Tags and the cover are set
 status_send = Sending the finished file
 status_send_done = File sent
-status_episode_title = 🎙 Episode { $number }: { $title }
+status_episode_title = 🎙 { $title }
 status_tags_failed = did not work. Start again: /new
     <code>{ $error }</code>
 status_send_failed = Telegram did not accept the file. Start again: /new

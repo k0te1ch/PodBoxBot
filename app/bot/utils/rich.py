@@ -21,6 +21,8 @@ import config as bot_config
 
 NO_PREVIEW = LinkPreviewOptions(is_disabled=True)
 NOT_MODIFIED = "message is not modified"
+# Telegram отменил правку, потому что её догнала следующая: в сообщении уже более новое.
+SUPERSEDED = "canceled by new edit"
 
 
 def enabled() -> bool:
@@ -78,7 +80,7 @@ async def edit(
             )
             return
         except TelegramBadRequest as error:
-            if NOT_MODIFIED in str(error):
+            if NOT_MODIFIED in str(error) or SUPERSEDED in str(error):
                 return
             logger.warning(f"rich message was not edited, falling back to text: {error!r}")
     try:
@@ -90,5 +92,5 @@ async def edit(
             link_preview_options=NO_PREVIEW,
         )
     except TelegramBadRequest as error:
-        if NOT_MODIFIED not in str(error):
+        if NOT_MODIFIED not in str(error) and SUPERSEDED not in str(error):
             raise
