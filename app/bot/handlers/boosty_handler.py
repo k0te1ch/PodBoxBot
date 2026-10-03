@@ -6,9 +6,10 @@ from sagenza_tgbot_sdk.menus import MenuContext
 
 from config import FILES_PATH
 from services.i18n import t
+from services.publish_board import boards
 from shared.kafka.models.boosty_event import BoostyEvent
 from utils.menu_context import username as username_of
-from utils.publishing import publish_request
+from utils.publishing import board_title, publish_request
 from utils.template_store import load as load_template_info
 
 BOOSTY_UPLOAD_TOPIC = "publisher.boosty.upload"
@@ -28,8 +29,7 @@ async def upload_Boosty(ctx: MenuContext) -> None:
     info = stored["info"]
     file_path = f"{FILES_PATH}/{file_name}"
 
-    # Отправляем сообщение-статус
-    msg = await message.answer("⏳ Публикация aftershow на Boosty...")
+    msg = await boards.open(message, "boosty", board_title(info, file_name))
 
     try:
         # Boosty — только для aftershow: пост уходит на платный уровень + цену
@@ -39,7 +39,7 @@ async def upload_Boosty(ctx: MenuContext) -> None:
             event_type="request",
             username=username,
             status="pending",
-            chat_id=str(msg.chat.id),
+            chat_id=str(msg.chat_id),
             message_id=str(msg.message_id),
             path=file_path,
             number=info["number"],

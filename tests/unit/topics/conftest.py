@@ -47,6 +47,8 @@ def topics_on(monkeypatch):
     monkeypatch.setattr(config, "TOPICS_HASHTAGS", ["тема"])
     monkeypatch.setattr(config, "TOPICS_QUESTION_HASHTAGS", ["вопрос"])
     monkeypatch.setattr(config, "TOPICS_ACK_REACTION", True)
+    # Тесты списка смотрят на обычный текст; таблица проверяется отдельно.
+    monkeypatch.setattr(config, "RICH_MESSAGES", False)
     monkeypatch.setattr(config, "TOPICS_ACK_EMOJI", ["👍"])
     monkeypatch.setattr(config, "TOPICS_ACK_EPHEMERAL", True)
     monkeypatch.setattr(config, "TOPICS_DAILY_LIMIT", 2)

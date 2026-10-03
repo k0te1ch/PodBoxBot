@@ -10,19 +10,37 @@ from pydantic import BaseModel
 from sagenza_tgbot_sdk.menus import MenuContext
 
 from config import KAFKA_SERVER, SCHEMA_REGISTRY_URL
+from services import publish_board
 from services.metrics import bot_metrics
+from services.publish_board import StatusRef, boards
 from shared.kafka.producer import KafkaProducer
 
 SCHEMAS_DIR = "/app/shared/kafka/schemas"
 SENT_TEXT = "✅ Запрос на публикацию отправлен. Ожидайте результат"
 FAILED_TEXT = "Ошибка при отправке запроса"
 QUEUED_STATUS = "{title}: запрос принят, ждём сервис публикации…"
+FAILED_ROW = "❌ запрос не отправлен: очередь публикаций недоступна"
 FAILED_STATUS = "❌ {title}: запрос не отправлен — очередь публикаций недоступна.\n{error}"
 
 
-async def _set_status(status: Message | None, text: str) -> None:
+def board_title(info: dict | None, file_name: str) -> str:
+    """Заголовок табло публикации: по номеру выпуска, а без шаблона по имени файла."""
+    number = (info or {}).get("number")
+    return f"Выпуск {number}: публикация" if number else f"{file_name}: публикация"
+
+
+async def _set_board(status: StatusRef, platform: str | None, state: str, text: str, error: str | None = None) -> bool:
+    """Состояние площадки в табло публикации; False, если табло для этого сообщения нет."""
+    board = boards.get(status.chat_id, status.message_id)
+    if board is None or platform is None:
+        return False
+    await boards.update(board, platform, state, text, error=error)
+    return True
+
+
+async def _set_status(status: Message | StatusRef | None, text: str) -> None:
     """Правит статус-сообщение публикации; его сбой не должен ронять кнопку."""
-    if status is None:
+    if status is None or isinstance(status, StatusRef):
         return
     try:
         await status.edit_text(text, parse_mode=None)
@@ -35,14 +53,15 @@ async def publish_request(
     topic: str,
     schema: str,
     event: BaseModel,
-    status: Message | None = None,
+    status: Message | StatusRef | None = None,
     title: str = "Публикация",
     platform: str | None = None,
 ) -> bool:
     """Отправляет ``event`` в ``topic`` и отвечает на нажатие кнопки; True при успехе.
 
-    ``status`` — сообщение, которое дальше правят события publisher'а: здесь в
-    него пишется, ушёл ли запрос в очередь. ``platform`` — метка площадки в
+    ``status`` — сообщение-табло, которое дальше правят события publisher'а
+    (:mod:`services.publish_board`): здесь в строку площадки пишется, ушёл ли
+    запрос в очередь. ``platform`` — метка площадки в
     метриках (``ftp``, ``wp``, ``boosty``, …); без неё запрос не считается.
     """
     try:
@@ -52,7 +71,12 @@ async def publish_request(
         logger.error(f"[Kafka] failed to send {type(event).__name__} to {topic}: {e!r}")
         if platform:
             bot_metrics.publish_request_failed(platform)
-        await _set_status(status, FAILED_STATUS.format(title=title, error=f"{type(e).__name__}: {e}"))
+        reason = f"{type(e).__name__}: {e}"
+        if not (
+            isinstance(status, StatusRef)
+            and await _set_board(status, platform, publish_board.FAILED, FAILED_ROW, error=reason)
+        ):
+            await _set_status(status, FAILED_STATUS.format(title=title, error=reason))
         await ctx.answer(FAILED_TEXT, alert=True)
         return False
     logger.info(f"[Kafka] {type(event).__name__} sent to {topic}")
@@ -63,6 +87,10 @@ async def publish_request(
             number=getattr(event, "number", None),
             file_name=getattr(event, "file_name", None),
         )
-    await _set_status(status, QUEUED_STATUS.format(title=title))
+    if not (
+        isinstance(status, StatusRef)
+        and await _set_board(status, platform, publish_board.QUEUED, publish_board.QUEUED_TEXT)
+    ):
+        await _set_status(status, QUEUED_STATUS.format(title=title))
     await ctx.answer(SENT_TEXT, alert=True)
     return True

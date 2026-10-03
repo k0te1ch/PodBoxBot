@@ -142,6 +142,11 @@ class Settings(BaseSettings):
     # Сколько неудачных опросов подряд до предупреждения админам.
     RSS_FAILURE_ALERT: int = 6
 
+    # Списки и статусы таблицей: rich-сообщения Telegram (Bot API 10.1+). Если
+    # у кого-то из админов старый клиент показывает их плохо, false вернёт
+    # обычный текст.
+    RICH_MESSAGES: bool = True
+
     # Тихий ли закреп анонса в чате форварда: True — без уведомления подписчикам.
     FORWARD_PIN_SILENT: bool = False
 
@@ -313,6 +318,7 @@ API_TOKEN = settings.TELEGRAM_API_TOKEN
 SKIP_UPDATES = settings.SKIP_UPDATES
 FORWARD_CHAT_USERNAME = settings.FORWARD_CHAT_USERNAME
 FORWARD_PIN_SILENT = settings.FORWARD_PIN_SILENT
+RICH_MESSAGES = settings.RICH_MESSAGES
 BOOSTY_ENABLED = settings.BOOSTY_ENABLED
 VK_ENABLED = settings.VK_ENABLED
 PATREON_ENABLED = settings.PATREON_ENABLED

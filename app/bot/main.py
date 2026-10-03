@@ -19,7 +19,6 @@ from sagenza_tgbot_sdk.host_watch import HostWatchModule, HostWatchSettings
 from sagenza_tgbot_sdk.logs import LoggingModule, LoggingSettings
 from sagenza_tgbot_sdk.metrics import MetricsModule
 from sagenza_tgbot_sdk.notify import NotifyModule
-from sagenza_tgbot_sdk.status import StatusModule
 
 from handlers import ROUTERS, bot_menus
 from middlewares.base.admin_activity_middleware import AdminActivityMiddleware
@@ -29,6 +28,7 @@ from services.kafka.handlers.upload_event import record_publish_metrics
 from services.metrics import bot_metrics
 from services.none_module import _NoneModule
 from services.rss import RssWatcher
+from services.telegram_updater import PLATFORM_KEY
 from services.topics.runtime import refresh_list_size, topics_enabled
 from utils.error_reporting import register_error_handler
 from utils.release_notes import get_version, send_release_note
@@ -159,7 +159,9 @@ async def on_startup():
 async def _route_result(route, platform: str, event: dict) -> None:
     """Считает итог публикации в метриках и передаёт событие роутеру."""
     await record_publish_metrics(event, platform)
-    await route(event)
+    # В самом событии площадка есть не всегда, а табло публикации
+    # (services.publish_board) ведёт строку на каждую.
+    await route({**event, PLATFORM_KEY: platform})
 
 
 async def _supervise_consumer(consumer: "KafkaConsumer", handler, restart_delay: float = 5.0) -> None:
@@ -220,6 +222,7 @@ def _setup_sdk(dp: Dispatcher) -> None:
     # медленных апдейтах. Ошибки остаются на своём обработчике
     # (utils/error_reporting.py): он шлёт разработчику полный трейсбек без
     # токена бота, а errors из SDK шлёт всем админам только текст исключения.
+    # /status тоже свой (handlers/status_handler.py): с публикациями и списком тем.
     settings = SdkSettings(bot_token=API_TOKEN, admin_ids=frozenset(ADMINS_ID))
     host_watch = HostWatchSettings(threshold_percent=DISK_ALERT_PERCENT, interval_seconds=DISK_CHECK_INTERVAL)
     modules = [
@@ -227,7 +230,6 @@ def _setup_sdk(dp: Dispatcher) -> None:
         # Реестр бота с бизнес-метриками и метриками процесса (services/metrics.py).
         MetricsModule(metrics=bot_metrics.sdk),
         HealthModule(),
-        StatusModule(),
         HostWatchModule(host_watch),
         bot_menus,
     ]

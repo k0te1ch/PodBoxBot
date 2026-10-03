@@ -60,12 +60,12 @@ async def test_sends_wordpress_event_built_from_sidecar_and_audio(monkeypatch, p
 
 
 @pytest.mark.asyncio
-async def test_missing_sidecar_is_reported_without_publishing(monkeypatch, publish):
+async def test_missing_sidecar_is_reported_without_publishing(monkeypatch, publish, publish_board_stub):
     monkeypatch.setattr(wordpress_handler, "load_template_info", AsyncMock(return_value=None))
     ctx = _ctx()
 
     await wordpress_handler.upload_WP(ctx)
 
     publish.assert_not_awaited()
-    ctx.message.answer.assert_not_awaited()
+    publish_board_stub.assert_not_awaited()
     assert ctx.answer.await_args.kwargs == {"alert": True}

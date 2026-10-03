@@ -13,9 +13,10 @@ from sagenza_tgbot_sdk.menus import MenuContext
 
 from config import FILES_PATH
 from services.i18n import t
+from services.publish_board import boards
 from shared.kafka.models.paywalled_event import PatreonEvent, PaywalledPostEvent, SponsrEvent, VkEvent
 from utils.menu_context import username as username_of
-from utils.publishing import publish_request
+from utils.publishing import board_title, publish_request
 from utils.template_store import load as load_template_info
 
 
@@ -53,13 +54,13 @@ def upload_to(platform: Platform):
             return await ctx.answer(t("invalid_input", ctx.locale), alert=True)
 
         info = stored["info"]
-        msg = await message.answer(t("paywalled_publishing", ctx.locale, platform=platform.title))
+        msg = await boards.open(message, platform.key, board_title(info, file_name))
         try:
             event = platform.event_cls(
                 event_type="request",
                 username=username,
                 status="pending",
-                chat_id=str(msg.chat.id),
+                chat_id=str(msg.chat_id),
                 message_id=str(msg.message_id),
                 path=f"{FILES_PATH}/{file_name}",
                 number=info["number"],
@@ -73,7 +74,9 @@ def upload_to(platform: Platform):
             log.error(f"Ошибка валидации {platform.event_cls.__name__}: {e.json()}")
             return await ctx.answer("Ошибка валидации данных", alert=True)
 
-        await publish_request(ctx, platform.topic, platform.schema, event, platform=platform.key)
+        await publish_request(
+            ctx, platform.topic, platform.schema, event, status=msg, title=platform.title, platform=platform.key
+        )
 
     upload.__name__ = f"upload_{platform.key}"
     return upload

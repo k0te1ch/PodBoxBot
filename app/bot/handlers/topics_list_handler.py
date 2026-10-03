@@ -33,7 +33,7 @@ from aiogram import Bot, F, Router
 from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
 from aiogram.filters import Command, CommandObject
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import CallbackQuery, InlineKeyboardMarkup, Message
 from loguru import logger
 from sagenza_tgbot_sdk.menus import Button, Menu, MenuContext, Submenu
 
@@ -53,6 +53,7 @@ from handlers.topics_list_view import (
     authors_view,
     is_private,
     last_page_markup,
+    marked_page,
     marked_text,
     numbered_lines,
     remark,
@@ -73,6 +74,7 @@ from services.topics.runtime import (
     view_store,
 )
 from services.topics.views import ListView
+from utils import rich
 
 TOPICS_MENU = "topics"
 LIST_COMMANDS = ("topics", "список")
@@ -147,11 +149,28 @@ async def _mark(callback: CallbackQuery, data: ListCallback, locale: str) -> Non
         return
     await callback.answer(marked_text(view, locale))
     # Отметка видна и в тексте списка, и на кнопке: правится всё сообщение.
-    text = mark_lines(message.text or "", view.marked)
     markup = remark(message.reply_markup, view, locale)
-    await _edit(message.edit_text(text, reply_markup=markup, link_preview_options=NO_PREVIEW))
+    if message.text is not None:
+        text = mark_lines(message.text, view.marked)
+        await _edit(message.edit_text(text, reply_markup=markup, link_preview_options=NO_PREVIEW))
+    else:
+        # Rich-сообщение: текста у него нет, таблица собирается заново по
+        # номерам на его кнопках.
+        page = await marked_page(view, _numbers_on(message.reply_markup), locale)
+        await rich.edit(callback.bot, message.chat.id, message.message_id, page.html, page.text, markup)
     if view.last_message_id not in (None, message.message_id):
         await _recount(callback, view, locale)
+
+
+def _numbers_on(markup: InlineKeyboardMarkup | None) -> list[int]:
+    """Номера пунктов сообщения списка: по кнопкам отметки под ним."""
+    numbers = []
+    for row in markup.inline_keyboard if markup else []:
+        for button in row:
+            data = button.callback_data or ""
+            if data.startswith(f"{ListCallback.__prefix__}:{MARK}:"):
+                numbers.append(ListCallback.unpack(data).n)
+    return numbers
 
 
 async def _recount(callback: CallbackQuery, view: ListView, locale: str) -> None:
@@ -268,7 +287,8 @@ async def on_list_button(
         await _undo(callback, callback_data.v, locale, metrics)
     elif action == REFRESH:
         await callback.answer()
-        await send_list(bot, message.chat.id, locale, private=is_private(message))
+        # Свежий список рисуется на месте старого, если умещается в одно сообщение.
+        await send_list(bot, message.chat.id, locale, private=is_private(message), replace=message)
     else:
         await _private_action(callback, callback_data, state, locale, metrics)
 
@@ -282,23 +302,6 @@ async def on_foreign_button(callback: CallbackQuery):
 async def _show_from_menu(ctx: MenuContext) -> None:
     await ctx.answer()
     await send_list(ctx.data["bot"], ctx.message.chat.id, ctx.locale, private=True)
-
-
-def _add_from_menu(kind: Kind):
-    async def add(ctx: MenuContext) -> None:
-        await ctx.answer()
-        user = ctx.event.from_user if ctx.event is not None else None
-        await start_private_form(
-            ctx.data["bot"],
-            ctx.data["state"],
-            ctx.message.chat.id,
-            user,
-            kind,
-            trusted=True,
-            metrics=ctx.data.get("metrics"),
-        )
-
-    return add
 
 
 async def _authors_from_menu(ctx: MenuContext) -> None:
@@ -315,15 +318,12 @@ def topics_submenu(visible_if) -> Submenu:
         columns=2,
         items=[
             Button("topics_show", id="show", handler=_show_from_menu, row=True),
-            Button("topics_add_topic", id="add_topic", handler=_add_from_menu(Kind.TOPIC)),
-            Button("topics_add_question", id="add_question", handler=_add_from_menu(Kind.QUESTION)),
-            Button("topics_authors", id="authors", handler=_authors_from_menu, row=True),
+            Button("topics_authors", id="authors", handler=_authors_from_menu),
             Button(
                 "topics_post_button",
                 id="post_button",
                 handler=post_suggest_button,
                 confirm=True,
-                row=True,
                 visible_if=form_enabled,
             ),
         ],

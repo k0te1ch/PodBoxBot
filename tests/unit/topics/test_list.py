@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 import pytest_asyncio
 from aiogram.enums import ChatType
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import CommandObject
 from aiogram.types import CallbackQuery, Chat, InlineKeyboardMarkup, Message, User
 from sagenza_tgbot_sdk.menus.testing import crawl
@@ -47,6 +48,7 @@ def _message(bot, text="", *, chat_id=ADMIN_ID, chat_type=ChatType.PRIVATE, user
     msg.chat.type = chat_type
     msg.chat.username = None
     msg.reply_markup = markup
+    msg.message_id = 500
     msg.answer = AsyncMock()
     msg.edit_text = AsyncMock()
     msg.edit_reply_markup = AsyncMock()
@@ -122,7 +124,6 @@ async def test_list_command_shows_the_list_with_buttons(three, bot):
         ["1", "2", "3"],
         [_remove_label(), t("topics_refresh")],
         [t("topics_add_topic"), t("topics_add_question")],
-        [t("topics_authors")],
     ]
     view = await view_store().last(ADMIN_ID)
     assert view.ids == [item.id for item in three]
@@ -137,7 +138,6 @@ async def test_empty_list_has_a_clear_phrase_and_no_delete_button(fake_redis, bo
     assert _labels(shown["reply_markup"]) == [
         [t("topics_refresh")],
         [t("topics_add_topic"), t("topics_add_question")],
-        [t("topics_authors")],
     ]
 
 
@@ -483,15 +483,36 @@ async def test_buttons_of_an_old_list_say_it_is_stale(three, bot, label):
 
 
 @pytest.mark.asyncio
-async def test_refresh_sends_a_fresh_list(three, add_item, bot):
+async def test_refresh_redraws_the_list_in_place(three, add_item, bot):
+    """«Обновить» правит то же сообщение, а не присылает список следом."""
     await lh.show_list(_message(bot, "/topics"), bot)
     markup = _sent(bot)[0]["reply_markup"]
     await add_item("свежая тема про погоду")
     bot.send_message.reset_mock()
+    bot.edit_message_text = AsyncMock()
 
     await _click(bot, _data(markup, t("topics_refresh")), _message(bot, markup=markup))
 
-    assert "4) ТЕМА - свежая тема про погоду" in _texts(bot)[0]
+    bot.send_message.assert_not_awaited()
+    edited = bot.edit_message_text.await_args.kwargs
+    assert edited["message_id"] == 500
+    assert "4) ТЕМА - свежая тема про погоду" in edited["text"]
+    view = await view_store().last(ADMIN_ID)
+    assert (len(view.ids), view.last_message_id) == (4, 500)
+
+
+@pytest.mark.asyncio
+async def test_refresh_of_a_long_list_sends_it_again(fake_redis, add_item, bot, monkeypatch):
+    monkeypatch.setattr(listing, "MAX_PAGE_ITEMS", 2)
+    for index in range(3):
+        await add_item(f"тема номер {index}")
+    await lh.send_list(bot, ADMIN_ID, "ru", private=True)
+    markup = _sent(bot)[-1]["reply_markup"]
+    bot.send_message.reset_mock()
+
+    await _click(bot, _data(markup, t("topics_refresh")), _message(bot, markup=markup))
+
+    assert len(_sent(bot)) == 2
 
 
 # --- вернуть --------------------------------------------------------------------
@@ -566,11 +587,9 @@ async def test_add_buttons_open_the_admin_form(three, bot, label, ask):
 
 @pytest.mark.asyncio
 async def test_authors_can_be_banned_and_unbanned_from_the_list(three, bot):
-    await lh.show_list(_message(bot, "/topics"), bot)
-    markup = _sent(bot)[0]["reply_markup"]
-    under_list = _message(bot, markup=markup)
+    under_list = _message(bot)
 
-    await _click(bot, _data(markup, t("topics_authors")), under_list)
+    await _click(bot, ListCallback(a=lh.AUTHORS), under_list)
     text, authors = under_list.answer.await_args.args[0], under_list.answer.await_args.kwargs["reply_markup"]
     assert text == t("topics_authors_title")
     assert _labels(authors) == [
@@ -736,16 +755,12 @@ async def test_topics_section_is_hidden_when_the_flag_is_off(fake_redis, monkeyp
 async def test_topics_menu_buttons(three, bot, monkeypatch):
     ctx = menus.menus.context(_admin_event(), locale="ru")
     _text, markup = await menus.menus.render(ctx, lh.TOPICS_MENU)
-    assert _labels(markup)[:4] == [
-        [t("topics_show")],
-        [t("topics_add_topic"), t("topics_add_question")],
-        [t("topics_authors")],
-        [t("topics_post_button")],
-    ]
+    # Добавление живёт под самим списком: в разделе только список, авторы и кнопка в чат.
+    assert _labels(markup)[:2] == [[t("topics_show")], [t("topics_authors"), t("topics_post_button")]]
 
     monkeypatch.setattr(config, "TOPICS_FORM_MODE", "off")
     _text, markup = await menus.menus.render(ctx, lh.TOPICS_MENU)
-    assert [t("topics_post_button")] not in _labels(markup)
+    assert t("topics_post_button") not in [label for row in _labels(markup) for label in row]
 
 
 @pytest.mark.asyncio
@@ -836,3 +851,75 @@ async def test_channel_author_can_be_banned_from_the_panel(fake_redis, add_item,
 
     assert _labels(markup) == [[t("topics_author", name="Podcast channel", count=1)]]
     assert _data(markup, t("topics_author", name="Podcast channel", count=1)).n == -1005550001111
+
+
+# --- таблица (rich-сообщение) -------------------------------------------------------
+
+
+@pytest.fixture
+def rich_on(monkeypatch, bot):
+    monkeypatch.setattr(config, "RICH_MESSAGES", True)
+    bot.send_rich_message = AsyncMock(return_value=MagicMock(message_id=700))
+    bot.edit_message_text = AsyncMock()
+    return bot
+
+
+def _html(call) -> str:
+    return call.kwargs["rich_message"].html
+
+
+@pytest.mark.asyncio
+async def test_list_is_shown_as_a_table(three, rich_on):
+    await lh.show_list(_message(rich_on, "/topics"), rich_on)
+
+    rich_on.send_message.assert_not_awaited()
+    table = _html(rich_on.send_rich_message.await_args)
+    assert table.startswith(f"<h4>{t('topics_list_heading')}</h4><table bordered striped>")
+    for column in ("number", "kind", "text", "author", "when"):
+        assert f"<th>{t(f'topics_column_{column}')}</th>" in table
+    assert "<td>1</td><td>ВОПРОС</td><td>Почему небо голубое?</td><td>@listener</td>" in table
+    assert "<td>3</td><td>ТЕМА</td><td>Как съездили в отпуск</td>" in table
+    # Кнопки под таблицей те же, что под текстовым списком.
+    markup = rich_on.send_rich_message.await_args.kwargs["reply_markup"]
+    assert _labels(markup)[0] == ["1", "2", "3"]
+    assert (await view_store().last(ADMIN_ID)).last_message_id == 700
+
+
+@pytest.mark.asyncio
+async def test_mark_in_the_table_strikes_the_row_in_place(three, rich_on):
+    await lh.show_list(_message(rich_on, "/topics"), rich_on)
+    markup = rich_on.send_rich_message.await_args.kwargs["reply_markup"]
+    table_message = _message(rich_on, markup=markup)
+    table_message.text = None
+    table_message.message_id = 700
+
+    await _click(rich_on, _data(markup, "2"), table_message)
+
+    edited = rich_on.edit_message_text.await_args
+    assert edited.kwargs["message_id"] == 700
+    html = _html(edited)
+    assert f"<td>{MARK}2</td><td>ВОПРОС</td><td><s>Почему птицы летают?</s></td>" in html
+    assert "<td>1</td><td>ВОПРОС</td><td>Почему небо голубое?</td>" in html
+    assert _labels(edited.kwargs["reply_markup"])[0] == ["1", f"{MARK}2", "3"]
+    assert _labels(edited.kwargs["reply_markup"])[1][0] == _remove_label(1)
+    table_message.edit_text.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_table_falls_back_to_text_when_telegram_refuses_it(three, rich_on):
+    rich_on.send_rich_message.side_effect = TelegramBadRequest(MagicMock(), "RICH_MESSAGE_INVALID")
+
+    await lh.show_list(_message(rich_on, "/topics"), rich_on)
+
+    assert _texts(rich_on)[0].startswith("Список тем и вопросов:\n1) ВОПРОС")
+
+
+@pytest.mark.asyncio
+async def test_table_escapes_listener_text(fake_redis, add_item, rich_on):
+    await add_item("<b>жир</b> & co", name="<i>x</i>")
+
+    await lh.show_list(_message(rich_on, "/topics"), rich_on)
+
+    table = _html(rich_on.send_rich_message.await_args)
+    assert "&lt;b&gt;жир&lt;/b&gt; &amp; co" in table
+    assert "&lt;i&gt;x&lt;/i&gt;" in table

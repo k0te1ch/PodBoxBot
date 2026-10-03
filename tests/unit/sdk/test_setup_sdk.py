@@ -20,7 +20,6 @@ def test_sdk_installs_bot_modules():
         "metrics",
         "notify",
         "health",
-        "status",
         "host_watch",
         "menus",
     }
