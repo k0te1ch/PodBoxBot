@@ -35,23 +35,26 @@ def test_topics_are_off_by_default():
     assert not [name for name in fields if name.startswith("TOPICS_POLL")]
 
 
-def test_ack_emoji_defaults_to_thumbs_up():
-    assert config.Settings.model_fields["TOPICS_ACK_EMOJI"].default == "👍"
+def test_ack_emoji_set_drops_what_telegram_rejects():
+    """✅ не входит в реакции Telegram: из набора по умолчанию она молча выпадает."""
+    default = config.Settings.model_fields["TOPICS_ACK_EMOJI"].default
+
+    assert default == "👍 🫡 👌 ✅ 🔥"
+    assert config.reaction_set(default) == ["👍", "🫡", "👌", "🔥"]
 
 
-@pytest.mark.parametrize("emoji", ["👍", "🫡", "👌", "🔥"])
-def test_ack_emoji_accepts_telegram_reactions(emoji):
-    assert config.Settings.allowed_reaction(emoji) == emoji
-
-
-def test_ack_emoji_ignores_the_variation_selector():
-    assert config.Settings.allowed_reaction("✍️ ") == "✍"
-
-
-@pytest.mark.parametrize("emoji", ["✅", "ok", ""])
-def test_ack_emoji_that_telegram_rejects_falls_back(emoji):
-    """✅ не входит в реакции Telegram: с ней бот перестал бы отмечать сообщения."""
-    assert config.Settings.allowed_reaction(emoji) == "👍"
+@pytest.mark.parametrize(
+    ("raw", "emoji"),
+    [
+        ("🔥", ["🔥"]),
+        ("👍,🫡 , 👍", ["👍", "🫡"]),
+        ("✍\ufe0f", ["✍"]),
+        ("✅ ok", ["👍"]),
+        ("", ["👍"]),
+    ],
+)
+def test_ack_emoji_set_is_parsed(raw, emoji):
+    assert config.reaction_set(raw) == emoji
 
 
 def _list_size(kind: str) -> str:

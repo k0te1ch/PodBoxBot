@@ -2,8 +2,9 @@
 
 * Сообщение с ``#тема`` или ``#вопрос`` (``TOPICS_HASHTAG``,
   ``TOPICS_QUESTION_HASHTAG``) в чате тем (``TOPICS_CHAT``) становится пунктом
-  списка; тип пункта задаёт хештег. Принятое бот отмечает реакцией 👍
-  (``TOPICS_ACK_REACTION``, эмодзи из ``TOPICS_ACK_EMOJI``) и пишет автору эфемерно, что добавил его в список
+  списка; тип пункта задаёт хештег. Принятое бот отмечает реакцией
+  (``TOPICS_ACK_REACTION``, случайное эмодзи из набора ``TOPICS_ACK_EMOJI``)
+  и пишет автору эфемерно, что добавил его в список
   (``TOPICS_ACK_EPHEMERAL``). При отказе (лимит, длина, бан) автор получает
   эфемерный ответ: это видит только он. Пост от имени канала считается по
   каналу: у него свой лимит, и его можно забанить.
@@ -17,10 +18,11 @@
 """
 
 import os
+import random
 from typing import Any
 
 from aiogram import Bot, F, Router
-from aiogram.exceptions import TelegramAPIError
+from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
 from aiogram.filters import Command, CommandObject
 from aiogram.types import Message, ReactionTypeEmoji
 from loguru import logger
@@ -73,14 +75,36 @@ async def record_added(result: Added, kind: Kind, source: Source, metrics: Any) 
         count_event(metrics, "topic_refused", reason=result.refusal.value)
 
 
+# Эмодзи, которые чат не принял как реакцию: админы чата могут оставить в нём
+# только часть реакций. Такие больше не пробуем, пока бот не перезапустят.
+_rejected_reactions: dict[int, set[str]] = {}
+
+
 async def react(message: Message) -> None:
-    """Реакция на сообщение, которое стало пунктом списка."""
+    """Реакция на сообщение, которое стало пунктом списка.
+
+    Эмодзи берётся случайно из ``TOPICS_ACK_EMOJI``. Если чат его не
+    разрешает, бот молча пробует следующее из набора.
+    """
     if not bot_config.TOPICS_ACK_REACTION:
         return
-    try:
-        await message.react([ReactionTypeEmoji(emoji=bot_config.TOPICS_ACK_EMOJI)])
-    except TelegramAPIError as error:
-        logger.info(f"topics: reaction on {message.message_id} failed: {error!r}")
+    rejected = _rejected_reactions.setdefault(message.chat.id, set())
+    candidates = [emoji for emoji in bot_config.TOPICS_ACK_EMOJI if emoji not in rejected]
+    random.shuffle(candidates)
+    for emoji in candidates:
+        try:
+            await message.react([ReactionTypeEmoji(emoji=emoji)])
+        except TelegramBadRequest as error:
+            if "REACTION_INVALID" not in str(error):
+                logger.info(f"topics: reaction on {message.message_id} failed: {error!r}")
+                return
+            rejected.add(emoji)
+            logger.debug(f"topics: chat {message.chat.id} does not allow the reaction {emoji}")
+        except TelegramAPIError as error:
+            logger.info(f"topics: reaction on {message.message_id} failed: {error!r}")
+            return
+        else:
+            return
 
 
 def _from_topics_chat(message: Message) -> bool:
