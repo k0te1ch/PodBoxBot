@@ -6,7 +6,10 @@
 «номер → id пункта». У снимка есть метка: по ней кнопки под старым списком
 узнают, что они устарели.
 
-Удалённое помнится отдельно и недолго: это кнопка «Вернуть».
+Удалённое помнится отдельно и недолго: это кнопка «Вернуть». Она живёт под
+самим списком, вместе со строкой «Удалил: 1, 3»: чат помнит своё последнее
+удаление, пока его можно отменить, и каждый показ списка в это время рисует
+строку и кнопку заново. Когда срок вышел, следующий показ их уже не рисует.
 """
 
 import json
@@ -33,6 +36,20 @@ class ListView:
     def item_id(self, number: int) -> int | None:
         return self.ids[number - 1] if 1 <= number <= len(self.ids) else None
 
+    @property
+    def one_message(self) -> bool:
+        """Список уместился в одно сообщение: его можно перерисовать на месте."""
+        return len(self.last_numbers) == len(self.ids)
+
+
+@dataclass
+class Removal:
+    """Последнее удаление в чате, которое ещё можно вернуть."""
+
+    token: str
+    numbers: list[int]
+    """Номера удалённых пунктов в том списке, из которого их удалили."""
+
 
 class ViewStore:
     """Снимки и «Вернуть» в Redis.
@@ -40,7 +57,9 @@ class ViewStore:
     * ``<ns>:view:<chat>``: метка и id пунктов последнего показанного списка;
     * ``<ns>:marks:<chat>:<метка>``: множество отмеченных номеров. Отдельным
       множеством, чтобы два быстрых нажатия не затирали отметки друг друга;
-    * ``<ns>:undo:<метка>``: id удалённых пунктов, пока их можно вернуть.
+    * ``<ns>:undo:<метка>``: id удалённых пунктов, пока их можно вернуть;
+    * ``<ns>:removal:<chat>``: метка и номера последнего удаления в чате, для
+      строки «Удалил: …» и кнопки «Вернуть» под списком. Живёт столько же.
     """
 
     def __init__(self, redis: Any, namespace: str = "topics") -> None:
@@ -55,6 +74,9 @@ class ViewStore:
 
     def _undo_key(self, token: str) -> str:
         return f"{self.namespace}:undo:{token}"
+
+    def _removal_key(self, chat_id: int) -> str:
+        return f"{self.namespace}:removal:{chat_id}"
 
     @staticmethod
     def new_view(item_ids: list[int], marked: list[int] | None = None) -> ListView:
@@ -102,11 +124,26 @@ class ViewStore:
             await self._redis.expire(key, VIEW_TTL_SECONDS)
         return await self.current(chat_id, token)
 
-    async def keep_removed(self, item_ids: list[int]) -> str:
-        """Запомнить удалённые пункты для «Вернуть»; в ответе метка кнопки."""
+    async def keep_removed(self, chat_id: int, item_ids: list[int], numbers: list[int]) -> str:
+        """Запомнить удалённые пункты для «Вернуть»; в ответе метка кнопки.
+
+        Вернуть можно последнее удаление в чате: новое заменяет прежнее.
+        """
         token = secrets.token_hex(4)
         await self._redis.set(self._undo_key(token), json.dumps(item_ids), ex=UNDO_TTL_SECONDS)
+        note = json.dumps({"token": token, "numbers": numbers})
+        await self._redis.set(self._removal_key(chat_id), note, ex=UNDO_TTL_SECONDS)
         return token
+
+    async def pending_removal(self, chat_id: int) -> Removal | None:
+        """Удаление, которое в этом чате ещё можно вернуть; иначе ``None``."""
+        raw = await self._redis.get(self._removal_key(chat_id))
+        if not raw:
+            return None
+        data = json.loads(raw)
+        if not await self._redis.exists(self._undo_key(data["token"])):
+            return None
+        return Removal(token=data["token"], numbers=list(data["numbers"]))
 
     async def take_removed(self, token: str) -> list[int] | None:
         """Пункты для возврата; ``None``, если время вышло или их уже вернули.

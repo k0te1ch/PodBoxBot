@@ -18,7 +18,8 @@ from the default `pytest` run** (`addopts = -m 'not e2e'` in
   - the form (`/question` without text, `/start topic` with the kind step)
     adds an item after the confirm button;
   - "удали N, M" deletes the items by the numbers of the list shown last,
-    reports what was deleted and shows the rest; "Вернуть" brings them back;
+    answers with one message: the rest of the list, "Удалил: N, M" under it
+    and a "Вернуть" button that brings them back in place;
   - the number buttons under the list tick items and "Удалить отмеченные"
     deletes them; `/done N` works like the text;
   - with `E2E_TOPICS_CHAT` (a group with the bot as admin and the test

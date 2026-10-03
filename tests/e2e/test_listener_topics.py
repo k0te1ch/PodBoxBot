@@ -66,17 +66,20 @@ def _number(listing: str, kind: str, text: str) -> int:
 
 
 async def _delete(chat, phrase, *lines: tuple[str, str]):
-    """Удалить пункты ``(тип, текст)`` командой «удали …»; в ответе отчёт бота об удалении."""
+    """Удалить пункты ``(тип, текст)`` командой «удали …».
+
+    В ответе одно сообщение: остаток списка, под ним «Удалил: номера» и
+    кнопка «Вернуть».
+    """
     listing, _last = await _show_list(chat, phrase)
-    numbers = [_number(listing, kind, text) for kind, text in lines]
+    numbers = sorted(_number(listing, kind, text) for kind, text in lines)
     await chat.send("удали " + ", ".join(map(str, numbers)))
-    report = await chat.expect(contains=phrase("topics_removed"), timeout=15)
-    for _kind, text in lines:
-        assert text in report.message
-    rest = await chat.get_reply(timeout=15)
+    removed = phrase("topics_removed", full=True).replace("{ $numbers }", ", ".join(map(str, numbers)))
+    rest = await chat.expect(contains=removed, timeout=15)
     for _kind, text in lines:
         assert text not in rest.message
-    return report
+    assert _has_button(rest, phrase("topics_undo", full=True))
+    return rest
 
 
 class _EphemeralInbox:
@@ -194,12 +197,12 @@ async def test_deleted_items_can_be_restored(tester, bot_username, phrase):
             await chat.command(f"topic {text}")
             await chat.expect(contains=text, timeout=15)
 
-        report = await _delete(chat, phrase, (kind, first), (kind, second))
-        await report.click(text=phrase("topics_undo", full=True))
-        # Отчёт об удалении меняется на «Вернул в список», следом приходит свежий список.
-        restored = await chat.expect(contains=first, timeout=15)
-        assert second in restored.message
-        await chat.wait_until(message=report, contains=phrase("topics_restored"), timeout=10)
+        rest = await _delete(chat, phrase, (kind, first), (kind, second))
+        await rest.click(text=phrase("topics_undo", full=True))
+        # Тот же список правится на месте: пункты снова в нём, под ним «Вернул: номера».
+        restored = await chat.wait_until(message=rest, contains=phrase("topics_restored"), timeout=10)
+        assert first in restored.message and second in restored.message
+        assert not _has_button(restored, phrase("topics_undo", full=True))
 
         # Номера неизвестного пункта бот не удаляет и ничего не трогает.
         listing, _last = await _show_list(chat, phrase)
@@ -231,10 +234,14 @@ async def test_buttons_under_the_list_delete_ticked_items(tester, bot_username, 
         assert struck, "the ticked item is not struck through"
         remove = MARK + phrase("topics_remove_marked", full=True).replace("{ $count }", "1")
         await ticked.click(text=remove)
-        report = await chat.expect(contains=phrase("topics_removed"), timeout=15)
-        assert text in report.message
-        rest = await chat.get_reply(timeout=15)
+        # Список из одного сообщения правится на месте; длинный приходит заново.
+        removed = phrase("topics_removed", full=True).replace("{ $numbers }", str(number))
+        try:
+            rest = await chat.wait_until(message=ticked, contains=removed, timeout=10)
+        except AssertionError:
+            rest = await chat.expect(contains=removed, timeout=15)
         assert text not in rest.message
+        assert _has_button(rest, phrase("topics_undo", full=True))
 
 
 @pytest.mark.e2e

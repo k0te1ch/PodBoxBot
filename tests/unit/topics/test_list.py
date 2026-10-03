@@ -189,12 +189,20 @@ async def test_delete_by_text_removes_items_and_shows_the_rest(three, bot):
 
     await lh.remove_text(_message(bot, "удали 1, 3"), [1, 3], bot, metrics)
 
-    removed, rest = _sent(bot)
-    assert removed["text"] == (
-        f"{t('topics_removed')}\n1) ВОПРОС - Почему небо голубое?\n3) ТЕМА - Как съездили в отпуск"
+    # Ответ один: остаток списка, под ним что удалено и кнопка «Вернуть».
+    [rest] = _sent(bot)
+    assert rest["text"] == (
+        f"Список тем и вопросов:\n1) ВОПРОС - Почему птицы летают?\n\n{t('topics_removed', numbers='1, 3')}"
     )
-    assert _labels(removed["reply_markup"]) == [[t("topics_undo")]]
-    assert rest["text"] == "Список тем и вопросов:\n1) ВОПРОС - Почему птицы летают?"
+    assert _labels(rest["reply_markup"]) == [
+        ["1"],
+        [t("topics_undo")],
+        [_remove_label(), t("topics_refresh")],
+        [t("topics_add_topic"), t("topics_add_question")],
+    ]
+    # Номера свежего списка идут с единицы и ведут на оставшиеся пункты.
+    view = await view_store().last(ADMIN_ID)
+    assert (view.ids, view.marked) == ([three[1].id], [])
     assert await _ids() == [three[1].id]
     assert [call.kwargs for call in metrics.event.call_args_list] == [{"kind": "question"}, {"kind": "topic"}]
     assert all(call.args == ("topic_removed",) for call in metrics.event.call_args_list)
@@ -211,7 +219,9 @@ async def test_numbers_belong_to_the_list_shown_last(three, add_item, bot):
     await lh.remove_text(_message(bot, "удали 2"), [2], bot)
 
     assert await _ids() == [three[2].id, late.id]
-    assert "2) ВОПРОС - Почему птицы летают?" in _texts(bot)[0]
+    [rest] = _texts(bot)
+    assert "Почему птицы летают?" not in rest
+    assert rest.endswith(t("topics_removed", numbers="2"))
 
 
 @pytest.mark.asyncio
@@ -241,9 +251,9 @@ async def test_unknown_numbers_delete_nothing(three, bot):
 async def test_without_a_shown_list_nothing_is_deleted(three, bot):
     await lh.remove_text(_message(bot, "удали 1"), [1], bot)
 
-    texts = _texts(bot)
-    assert texts[0] == t("topics_view_missing")
-    assert texts[1].startswith("Список тем и вопросов:")
+    [text] = _texts(bot)
+    assert text.startswith("Список тем и вопросов:")
+    assert text.endswith(t("topics_view_missing"))
     assert len(await _ids()) == 3
 
 
@@ -255,10 +265,11 @@ async def test_items_deleted_by_someone_else_are_reported(three, bot):
 
     await lh.remove_text(_message(bot, "удали 1, 2"), [1, 2], bot)
 
-    removed = _texts(bot)[0]
-    assert "2) ВОПРОС - Почему птицы летают?" in removed
-    assert "1) ВОПРОС" not in removed
-    assert removed.endswith(t("topics_removed_gone", numbers="1"))
+    [rest] = _texts(bot)
+    assert rest == (
+        "Список тем и вопросов:\n1) ТЕМА - Как съездили в отпуск\n\n"
+        f"{t('topics_removed', numbers='2')}\n{t('topics_removed_gone', numbers='1')}"
+    )
 
 
 @pytest.mark.asyncio
@@ -269,10 +280,10 @@ async def test_all_items_already_gone(three, bot):
 
     await lh.remove_text(_message(bot, "удали 1"), [1], bot)
 
-    first, rest = _sent(bot)
-    assert first["text"] == t("topics_removed_nothing", numbers="1")
-    assert first.get("reply_markup") is None
+    [rest] = _sent(bot)
     assert rest["text"].startswith("Список тем и вопросов:")
+    assert rest["text"].endswith(t("topics_removed_nothing", numbers="1"))
+    assert [t("topics_undo")] not in _labels(rest["reply_markup"])
 
 
 @pytest.mark.asyncio
@@ -296,18 +307,32 @@ async def test_done_command_without_numbers_explains_itself(three, bot, args):
 
 
 @pytest.mark.asyncio
-async def test_long_removal_report_is_cut(fake_redis, add_item, bot, monkeypatch):
+async def test_removal_of_many_items_is_one_short_line(fake_redis, add_item, bot):
     for index in range(6):
         await add_item(f"тема номер {index} про что-нибудь важное")
     await lh.send_list(bot, ADMIN_ID, "ru", private=True)
-    monkeypatch.setattr(lv, "MAX_PAGE_CHARS", 120)
     bot.send_message.reset_mock()
 
     await lh.remove_numbers(bot, ADMIN_ID, ADMIN_ID, [1, 2, 3, 4, 5, 6], "ru", private=True, metrics=None)
 
-    report = _texts(bot)[0]
-    assert report.splitlines()[-1] == t("topics_removed_more", count=4)
+    [rest] = _texts(bot)
+    assert rest == f"{t('topics_list_empty')}\n\n{t('topics_removed', numbers='1, 2, 3, 4, 5, 6')}"
     assert await _ids() == []
+
+
+@pytest.mark.asyncio
+async def test_only_the_last_removal_can_be_undone(three, bot):
+    await lh.show_list(_message(bot, "/topics"), bot)
+    await lh.remove_text(_message(bot, "удали 1"), [1], bot)
+    bot.send_message.reset_mock()
+
+    await lh.remove_text(_message(bot, "удали 2"), [2], bot)
+
+    [rest] = _sent(bot)
+    assert rest["text"].endswith(t("topics_removed", numbers="2"))
+    under_list = _message(bot, markup=rest["reply_markup"])
+    await _click(bot, _data(rest["reply_markup"], t("topics_undo")), under_list)
+    assert await _ids() == [three[1].id, three[2].id]
 
 
 # --- кнопки ---------------------------------------------------------------------
@@ -374,10 +399,23 @@ async def test_marking_and_deleting_with_buttons(three, bot):
     await _click(bot, _data(marked, _remove_label(1)), under_list)
 
     assert await _ids() == [three[1].id, three[2].id]
-    removed, rest = _texts(bot)
-    assert "1) ВОПРОС - Почему небо голубое?" in removed
-    # Отчёт и свежий список без отметок.
-    assert MARK not in removed and MARK not in rest and "<s>" not in removed + rest
+    # Новых сообщений нет: остаток нарисован на месте списка, без отметок,
+    # под ним что удалено и кнопка «Вернуть».
+    assert _texts(bot) == []
+    rest = bot.edit_message_text.await_args.kwargs
+    assert rest["message_id"] == under_list.message_id
+    assert rest["text"] == (
+        "Список тем и вопросов:\n1) ВОПРОС - Почему птицы летают?\n2) ТЕМА - Как съездили в отпуск\n\n"
+        f"{t('topics_removed', numbers='1')}"
+    )
+    assert MARK not in rest["text"] and "<s>" not in rest["text"]
+    assert _labels(rest["reply_markup"])[:3] == [
+        ["1", "2"],
+        [t("topics_undo")],
+        [_remove_label(), t("topics_refresh")],
+    ]
+    view = await view_store().last(ADMIN_ID)
+    assert (view.ids, view.last_message_id) == ([three[1].id, three[2].id], under_list.message_id)
 
 
 @pytest.mark.asyncio
@@ -518,44 +556,109 @@ async def test_refresh_of_a_long_list_sends_it_again(fake_redis, add_item, bot, 
 # --- вернуть --------------------------------------------------------------------
 
 
-@pytest.mark.asyncio
-async def test_undo_brings_items_back_once(three, bot):
+async def _removed(bot, numbers: list[int]):
+    """Список после «удали …»: его клавиатура и сообщение, под которым она стоит."""
     await lh.show_list(_message(bot, "/topics"), bot)
     bot.send_message.reset_mock()
-    await lh.remove_text(_message(bot, "удали 1, 3"), [1, 3], bot)
-    report = _sent(bot)[0]
-    under_report = _message(bot, markup=report["reply_markup"])
+    await lh.remove_text(_message(bot, "удали"), numbers, bot)
+    sent = _sent(bot)[0]
     bot.send_message.reset_mock()
+    return sent["reply_markup"], _shown(bot, sent)
+
+
+@pytest.mark.asyncio
+async def test_undo_brings_items_back_once(three, bot):
+    markup, under_list = await _removed(bot, [1, 3])
     metrics = MagicMock()
 
-    await _click(bot, _data(report["reply_markup"], t("topics_undo")), under_report, metrics=metrics)
+    await _click(bot, _data(markup, t("topics_undo")), under_list, metrics=metrics)
 
     assert await _ids() == [item.id for item in three]
-    back = under_report.edit_text.await_args.args[0]
-    assert back == f"{t('topics_restored')}\n1) ВОПРОС - Почему небо голубое?\n3) ТЕМА - Как съездили в отпуск"
-    assert _texts(bot)[0].count("\n") == 3
+    # Список правится на месте: все пункты снова в нём, строки «Удалил» и кнопки «Вернуть» нет.
+    assert _texts(bot) == []
+    back = bot.edit_message_text.await_args.kwargs
+    assert back["message_id"] == under_list.message_id
+    assert back["text"] == (
+        "Список тем и вопросов:\n"
+        "1) ВОПРОС - Почему небо голубое?\n"
+        "2) ВОПРОС - Почему птицы летают?\n"
+        "3) ТЕМА - Как съездили в отпуск\n\n"
+        f"{t('topics_restored', numbers='1, 3')}"
+    )
+    assert [t("topics_undo")] not in _labels(back["reply_markup"])
+    view = await view_store().last(ADMIN_ID)
+    assert view.ids == [item.id for item in three]
     assert metrics.event.call_count == 2
     metrics.event.assert_any_call("topic_restored", kind="topic")
 
-    again = await _click(bot, _data(report["reply_markup"], t("topics_undo")), under_report)
+    again = await _click(bot, _data(markup, t("topics_undo")), under_list)
     again.answer.assert_awaited_once_with(t("topics_undo_expired"), show_alert=True)
-    under_report.edit_reply_markup.assert_awaited_once_with(reply_markup=None)
+    assert len(await _ids()) == 3
 
 
 @pytest.mark.asyncio
 async def test_undo_expires(three, bot, fake_redis):
-    await lh.show_list(_message(bot, "/topics"), bot)
-    bot.send_message.reset_mock()
-    await lh.remove_text(_message(bot, "удали 2"), [2], bot)
-    report = _sent(bot)[0]
-    for key in await fake_redis.keys("topics:undo:*"):
+    markup, under_list = await _removed(bot, [2])
+    for key in await fake_redis.keys("topics:undo:*") + await fake_redis.keys("topics:removal:*"):
         assert 0 < await fake_redis.ttl(key) <= 600
         await fake_redis.delete(key)
 
-    press = await _click(bot, _data(report["reply_markup"], t("topics_undo")), _message(bot))
+    press = await _click(bot, _data(markup, t("topics_undo")), under_list)
 
     press.answer.assert_awaited_once_with(t("topics_undo_expired"), show_alert=True)
     assert len(await _ids()) == 2
+    # Список перерисован на месте уже без строки и без кнопки.
+    shown = bot.edit_message_text.await_args.kwargs
+    assert shown["text"] == "Список тем и вопросов:\n1) ВОПРОС - Почему небо голубое?\n2) ТЕМА - Как съездили в отпуск"
+    assert [t("topics_undo")] not in _labels(shown["reply_markup"])
+
+
+@pytest.mark.asyncio
+async def test_removal_line_and_undo_stay_while_the_undo_is_alive(three, bot, fake_redis):
+    """Пока удаление можно вернуть, любой показ списка рисует строку и кнопку;
+    когда срок вышел, следующий показ их уже не рисует."""
+    markup, under_list = await _removed(bot, [2])
+
+    await _click(bot, _data(markup, t("topics_refresh")), under_list)
+
+    shown = bot.edit_message_text.await_args.kwargs
+    assert shown["text"].endswith(t("topics_removed", numbers="2"))
+    assert [t("topics_undo")] in _labels(shown["reply_markup"])
+
+    await fake_redis.delete(*await fake_redis.keys("topics:undo:*"))
+    await lh.show_list(_message(bot, "/topics"), bot)
+
+    [fresh] = _sent(bot)
+    assert t("topics_removed", numbers="2") not in fresh["text"]
+    assert [t("topics_undo")] not in _labels(fresh["reply_markup"])
+
+
+@pytest.mark.asyncio
+async def test_mark_keeps_the_removal_line_and_the_undo_button(three, bot):
+    markup, under_list = await _removed(bot, [2])
+
+    await _click(bot, _data(markup, "1"), under_list)
+
+    assert _edited(under_list).splitlines()[-1] == t("topics_removed", numbers="2")
+    assert [t("topics_undo")] in _labels(_apply_edit(under_list))
+
+
+@pytest.mark.asyncio
+async def test_removal_from_a_long_list_sends_the_rest_again(fake_redis, add_item, bot, monkeypatch):
+    """У списка из нескольких сообщений остаток приходит заново: выше остались
+    бы сообщения с прежними номерами."""
+    monkeypatch.setattr(listing, "MAX_PAGE_ITEMS", 2)
+    for index in range(3):
+        await add_item(f"тема номер {index}")
+    await lh.send_list(bot, ADMIN_ID, "ru", private=True)
+    under_last = _shown(bot, _sent(bot)[-1])
+    await _click(bot, _data(under_last.reply_markup, "3"), under_last)
+    bot.send_message.reset_mock()
+
+    await _click(bot, _data(_apply_edit(under_last), _remove_label(1)), under_last)
+
+    [rest] = _texts(bot)
+    assert rest.endswith(t("topics_removed", numbers="3"))
 
 
 # --- добавление админом -----------------------------------------------------------
@@ -903,6 +1006,36 @@ async def test_mark_in_the_table_strikes_the_row_in_place(three, rich_on):
     assert _labels(edited.kwargs["reply_markup"])[0] == ["1", f"{MARK}2", "3"]
     assert _labels(edited.kwargs["reply_markup"])[1][0] == _remove_label(1)
     table_message.edit_text.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_removal_in_the_table_is_one_message_with_undo(three, rich_on):
+    """Кнопка «Удалить отмеченные» под таблицей: таблица правится на месте,
+    под ней строка о том, что удалено, а отметка в ней эту строку не стирает."""
+    await lh.show_list(_message(rich_on, "/topics"), rich_on)
+    table_message = _message(rich_on, markup=rich_on.send_rich_message.await_args.kwargs["reply_markup"])
+    table_message.text = None
+    table_message.message_id = 700
+    await _click(rich_on, _data(table_message.reply_markup, "2"), table_message)
+    table_message.reply_markup = rich_on.edit_message_text.await_args.kwargs["reply_markup"]
+
+    await _click(rich_on, _data(table_message.reply_markup, _remove_label(1)), table_message)
+
+    rich_on.send_rich_message.assert_awaited_once()
+    edited = rich_on.edit_message_text.await_args
+    assert edited.kwargs["message_id"] == 700
+    assert "Почему птицы летают?" not in _html(edited)
+    assert "<td>2</td><td>ТЕМА</td><td>Как съездили в отпуск</td>" in _html(edited)
+    assert _html(edited).endswith(f"</table><p>{t('topics_removed', numbers='2')}</p>")
+    assert _labels(edited.kwargs["reply_markup"])[:2] == [["1", "2"], [t("topics_undo")]]
+
+    table_message.reply_markup = edited.kwargs["reply_markup"]
+    await _click(rich_on, _data(table_message.reply_markup, "1"), table_message)
+
+    marked = rich_on.edit_message_text.await_args
+    assert f"<td>{MARK}1</td>" in _html(marked)
+    assert _html(marked).endswith(f"<p>{t('topics_removed', numbers='2')}</p>")
+    assert [t("topics_undo")] in _labels(marked.kwargs["reply_markup"])
 
 
 @pytest.mark.asyncio

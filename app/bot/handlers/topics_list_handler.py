@@ -11,8 +11,10 @@
   или кнопки с номерами под списком и «Удалить отмеченные (N)». Отмеченный
   к удалению пункт зачёркивается в тексте списка и получает значок корзины
   там же и на кнопке (значок один на всё: ``MARK`` в
-  :mod:`services.topics.listing`). Бот отвечает, что удалил, даёт кнопку
-  «Вернуть» и сразу показывает остаток.
+  :mod:`services.topics.listing`). Ответ один: остаток списка, под ним строка
+  «Удалил: 1, 3» и кнопка «Вернуть». После кнопки список правится на месте,
+  после команды приходит новым сообщением. Через 10 минут вернуть уже нельзя:
+  строка и кнопка пропадают при следующем показе списка.
 * Номера относятся к списку, который бот показал в этом чате последним
   (:mod:`services.topics.views`): пункты, добавленные позже, номера не
   сдвигают. Кнопки под старым списком отвечают, что он устарел.
@@ -55,7 +57,7 @@ from handlers.topics_list_view import (
     last_page_markup,
     marked_page,
     marked_text,
-    numbered_lines,
+    numbers_text,
     remark,
     remove_numbers,
     send_list,
@@ -73,7 +75,7 @@ from services.topics.runtime import (
     topics_enabled,
     view_store,
 )
-from services.topics.views import ListView
+from services.topics.views import ListView, Removal
 from utils import rich
 
 TOPICS_MENU = "topics"
@@ -156,10 +158,22 @@ async def _mark(callback: CallbackQuery, data: ListCallback, locale: str) -> Non
     else:
         # Rich-сообщение: текста у него нет, таблица собирается заново по
         # номерам на его кнопках.
-        page = await marked_page(view, _numbers_on(message.reply_markup), locale)
+        removal = await _removal_under(message)
+        page = await marked_page(view, _numbers_on(message.reply_markup), locale, removal)
         await rich.edit(callback.bot, message.chat.id, message.message_id, page.html, page.text, markup)
     if view.last_message_id not in (None, message.message_id):
         await _recount(callback, view, locale)
+
+
+async def _removal_under(message: Message) -> Removal | None:
+    """Удаление, строка о котором стоит под этим сообщением: по кнопке
+    «Вернуть» под ним, если её срок ещё не вышел."""
+    removal = await view_store().pending_removal(message.chat.id)
+    if removal is None or message.reply_markup is None:
+        return None
+    undo = ListCallback(a=UNDO, v=removal.token).pack()
+    shown = any(button.callback_data == undo for row in message.reply_markup.inline_keyboard for button in row)
+    return removal if shown else None
 
 
 def _numbers_on(markup: InlineKeyboardMarkup | None) -> list[int]:
@@ -177,7 +191,9 @@ async def _recount(callback: CallbackQuery, view: ListView, locale: str) -> None
     """Счётчик «Удалить отмеченные (N)» живёт под последним сообщением
     списка: отметка в другом сообщении обновляет и его."""
     message = callback.message
-    markup = last_page_markup(view, locale, private=is_private(message))
+    removal = await view_store().pending_removal(message.chat.id)
+    undo = removal.token if removal else None
+    markup = last_page_markup(view, locale, private=is_private(message), undo=undo)
     try:
         await _edit(
             callback.bot.edit_message_reply_markup(
@@ -206,6 +222,9 @@ async def _remove_marked(callback: CallbackQuery, data: ListCallback, locale: st
         locale,
         private=is_private(message),
         metrics=metrics,
+        # Остаток рисуется на месте списка, если тот был одним сообщением:
+        # у длинного списка выше остались бы сообщения с прежними номерами.
+        replace=message if view.one_message else None,
     )
 
 
@@ -214,7 +233,8 @@ async def _undo(callback: CallbackQuery, token: str, locale: str, metrics: Any) 
     item_ids = await view_store().take_removed(token)
     if item_ids is None:
         await callback.answer(t("topics_undo_expired", locale), show_alert=True)
-        await _edit(message.edit_reply_markup(reply_markup=None))
+        # Свежий список на месте этого: строки «Удалил» и кнопки в нём уже нет.
+        await send_list(callback.bot, message.chat.id, locale, private=is_private(message), replace=message)
         return
     restored = await topic_list(callback.bot).restore(item_ids)
     for item in restored:
@@ -222,10 +242,9 @@ async def _undo(callback: CallbackQuery, token: str, locale: str, metrics: Any) 
     logger.info(f"topics: restored {[item.id for item in restored]} by {callback.from_user.id}")
     await callback.answer()
     positions = {item.id: number for number, item in enumerate(await topic_list().repository.items(), start=1)}
-    numbered = sorted((positions.get(item.id, 0), item) for item in restored)
-    text = numbered_lines(t("topics_restored", locale), numbered, locale)
-    await _edit(message.edit_text(text, link_preview_options=NO_PREVIEW))
-    await send_list(callback.bot, message.chat.id, locale, private=is_private(message))
+    numbers = sorted(positions[item.id] for item in restored if item.id in positions)
+    note = t("topics_restored", locale, numbers=numbers_text(numbers))
+    await send_list(callback.bot, message.chat.id, locale, private=is_private(message), replace=message, note=note)
 
 
 async def _author_name(user_id: int) -> str:
