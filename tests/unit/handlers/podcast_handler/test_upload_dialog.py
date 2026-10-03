@@ -609,3 +609,78 @@ async def test_funnel_marks_failed_download(state, bot, mp3_message, funnel):
         await podcast_handler.get_MP3(mp3_message, state, bot, "ru", "admin")
 
     assert funnel[-1] == (MP3, "download_failed")
+
+
+async def _on_time_slots(state, bot, mp3_message, day: str):
+    """Шаг публикации со слотами времени выбранного дня."""
+    await _on_date_step(state, bot, mp3_message)
+    await _press_date(state, bot, date_picker.RECORDING, date_picker.SET, "2026-10-02")
+    return await _press_date(state, bot, date_picker.PUBLISH, date_picker.TIME, day)
+
+
+def _labels(markup) -> list[str]:
+    return [button.text for row in markup.inline_keyboard for button in row]
+
+
+@pytest.mark.asyncio
+async def test_other_time_button_asks_to_type_the_time(state, bot, mp3_message):
+    slots = await _on_time_slots(state, bot, mp3_message, "2026-10-05")
+    assert t("date_other_time") in _labels(slots.message.edit_reply_markup.call_args.kwargs["reply_markup"])
+
+    press = await _press_date(state, bot, date_picker.PUBLISH, date_picker.TYPE, "2026-10-05")
+
+    press.answer.assert_awaited_once_with(t("date_type_time", date="5 октября"), show_alert=True)
+    # Слоты остаются под вопросом, шаг тот же.
+    press.message.edit_reply_markup.assert_not_called()
+    assert upload_file_engine.current_step(await _session(state)).id == PUBLISH_AT
+
+
+@pytest.mark.asyncio
+async def test_typed_time_is_taken_for_the_picked_day(state, bot, mp3_message):
+    """Время можно написать и без кнопки «Другое время»: слоты дня уже показаны."""
+    await _on_time_slots(state, bot, mp3_message, "2026-10-05")
+
+    await podcast_handler.set_template(_message("9.05"), state, bot, "ru", "admin")
+
+    session = await _session(state)
+    assert session.answers[PUBLISH_AT] == "2026-10-05T09:05"
+    assert upload_file_engine.current_step(session).id == TEMPLATE
+    assert "публикация 5 октября, 09:05" in bot.edit_message_text.call_args.kwargs["text"]
+
+
+@pytest.mark.asyncio
+async def test_wrong_typed_time_keeps_the_day_and_its_slots(state, bot, mp3_message):
+    """Опечатка во времени: ошибка с примером, под вопросом те же слоты
+    выбранного дня, следующее время относится к нему же."""
+    await _on_time_slots(state, bot, mp3_message, "2026-10-05")
+
+    await podcast_handler.set_template(_message("19;30"), state, bot, "ru", "admin")
+
+    shown = bot.edit_message_text.call_args.kwargs
+    assert t("invalid_publish_at") in shown["text"]
+    assert "09:00" in _labels(shown["reply_markup"]) and t("date_other_time") in _labels(shown["reply_markup"])
+
+    await podcast_handler.set_template(_message("19:30"), state, bot, "ru", "admin")
+
+    assert (await _session(state)).answers[PUBLISH_AT] == "2026-10-05T19:30"
+
+
+@pytest.mark.asyncio
+async def test_passed_time_today_is_refused_with_the_current_time(state, bot, mp3_message):
+    await _on_time_slots(state, bot, mp3_message, "2026-10-03")
+
+    await podcast_handler.set_template(_message("12:00"), state, bot, "ru", "admin")
+
+    assert t("publish_time_passed", now="14:30") in bot.edit_message_text.call_args.kwargs["text"]
+    assert upload_file_engine.current_step(await _session(state)).id == PUBLISH_AT
+
+
+@pytest.mark.asyncio
+async def test_back_to_quick_choice_forgets_the_picked_day(state, bot, mp3_message):
+    """После возврата к быстрому выбору набранное время снова значит «сегодня»."""
+    await _on_time_slots(state, bot, mp3_message, "2026-10-05")
+    await _press_date(state, bot, date_picker.PUBLISH, date_picker.HOME)
+
+    await podcast_handler.set_template(_message("19:30"), state, bot, "ru", "admin")
+
+    assert (await _session(state)).answers[PUBLISH_AT] == "2026-10-03T19:30"

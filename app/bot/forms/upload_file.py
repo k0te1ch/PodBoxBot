@@ -44,6 +44,9 @@ DATE_STEPS = {RECORDING_DATE: date_picker.RECORDING, PUBLISH_AT: date_picker.PUB
 
 DIALOG_ID = "upload_file"
 PENDING_MP3 = "pending_mp3"
+PUBLISH_DAY = "publish_day"
+"""День публикации, выбранный кнопкой, пока под вопросом стоят слоты времени:
+к нему относится время, набранное сообщением. В контексте диалога."""
 
 # Local Bot API отдаёт файлы до 2000 МБ — больше Telegram не пропустит.
 MP3_MAX_SIZE = 2000 * 1024 * 1024
@@ -66,12 +69,24 @@ async def check_recording_date(value: str, ctx: StepContext) -> str:
 
 
 async def check_publish_at(value: str, ctx: StepContext) -> str:
-    """Дата и время публикации; пустая строка значит «как обычно»."""
-    if str(value).strip().lower() == date_picker.DEFAULT:
+    """Дата и время публикации; пустая строка значит «как обычно».
+
+    Из кнопки приходит дата со временем. Руками можно написать и дату со
+    временем, и одно время: оно относится к дню, выбранному кнопкой, а если
+    день не выбирали, то к сегодняшнему.
+    """
+    text = str(value).strip()
+    if text.lower() == date_picker.DEFAULT:
         return ""
-    parsed = date_picker.parse_datetime(str(value))
-    if parsed is None or parsed <= now():
+    parsed = date_picker.parse_datetime(text)
+    if parsed is None and (clock := date_picker.parse_time(text)) is not None:
+        day = date_picker.parse_date(str(ctx.context.get(PUBLISH_DAY) or "")) or now().date()
+        parsed = datetime.combine(day, clock)
+    if parsed is None:
         raise ValidationError("invalid_publish_at", ctx.step.id)
+    if parsed <= now():
+        raise ValidationError("publish_time_passed", ctx.step.id)
+    ctx.context.pop(PUBLISH_DAY, None)
     return parsed.strftime(date_picker.DATETIME_FORMAT)
 
 
@@ -116,6 +131,7 @@ def resolve_text(key: str, answers: dict[str, Any], context: dict[str, Any]) -> 
         "size": context.get("mp3_size", ""),
         "recording": _recording_text(answers, lang),
         "publish": _publish_text(answers, lang),
+        "now": f"{now():%H:%M}",
     }
     lookup = key.replace(".", "-") if key.startswith("de.") else key
     text = t(lookup, lang, **params)

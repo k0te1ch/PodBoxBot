@@ -5,7 +5,8 @@
 error_occurred = Something went wrong, try again
 invalid_input = Could not read the description. Check that the Number, Title and Comment lines are in place, as in the template
 invalid_recording_date = Could not read the recording date. Pick it with a button or type DD.MM.YYYY, e.g. 26.07.2026, no later than today
-invalid_publish_at = Could not read the publication date. Pick it with the buttons or type the date and time, e.g. 05.10.2026 20:00, not earlier than now
+invalid_publish_at = Could not read when to publish. Pick it with the buttons or type the time, e.g. 19:30. A date with time works too: 05.10.2026 20:00
+publish_time_passed = That time has already passed: it is { $now } now. Type a later time or pick another day with the buttons
 download_failed = did not download. Check the file and send it again
 episode_number_failed = FTP did not respond, the upload is cancelled. Start again: /new
     <code>{ $error }</code>
@@ -26,11 +27,13 @@ summary_file = ✅ File received ({ $size }), this will be episode { $number }
 summary_recording = Episode { $number } · recorded { $recording }
 summary_dates = Episode { $number } · recorded { $recording } · publication { $publish }
 ask_recording_date = When was the episode recorded?
-ask_publish_at = When do we publish? "As usual": no date is set, the site keeps a draft, the other platforms act right away
+ask_publish_at = When do we publish? "As usual": no date is set, the site keeps a draft, the other platforms act right away. You can type the time as a message, e.g. 19:30
 date_today = Today, { $date }
 date_yesterday = Yesterday, { $date }
 date_other = 📅 Another date
 date_back = « Back to quick choice
+date_other_time = ⌨️ Another time
+date_type_time = Type the time as a message, e.g. 19:30. Publication day: { $date }
 date_publish_default = As usual
 date_publish_default_short = as usual
 date_publish_today = Today

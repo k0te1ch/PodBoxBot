@@ -152,6 +152,7 @@ async def test_recording_date_from_the_future_or_unreadable_is_refused(typed):
         ("2026-10-03T2000", "2026-10-03T20:00"),
         ("05.10.2026 19:30", "2026-10-05T19:30"),
         ("05.10.2026   9:05", "2026-10-05T09:05"),
+        ("05.10.2026 1930", "2026-10-05T19:30"),
     ],
 )
 async def test_publication_time_is_optional(typed, stored):
@@ -165,18 +166,61 @@ async def test_publication_time_is_optional(typed, stored):
     assert upload_file_engine.current_step(session).id == TEMPLATE
 
 
-@pytest.mark.asyncio
-@pytest.mark.parametrize("typed", ["2026-10-03T1200", "02.10.2026 20:00", "05.10.2026", "завтра"])
-async def test_publication_in_the_past_or_without_time_is_refused(typed):
-    session = _session()
+async def _to_publish_at(**context):
+    session = _session(**context)
     await upload_file_engine.async_submit(session, "main")
     await upload_file_engine.async_submit(session, [MP3_FILE])
     await upload_file_engine.async_submit(session, "2026-10-03")
+    return session
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("typed", ["05.10.2026", "завтра", "25:00", "19:75", "вечером в семь"])
+async def test_publication_that_is_not_a_time_is_refused_with_an_example(typed):
+    session = await _to_publish_at()
     with pytest.raises(ValidationError) as exc:
         await upload_file_engine.async_submit(session, typed)
 
     assert upload_file_engine.current_step(session).id == PUBLISH_AT
-    assert upload_file_engine.resolve_error(exc.value, session) == t("invalid_publish_at")
+    error = upload_file_engine.resolve_error(exc.value, session)
+    assert error == t("invalid_publish_at")
+    assert "19:30" in error and "05.10.2026 20:00" in error
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("typed", ["2026-10-03T1200", "02.10.2026 20:00", "14:30", "9:00", "1200"])
+async def test_publication_in_the_past_is_refused_with_the_current_time(typed):
+    """Сейчас 14:30: время, которое сегодня уже прошло, бот не берёт и на
+    завтра сам не переносит."""
+    session = await _to_publish_at()
+    with pytest.raises(ValidationError) as exc:
+        await upload_file_engine.async_submit(session, typed)
+
+    assert upload_file_engine.current_step(session).id == PUBLISH_AT
+    assert upload_file_engine.resolve_error(exc.value, session) == t("publish_time_passed", now="14:30")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("typed", ["19:30", "19.30", "1930", "19 30"])
+async def test_typed_time_without_a_day_means_today(typed):
+    session = await _to_publish_at()
+
+    await upload_file_engine.async_submit(session, typed)
+
+    assert session.answers[PUBLISH_AT] == "2026-10-03T19:30"
+    assert upload_file_engine.current_step(session).id == TEMPLATE
+
+
+@pytest.mark.asyncio
+async def test_typed_time_goes_to_the_day_picked_with_a_button():
+    """День выбран кнопкой, время набрано: утро выбранного дня ещё впереди,
+    хотя сегодня этот час уже прошёл."""
+    session = await _to_publish_at(publish_day="2026-10-05")
+
+    await upload_file_engine.async_submit(session, "9.05")
+
+    assert session.answers[PUBLISH_AT] == "2026-10-05T09:05"
+    assert "publish_day" not in session.context
 
 
 def test_questions_keep_what_is_already_known_about_the_episode():
