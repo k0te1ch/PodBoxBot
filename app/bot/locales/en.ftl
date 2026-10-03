@@ -4,7 +4,8 @@
 
 error_occurred = An error occurred! Please try again
 invalid_input = Invalid input!
-invalid_recording_date = Could not read the recording date. Use DD.MM.YYYY, e.g. 26.07.2026, no later than today.
+invalid_recording_date = Could not read the recording date. Pick it with a button or type DD.MM.YYYY, e.g. 26.07.2026, no later than today
+invalid_publish_at = Could not read the publication date. Pick it with the buttons or type the date and time, e.g. 05.10.2026 20:00, not earlier than now
 download_failed = did not download. Check the file and send it again
 episode_number_failed = FTP did not respond, the upload is cancelled. Start again: /new
     <code>{ $error }</code>
@@ -17,11 +18,27 @@ file_not_mp3 = This is not an MP3. To prepare an episode, send an MP3 or press "
 ask_mp3 = Loading <u><b>{ $type_episode }</b></u>. Waiting for MP3 file
 got_mp3 = I see an MP3, downloading
 done_mp3 = Here is your finished file!
-downloaded =
-    ✅ File received ({ $size }), this will be episode { $number }
-
-    Now send the description. Copy the template and change only the values:
 canceled = Canceled
+
+## Episode dates (utils/date_picker.py)
+
+summary_file = ✅ File received ({ $size }), this will be episode { $number }
+summary_recording = Episode { $number } · recorded { $recording }
+summary_dates = Episode { $number } · recorded { $recording } · publication { $publish }
+ask_recording_date = When was the episode recorded?
+ask_publish_at = When do we publish? "As usual": no date is set, the site keeps a draft, the other platforms act right away
+date_today = Today, { $date }
+date_yesterday = Yesterday, { $date }
+date_other = 📅 Another date
+date_back = « Back to quick choice
+date_publish_default = As usual
+date_publish_default_short = as usual
+date_publish_today = Today
+date_publish_tomorrow = Tomorrow
+date_day_month = { $month } { $day }
+months = January February March April May June July August September October November December
+months_genitive = January February March April May June July August September October November December
+weekdays = Mo Tu We Th Fr Sa Su
 
 ## Status message of a long operation (utils/status_message.py)
 
@@ -51,8 +68,8 @@ main_episode = Main episode
 episode_aftershow = Aftershow episode
 
 ask_template_main =
+    Now send the description. Copy the template and change only the values:
     <pre language="text">Number: { $number }
-    Recording Date: 26.07.2026
     Title: Episode title
     Comment: Episode description
     Tags: Tag1, Tag2, Tag3
@@ -62,8 +79,8 @@ ask_template_main =
     01:40:56 - Topic 2
     02:17:25 - Patrons and aftershow announcement</pre>
 ask_template_aftershow =
+    Now send the description. Copy the template and change only the values:
     <pre language="text">Number: { $number }
-    Recording Date: 26.07.2026
     Title: Aftershow. Episode title
     Comment: Episode description</pre>
 

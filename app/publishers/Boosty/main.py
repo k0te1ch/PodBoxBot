@@ -48,6 +48,25 @@ BOOSTY_SCHEDULE_DELAY_HOURS = config.BOOSTY_SCHEDULE_DELAY_HOURS
 _REFRESH_INTERVAL = 3600  # сек — ежечасный прогрев сессии (access/refresh)
 
 
+def _timezone():
+    try:
+        return ZoneInfo(config.TIMEZONE)
+    except (ZoneInfoNotFoundError, ValueError):
+        return UTC
+
+
+def _publish_timestamp(publish_at: str | None) -> int | None:
+    """``YYYY-MM-DDTHH:MM`` во времени сервиса → unix-время; None, если не задано или не разобрано."""
+    if not publish_at:
+        return None
+    try:
+        local = datetime.strptime(publish_at, "%Y-%m-%dT%H:%M").replace(tzinfo=_timezone())
+    except ValueError:
+        logger.warning(f"Invalid publish_at {publish_at!r}; publishing by the configured mode")
+        return None
+    return int(local.timestamp())
+
+
 def _local_time(timestamp: int) -> str:
     """Время отложенной публикации для статуса в боте, в TIMEZONE сервиса."""
     try:
@@ -112,8 +131,13 @@ class BoostyPublisher(BasePublisher):
             price=BOOSTY_PRICE,
             advertiser_info=BOOSTY_ADVERTISER_INFO,
         )
+        chosen = _publish_timestamp(event.publish_at)
         if BOOSTY_PUBLISH_MODE == "draft":
             await self._save_draft(event, post)
+        elif chosen is not None and chosen > time.time():
+            # Время публикации выбрано при оформлении выпуска: оно важнее
+            # режима и BOOSTY_SCHEDULE_DELAY_HOURS. Прошедшее время не в счёт.
+            await self._schedule(event, post, chosen)
         elif BOOSTY_PUBLISH_MODE == "scheduled":
             await self._schedule(event, post)
         else:
@@ -152,9 +176,14 @@ class BoostyPublisher(BasePublisher):
             metadata["url"] = f"https://boosty.to/{BOOSTY_BLOG}/new-post"
         await self._send_success(event, "", metadata)
 
-    async def _schedule(self, event: BoostyEvent, post: PostContent) -> None:
-        """Режим scheduled: отложенный пост, подписчики увидят его в ``publish_time``."""
-        publish_time = int(time.time() + BOOSTY_SCHEDULE_DELAY_HOURS * 3600)
+    async def _schedule(self, event: BoostyEvent, post: PostContent, publish_time: int | None = None) -> None:
+        """Отложенный пост: подписчики увидят его в ``publish_time``.
+
+        Без *publish_time* (режим scheduled) время считается от текущего
+        через ``BOOSTY_SCHEDULE_DELAY_HOURS``.
+        """
+        if publish_time is None:
+            publish_time = int(time.time() + BOOSTY_SCHEDULE_DELAY_HOURS * 3600)
         scheduled = await self.call_with_retry(event, "publish", lambda: self.client.schedule(post, publish_time))
         post_id = str(scheduled.get("id") or scheduled.get("int_id") or "")
         if post_id:

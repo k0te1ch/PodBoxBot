@@ -54,6 +54,7 @@ async def upload_WP(ctx: MenuContext) -> None:
             slug=info["slug"],
             duration=info["duration"],
             recording_date=info.get("recording_date"),
+            publish_at=info.get("publish_at"),
             type_episode=type_episode,
         )
     except ValidationError as e:

@@ -1,6 +1,8 @@
 """Диалог загрузки эпизода на :mod:`dialog_engine`.
 
-Три шага: тип эпизода, MP3, шаблон с описанием. Порядок шагов, проверку
+Пять шагов: тип эпизода, MP3, дата записи, дата публикации, шаблон с
+описанием. Даты выбираются кнопками (:mod:`utils.date_picker`) или пишутся
+текстом. Порядок шагов, проверку
 ответов, кнопки «Назад»/«Отмена» и хранение сессии в FSM ведёт
 :class:`~dialog_engine.integrations.aiogram.DialogRunner`; хендлеры в
 :mod:`handlers.podcast_handler` делают то, что движку знать не положено:
@@ -14,21 +16,31 @@
 * ``number`` — номер следующего эпизода, его хендлер кладёт после скачивания
   MP3, и он подставляется в шаблон;
 * ``mp3_size`` — размер скачанного файла текстом, для строки «файл получен».
+
+Ответы шагов дат: дата записи ``YYYY-MM-DD``, публикация ``YYYY-MM-DDTHH:MM``
+или пустая строка («как обычно»: площадки работают по своим настройкам).
 """
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Any
 
 from dialog_engine import DialogEngine, StepContext, ValidationError
 from dialog_engine.integrations.aiogram import DialogRunner, KeyboardLayout
 
+from config import TIMEZONE
 from services.i18n import t
+from utils import date_picker
 from utils.validators import invalid_recording_date, validate_template
 
 # ID шагов нужны хендлерам, поэтому они именованные константы.
 TYPE_EPISODE = "type_episode"
 MP3 = "mp3"
+RECORDING_DATE = "recording_date"
+PUBLISH_AT = "publish_at"
 TEMPLATE = "template"
+
+# Шаги с выбором даты кнопками: что именно выбирается на шаге.
+DATE_STEPS = {RECORDING_DATE: date_picker.RECORDING, PUBLISH_AT: date_picker.PUBLISH}
 
 DIALOG_ID = "upload_file"
 PENDING_MP3 = "pending_mp3"
@@ -38,6 +50,41 @@ MP3_MAX_SIZE = 2000 * 1024 * 1024
 
 # Брошенная загрузка не должна висеть в Redis вечно.
 SESSION_TTL = timedelta(hours=6)
+
+
+def now() -> datetime:
+    """Сейчас в часовом поясе бота, без tzinfo: в нём же админ называет даты."""
+    return datetime.now(TIMEZONE).replace(tzinfo=None)
+
+
+async def check_recording_date(value: str, ctx: StepContext) -> str:
+    """Дата записи: из кнопки или текстом, не позже сегодняшнего дня. В ответе ISO."""
+    parsed = date_picker.parse_date(str(value))
+    if parsed is None or parsed > now().date():
+        raise ValidationError("invalid_recording_date", ctx.step.id)
+    return parsed.isoformat()
+
+
+async def check_publish_at(value: str, ctx: StepContext) -> str:
+    """Дата и время публикации; пустая строка значит «как обычно»."""
+    if str(value).strip().lower() == date_picker.DEFAULT:
+        return ""
+    parsed = date_picker.parse_datetime(str(value))
+    if parsed is None or parsed <= now():
+        raise ValidationError("invalid_publish_at", ctx.step.id)
+    return parsed.strftime(date_picker.DATETIME_FORMAT)
+
+
+def _recording_text(answers: dict[str, Any], lang: str) -> str:
+    parsed = date_picker.parse_date(str(answers.get(RECORDING_DATE) or ""))
+    return date_picker.human_date(parsed, lang, today=now().date()) if parsed else ""
+
+
+def _publish_text(answers: dict[str, Any], lang: str) -> str:
+    parsed = date_picker.parse_datetime(str(answers.get(PUBLISH_AT) or ""))
+    if parsed is None:
+        return t("date_publish_default_short", lang)
+    return date_picker.human_datetime(parsed, lang, today=now().date())
 
 
 async def check_template(value: str, ctx: StepContext) -> dict[str, Any]:
@@ -66,15 +113,26 @@ def resolve_text(key: str, answers: dict[str, Any], context: dict[str, Any]) -> 
     params = {
         "type_episode": t("main_episode" if type_episode == "main" else "episode_aftershow", lang),
         "number": context.get("number", ""),
+        "size": context.get("mp3_size", ""),
+        "recording": _recording_text(answers, lang),
+        "publish": _publish_text(answers, lang),
     }
     lookup = key.replace(".", "-") if key.startswith("de.") else key
     text = t(lookup, lang, **params)
-    if lookup.startswith("ask_template_"):
-        # Сообщение о загрузке mp3 превращается в этот вопрос: итог загрузки
-        # остаётся в нём первой строкой.
-        intro = t("downloaded", lang, size=context.get("mp3_size", ""), number=params["number"])
-        return f"{intro}\n{text}"
+    # Сообщение о загрузке mp3 превращается в вопросы о датах и описании: что
+    # уже известно о выпуске, остаётся в нём первой строкой.
+    summary = SUMMARIES.get("ask_template" if lookup.startswith("ask_template_") else lookup)
+    if summary is not None:
+        return f"{t(summary, lang, **params)}\n\n{text}"
     return key if text == lookup else text
+
+
+# Вопрос шага → строка над ним с тем, что о выпуске уже известно.
+SUMMARIES = {
+    "ask_recording_date": "summary_file",
+    "ask_publish_at": "summary_recording",
+    "ask_template": "summary_dates",
+}
 
 
 upload_file_engine = DialogEngine.from_list(
@@ -93,6 +151,8 @@ upload_file_engine = DialogEngine.from_list(
             "extensions": [".mp3"],
             "max_size": MP3_MAX_SIZE,
         },
+        {"id": RECORDING_DATE, "type": "text", "text": "ask_recording_date"},
+        {"id": PUBLISH_AT, "type": "text", "text": "ask_publish_at"},
         {
             "id": TEMPLATE,
             "type": "text",
@@ -101,7 +161,7 @@ upload_file_engine = DialogEngine.from_list(
     ],
     dialog_id=DIALOG_ID,
     text_resolver=resolve_text,
-    validators={TEMPLATE: check_template},
+    validators={RECORDING_DATE: check_recording_date, PUBLISH_AT: check_publish_at, TEMPLATE: check_template},
     ttl=SESSION_TTL,
 )
 

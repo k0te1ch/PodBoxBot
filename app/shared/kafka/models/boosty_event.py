@@ -30,6 +30,9 @@ class BoostyEvent(BaseModel):
     comment: str = Field(..., description="Тело поста / описание эпизода")
     chapters: list[list[str]] = Field(default_factory=list, description="Таймлайн [[time, name], ...]")
     tags: list[str] = Field(default_factory=list)
+    publish_at: str | None = Field(
+        None, description="Когда публиковать (YYYY-MM-DDTHH:MM, время бота); пусто: как обычно"
+    )
 
     # Paywall / tier
     type_episode: str | None = Field(

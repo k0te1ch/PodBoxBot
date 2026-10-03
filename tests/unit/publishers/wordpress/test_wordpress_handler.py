@@ -140,6 +140,28 @@ class TestHandleUpload:
                 assert verify_published_mock.await_args.args[0].startswith("http://site:8080/wp-json/")
 
     @pytest.mark.asyncio
+    async def test_chosen_publication_date_reaches_the_site_and_the_result(
+        self, sample_wp_event_dict, mock_producer, verify_published_mock, monkeypatch
+    ):
+        monkeypatch.setattr("app.publishers.WordPress.main.WP_URL", "https://example.org/")
+        with patch("app.publishers.WordPress.main.WordPress") as MockWP:
+            wp_instance = MagicMock()
+            wp_instance.upload_post.return_value = True
+            wp_instance.last_post_id = "777"
+            wp_instance.podcast_rest_path.return_value = "/wp/v2/episodes/777"
+            wp_instance.__enter__ = MagicMock(return_value=wp_instance)
+            wp_instance.__exit__ = MagicMock(return_value=False)
+            MockWP.return_value = wp_instance
+
+            from app.publishers.WordPress.main import handle_upload
+
+            await handle_upload({**sample_wp_event_dict, "publish_at": "2026-10-05T20:00"}, mock_producer)
+
+            assert wp_instance.upload_post.call_args.args[0]["publish_at"] == "2026-10-05T20:00"
+            result = mock_producer.send.call_args.args[1]
+            assert result["metadata"]["publish_at"] == "2026-10-05 20:00"
+
+    @pytest.mark.asyncio
     async def test_unverified_draft_reports_failure(
         self, sample_wp_event_dict, mock_producer, verify_published_mock, monkeypatch
     ):

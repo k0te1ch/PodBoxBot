@@ -89,7 +89,10 @@ def _success_text(event: dict) -> str:
     if action == "published":
         return f"✅ Эпизод {episode} опубликован{where}"
     if action == "draft":
-        return f"✅ Эпизод {episode}: пост сохранён в черновики{where}, подписчики его пока не видят"
+        text = f"✅ Эпизод {episode}: пост сохранён в черновики{where}, подписчики его пока не видят"
+        if publish_at := metadata.get("publish_at"):
+            text += f". Дата публикации в черновике: {escape(publish_at)}"
+        return text
     if action == "scheduled":
         when = f" на {escape(publish_at)}" if (publish_at := metadata.get("publish_at")) else ""
         return f"✅ Эпизод {episode}: отложенная публикация{where} запланирована{when}"

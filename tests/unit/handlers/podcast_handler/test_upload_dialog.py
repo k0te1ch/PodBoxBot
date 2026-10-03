@@ -5,6 +5,7 @@
 осталось в хранилище.
 """
 
+from datetime import datetime
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -16,14 +17,24 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from dialog_engine import FileInfo
 from dialog_engine.integrations.aiogram import DialogTurn
 
-from forms.upload_file import MP3, TEMPLATE, TYPE_EPISODE, upload_file_engine
+from forms import upload_file
+from forms.upload_file import MP3, PUBLISH_AT, RECORDING_DATE, TEMPLATE, TYPE_EPISODE, upload_file_engine
 from handlers import podcast_handler
 from services.i18n import t
+from utils import date_picker
+from utils.date_picker import DateCallback
 from utils.ftp_methods import EpisodeNumberError
 from utils.status_message import human_size
 
 CHAT_ID = 100
+NOW = datetime(2026, 10, 3, 14, 30)
 STEP_MESSAGE_ID = 7
+
+
+@pytest.fixture(autouse=True)
+def _today(monkeypatch):
+    monkeypatch.setattr(upload_file, "now", lambda: NOW)
+    monkeypatch.setattr(podcast_handler, "local_now", lambda: NOW)
 
 
 @pytest.fixture
@@ -184,10 +195,11 @@ async def test_mp3_is_downloaded_and_template_asked_with_next_number(state, bot,
     assert f"⏳ {t('status_download', language)}" in edits[0]
     assert f"✅ {t('status_download_done', language)} · {human_size(2048, language)}" in edits[1]
     assert f"⏳ {t('status_number', language)}" in edits[2]
-    assert "Number: 43" in edits[-1]
-    assert t("downloaded", language, size=human_size(2048, language), number="43") in edits[-1]
+    # Дальше то же сообщение спрашивает дату записи.
+    assert t("summary_file", language, size=human_size(2048, language), number="43") in edits[-1]
+    assert t("ask_recording_date", language) in edits[-1]
     session = await _session(state)
-    assert upload_file_engine.current_step(session).id == TEMPLATE
+    assert upload_file_engine.current_step(session).id == RECORDING_DATE
     assert session.context["number"] == "43"
 
 
@@ -227,7 +239,7 @@ async def test_ftp_failure_on_episode_number_is_reported_and_closes_the_dialog(s
     bot.edit_message_reply_markup.assert_awaited_once()
 
 
-async def _on_template_step(state, bot, mp3_message):
+async def _on_date_step(state, bot, mp3_message):
     await _choose(state, bot)
     with (
         patch.object(podcast_handler, "clear_old_mp3_files", new=AsyncMock()),
@@ -235,6 +247,103 @@ async def _on_template_step(state, bot, mp3_message):
         patch.object(podcast_handler, "get_last_post_id", new=AsyncMock(return_value=42)),
     ):
         await podcast_handler.get_MP3(mp3_message, state, bot, "ru", "admin")
+
+
+def _date_callback(kind: str, action: str, value: str = "") -> MagicMock:
+    callback = _callback(DateCallback(k=kind, a=action, v=value).pack())
+    callback.message.edit_reply_markup = AsyncMock()
+    return callback
+
+
+async def _press_date(state, bot, kind: str, action: str, value: str = "") -> MagicMock:
+    callback = _date_callback(kind, action, value)
+    await podcast_handler.on_date_button(callback, DateCallback(k=kind, a=action, v=value), state, bot, "ru")
+    return callback
+
+
+async def _on_template_step(state, bot, mp3_message):
+    await _on_date_step(state, bot, mp3_message)
+    await _press_date(state, bot, date_picker.RECORDING, date_picker.SET, "2026-10-02")
+    await _press_date(state, bot, date_picker.PUBLISH, date_picker.SET, date_picker.DEFAULT)
+
+
+def _last_keyboard(bot) -> list[list[str]]:
+    markup = bot.edit_message_text.call_args.kwargs["reply_markup"]
+    return [[button.text for button in row] for row in markup.inline_keyboard]
+
+
+@pytest.mark.asyncio
+async def test_recording_date_is_picked_with_a_button(state, bot, mp3_message):
+    await _on_date_step(state, bot, mp3_message)
+    assert _last_keyboard(bot)[:2] == [
+        [t("date_today", date="3 октября"), t("date_yesterday", date="2 октября")],
+        [t("date_other")],
+    ]
+
+    await _press_date(state, bot, date_picker.RECORDING, date_picker.SET, "2026-10-02")
+
+    session = await _session(state)
+    assert session.answers[RECORDING_DATE] == "2026-10-02"
+    assert upload_file_engine.current_step(session).id == PUBLISH_AT
+    assert _last_keyboard(bot)[:3] == [
+        [t("date_publish_default")],
+        [t("date_publish_today"), t("date_publish_tomorrow")],
+        [t("date_other")],
+    ]
+
+
+@pytest.mark.asyncio
+async def test_calendar_and_time_are_browsed_in_the_same_message(state, bot, mp3_message):
+    """Календарь и время меняют только клавиатуру: сообщение не пересоздаётся."""
+    await _on_date_step(state, bot, mp3_message)
+    await _press_date(state, bot, date_picker.RECORDING, date_picker.SET, "2026-10-03")
+    bot.send_message.reset_mock()
+
+    calendar = await _press_date(state, bot, date_picker.PUBLISH, date_picker.CALENDAR, "2026-10")
+    rows = calendar.message.edit_reply_markup.call_args.kwargs["reply_markup"].inline_keyboard
+    assert [button.text for button in rows[0]] == ["‹", "Октябрь 2026", "›"]
+    labels = [button.text for row in rows[2:] for button in row]
+    # Публикация в прошлом невозможна: дни до сегодняшнего не нажимаются.
+    assert "·" in labels and "[3]" in labels and "2" not in labels and "31" in labels
+    assert [button.text for button in rows[-1]] == [t("de-button-cancel")] or t("de-button-cancel") in [
+        button.text for button in rows[-1]
+    ]
+
+    time = await _press_date(state, bot, date_picker.PUBLISH, date_picker.TIME, "2026-10-03")
+    slots = [
+        b.text for row in time.message.edit_reply_markup.call_args.kwargs["reply_markup"].inline_keyboard for b in row
+    ]
+    # Сейчас 14:30: утренние слоты сегодняшнего дня уже прошли.
+    assert slots[:4] == ["15:00", "18:00", "20:00", "21:00"]
+
+    await _press_date(state, bot, date_picker.PUBLISH, date_picker.SET, "2026-10-03T2000")
+
+    session = await _session(state)
+    assert session.answers[PUBLISH_AT] == "2026-10-03T20:00"
+    assert upload_file_engine.current_step(session).id == TEMPLATE
+    assert "публикация 3 октября, 20:00" in bot.edit_message_text.call_args.kwargs["text"]
+    bot.send_message.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_date_button_of_a_passed_step_is_stale(state, bot, mp3_message):
+    await _on_template_step(state, bot, mp3_message)
+
+    callback = await _press_date(state, bot, date_picker.RECORDING, date_picker.SET, "2026-10-01")
+
+    callback.answer.assert_awaited_once_with(t("de-alert-stale_button"), show_alert=True)
+    assert (await _session(state)).answers[RECORDING_DATE] == "2026-10-02"
+
+
+@pytest.mark.asyncio
+async def test_dates_can_be_typed(state, bot, mp3_message):
+    await _on_date_step(state, bot, mp3_message)
+
+    await podcast_handler.set_template(_message("01.10.2026"), state, bot, "ru", "admin")
+    await podcast_handler.set_template(_message("05.10.2026 19:30"), state, bot, "ru", "admin")
+
+    session = await _session(state)
+    assert (session.answers[RECORDING_DATE], session.answers[PUBLISH_AT]) == ("2026-10-01", "2026-10-05T19:30")
 
 
 @pytest.mark.asyncio
@@ -286,8 +395,41 @@ def episode_files(tmp_path):
         yield tmp_path, menu
 
 
-def _turn(type_episode="main") -> DialogTurn:
-    return DialogTurn(finished=True, answers={TYPE_EPISODE: type_episode, TEMPLATE: {"number": "42", "title": "T"}})
+def _turn(type_episode="main", **answers) -> DialogTurn:
+    return DialogTurn(
+        finished=True,
+        answers={TYPE_EPISODE: type_episode, TEMPLATE: {"number": "42", "title": "T"}, **answers},
+    )
+
+
+@pytest.mark.asyncio
+async def test_chosen_dates_reach_the_tags_the_file_name_and_the_platforms(bot, episode_files):
+    tmp_path, _menu = episode_files
+    msg = _publish_message(bot)
+    turn = _turn(**{RECORDING_DATE: "2026-10-02", PUBLISH_AT: "2026-10-05T20:00"})
+
+    with patch.object(podcast_handler, "audio_tag") as audio_tag:
+        await podcast_handler.publish_episode(msg, turn, "ru", "admin")
+
+    info = audio_tag.call_args.args[0]
+    assert (info["recording_date"], info["publish_at"]) == ("2026-10-02", "2026-10-05T20:00")
+    saved = podcast_handler.save_template_info.await_args.args[1]
+    assert saved["publish_at"] == "2026-10-05T20:00"
+    # В имени файла стоит день публикации.
+    assert [path.name for path in Path(tmp_path).glob("0042_*.mp3")] == ["0042_rz_05102026.mp3"]
+
+
+@pytest.mark.asyncio
+async def test_usual_publication_leaves_no_date_behind(bot, episode_files):
+    msg = _publish_message(bot)
+    turn = _turn(**{RECORDING_DATE: "2026-10-02", PUBLISH_AT: ""})
+
+    with patch.object(podcast_handler, "audio_tag") as audio_tag:
+        await podcast_handler.publish_episode(msg, turn, "ru", "admin")
+
+    info = audio_tag.call_args.args[0]
+    assert info["recording_date"] == "2026-10-02"
+    assert "publish_at" not in info
 
 
 @pytest.mark.asyncio
@@ -378,8 +520,8 @@ async def test_mp3_without_a_dialog_starts_the_episode(state, bot, mp3_message):
     assert download.call_args.args[0] == FileInfo("audio", "audio/mpeg", "ep.mp3", 2048)
     callback.message.answer.assert_awaited_once_with(t("got_mp3"))
     bot.send_message.assert_not_awaited()
-    assert "Number: 43" in _edits(bot)[-1]
-    assert upload_file_engine.current_step(await _session(state)).id == TEMPLATE
+    assert t("ask_recording_date") in _edits(bot)[-1]
+    assert upload_file_engine.current_step(await _session(state)).id == RECORDING_DATE
 
 
 @pytest.mark.asyncio
@@ -406,7 +548,13 @@ def funnel():
 async def test_funnel_counts_passed_steps(state, bot, mp3_message, funnel):
     await _on_template_step(state, bot, mp3_message)
 
-    assert funnel == [("start", "done"), (TYPE_EPISODE, "done"), (MP3, "done")]
+    assert funnel == [
+        ("start", "done"),
+        (TYPE_EPISODE, "done"),
+        (MP3, "done"),
+        (RECORDING_DATE, "done"),
+        (PUBLISH_AT, "done"),
+    ]
 
 
 @pytest.mark.asyncio

@@ -4,7 +4,8 @@
 
 error_occurred = Произошла ошибка! Пожалуйста, попробуйте снова
 invalid_input = Ошибка при вводе!
-invalid_recording_date = Не понял дату записи. Укажи её как ДД.ММ.ГГГГ, например 26.07.2026, и не позже сегодняшнего дня.
+invalid_recording_date = Не понял дату записи. Выбери её кнопкой или напиши как ДД.ММ.ГГГГ, например 26.07.2026, не позже сегодняшнего дня
+invalid_publish_at = Не понял дату публикации. Выбери её кнопками или напиши дату и время, например 05.10.2026 20:00, не раньше текущего момента
 download_failed = не скачался. Проверь файл и пришли его ещё раз
 episode_number_failed = FTP не ответил, загрузка отменена. Начни заново: /new
     <code>{ $error }</code>
@@ -17,11 +18,27 @@ file_not_mp3 = Это не mp3. Чтобы оформить выпуск, при
 ask_mp3 = Загружаем <u><b>{ $type_episode }</b></u>. Ожидаю MP3 файл
 got_mp3 = Вижу mp3, скачиваю
 done_mp3 = Вот твой готовый файл!
-downloaded =
-    ✅ Файл получен ({ $size }), это будет выпуск { $number }
-
-    Теперь пришли описание. Скопируй шаблон и поменяй только значения:
 canceled = Отменено
+
+## Даты выпуска (utils/date_picker.py)
+
+summary_file = ✅ Файл получен ({ $size }), это будет выпуск { $number }
+summary_recording = Выпуск { $number } · запись { $recording }
+summary_dates = Выпуск { $number } · запись { $recording } · публикация { $publish }
+ask_recording_date = Когда записывали выпуск?
+ask_publish_at = Когда публикуем? «Как обычно»: дату не задаём, сайт сохранит черновик, остальные площадки сработают сразу
+date_today = Сегодня, { $date }
+date_yesterday = Вчера, { $date }
+date_other = 📅 Другая дата
+date_back = « К быстрому выбору
+date_publish_default = Как обычно
+date_publish_default_short = как обычно
+date_publish_today = Сегодня
+date_publish_tomorrow = Завтра
+date_day_month = { $day } { $month }
+months = Январь Февраль Март Апрель Май Июнь Июль Август Сентябрь Октябрь Ноябрь Декабрь
+months_genitive = января февраля марта апреля мая июня июля августа сентября октября ноября декабря
+weekdays = Пн Вт Ср Чт Пт Сб Вс
 
 ## Статус-сообщение долгой операции (utils/status_message.py)
 
@@ -51,8 +68,8 @@ main_episode = Основной эпизод
 episode_aftershow = Эпизод послешоу
 
 ask_template_main =
+    Теперь пришли описание. Скопируй шаблон и поменяй только значения:
     <pre language="text">Number: { $number }
-    Recording Date: 26.07.2026
     Title: Название эпизода
     Comment: Описание эпизода
     Tags: Окно, жесть, спина
@@ -62,8 +79,8 @@ ask_template_main =
     01:40:56 - Название темы 2
     02:17:25 - Озвучили наших патронов и анонсировали послешоу</pre>
 ask_template_aftershow =
+    Теперь пришли описание. Скопируй шаблон и поменяй только значения:
     <pre language="text">Number: { $number }
-    Recording Date: 26.07.2026
     Title: Послешоу. Название эпизода
     Comment: Описание эпизода</pre>
 

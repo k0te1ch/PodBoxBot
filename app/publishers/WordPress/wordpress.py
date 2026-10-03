@@ -198,6 +198,33 @@ class WordPress(WordPressHttpMixin, PodloveMixin):
                 logger.warning(f"Invalid recording_date {recording_iso!r} ({e}); falling back to today")
         return f"{when.day} {_MONTHS[when.month - 1]} {when.year}"
 
+    @staticmethod
+    def _publish_date_fields(info: dict) -> dict[str, str]:
+        """Дата публикации в полях редактора записи (``aa``, ``mm``, ``jj``, ``hh``, ``mn``).
+
+        ``edit_date`` говорит WordPress взять дату записи из этих полей.
+        Запись остаётся черновиком: дата сработает, когда редактор нажмёт
+        «Опубликовать» (будущая дата превратит это в отложенную публикацию).
+        Без ``publish_at`` полей нет, и WordPress ведёт себя как раньше.
+        """
+        raw = info.get("publish_at")
+        if not raw:
+            return {}
+        try:
+            when = datetime.strptime(raw, "%Y-%m-%dT%H:%M")
+        except ValueError as e:
+            logger.warning(f"Invalid publish_at {raw!r} ({e}); the draft keeps the default date")
+            return {}
+        return {
+            "edit_date": "1",
+            "aa": f"{when.year:04d}",
+            "mm": f"{when.month:02d}",
+            "jj": f"{when.day:02d}",
+            "hh": f"{when.hour:02d}",
+            "mn": f"{when.minute:02d}",
+            "ss": "00",
+        }
+
     def _build_form(self, info: dict) -> dict[str, str]:
         number = info["number"]
         chapters = "".join(
@@ -236,6 +263,7 @@ class WordPress(WordPressHttpMixin, PodloveMixin):
             "tax_input[post_tag]": ",".join(info.get("tags") or []),
             "newtag[post_tag]": "",
             "_thumbnail_id": "6038",
+            **self._publish_date_fields(info),
         }
 
     def _fetch_editor_page(self, url: str):

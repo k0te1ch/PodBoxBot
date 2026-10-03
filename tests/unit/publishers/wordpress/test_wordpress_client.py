@@ -198,6 +198,40 @@ class TestWordPressUploadPost:
         assert payload["title"] == sample_post_info["title"]
         assert payload["recording_date"] == "2026-06-05"
 
+    def _submitted_form(self, mock_session, info) -> dict:
+        get_resp = MagicMock(status_code=200, ok=True, content=_FORM_PAGE, text=_FORM_PAGE.decode())
+        post_resp = MagicMock(status_code=302, ok=True, text="")
+        captured = {}
+
+        def _request(method, url, **kwargs):
+            if method == "POST" and url.endswith("/wp-admin/post.php"):
+                captured["form"] = kwargs["data"]
+                return post_resp
+            return get_resp
+
+        mock_session.request.side_effect = _request
+        wp = _make_wp(mock_session)
+        with patch.object(wp, "_dump_cookies", return_value=True):
+            assert wp.upload_post(info) is True
+        return captured["form"]
+
+    def test_chosen_publication_date_goes_into_the_editor_date_fields(self, mock_session, sample_post_info):
+        """Дата публикации, выбранная в боте, становится датой записи в черновике."""
+        sample_post_info["publish_at"] = "2026-10-05T20:07"
+
+        form = self._submitted_form(mock_session, sample_post_info)
+
+        dated = {name: form[name] for name in ("edit_date", "aa", "mm", "jj", "hh", "mn", "ss")}
+        assert dated == {"edit_date": "1", "aa": "2026", "mm": "10", "jj": "05", "hh": "20", "mn": "07", "ss": "00"}
+
+    @pytest.mark.parametrize("publish_at", [None, "", "soon"])
+    def test_draft_keeps_the_default_date_without_a_chosen_one(self, mock_session, sample_post_info, publish_at):
+        sample_post_info["publish_at"] = publish_at
+
+        form = self._submitted_form(mock_session, sample_post_info)
+
+        assert not {"edit_date", "aa", "mm", "jj", "hh", "mn"} & set(form)
+
     def test_upload_post_no_form_retries_login(self, mock_session, sample_post_info):
         empty_page = b"<html><body>No form here</body></html>"
         get_calls = {"n": 0}

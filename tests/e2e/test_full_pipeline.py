@@ -1,4 +1,4 @@
-"""Full pipeline e2e: /start menu -> "New episode" -> choose type -> upload MP3 -> template ->
+"""Full pipeline e2e: /start menu -> "New episode" -> choose type -> upload MP3 -> dates -> template ->
 FTP/WordPress publish (no chat forwarding).
 
 Buttons are clicked by their text from locales/*.ftl: callback data of the
@@ -9,18 +9,25 @@ callback): expect_edit and wait_until re-read it, so an edit that landed
 before the check is still seen.
 """
 
+from datetime import date
 from pathlib import Path
 
 import pytest
 
 
-async def _upload_audio_and_wait_template_prompt(tester, bot_username: str, mp3_path: Path) -> str:
+async def _upload_audio_and_wait_template_prompt(tester, bot_username: str, mp3_path: Path, phrase) -> str:
     async with tester.conversation(bot_username, timeout=120) as chat:
         await chat.send_file(str(mp3_path))
         # One message for the whole upload: the reply to the file is edited
-        # through the download steps and ends up as the template question.
-        await chat.expect()
-        template_prompt = await chat.wait_until(contains="Number:", timeout=120)
+        # through the download steps, asks the two dates and ends up as the
+        # template question.
+        status = await chat.expect()
+        await chat.wait_until(contains=phrase("ask_recording_date"), timeout=120)
+        # The date buttons carry today's date in their text, so type it.
+        await chat.send(date.today().strftime("%d.%m.%Y"))
+        await chat.wait_until(buttons=[phrase("date_publish_default", full=True)], timeout=20, message=status)
+        await chat.click(phrase("date_publish_default", full=True))
+        template_prompt = await chat.wait_until(contains="Number:", timeout=20)
         return template_prompt.message
 
 
@@ -42,7 +49,7 @@ async def test_full_pipeline_ftp(tester, bot_username, sample_mp3, episode_templ
         await chat.click(phrase("main_episode", full=True))
         await chat.wait_until(contains=phrase("ask_mp3"), timeout=20)
 
-    await _upload_audio_and_wait_template_prompt(tester, bot_username, sample_mp3)
+    await _upload_audio_and_wait_template_prompt(tester, bot_username, sample_mp3, phrase)
 
     async with tester.conversation(bot_username) as chat:
         await chat.send(episode_template)
@@ -73,7 +80,7 @@ async def test_full_pipeline_wordpress(tester, bot_username, sample_mp3, episode
         await chat.click(phrase("main_episode", full=True))
         await chat.wait_until(contains=phrase("ask_mp3"), timeout=20)
 
-    await _upload_audio_and_wait_template_prompt(tester, bot_username, sample_mp3)
+    await _upload_audio_and_wait_template_prompt(tester, bot_username, sample_mp3, phrase)
 
     async with tester.conversation(bot_username) as chat:
         await chat.send(episode_template)
