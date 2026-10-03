@@ -1,6 +1,6 @@
 """Сбор из чата: хештеги ``#тема`` и ``#вопрос``, добавление админом по ответу."""
 
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from aiogram.exceptions import TelegramBadRequest
@@ -81,14 +81,53 @@ async def test_each_acknowledgement_can_be_turned_off(
 
 
 @pytest.mark.asyncio
-async def test_reaction_emoji_is_a_setting(fake_redis, bot, group_message, monkeypatch):
-    monkeypatch.setattr(config, "TOPICS_ACK_EMOJI", "🫡")
+async def test_reaction_is_picked_at_random_from_the_set(group_message, monkeypatch):
+    monkeypatch.setattr(config, "TOPICS_ACK_EMOJI", ["👍", "🫡", "👌", "🔥"])
+    used = set()
+    for number in range(40):
+        msg = group_message("#тема про отпуск на море", message_id=200 + number)
+        await th.react(msg)
+        [reaction] = msg.react.await_args.args[0]
+        used.add(reaction.emoji)
+
+    assert used <= {"👍", "🫡", "👌", "🔥"}
+    assert len(used) > 1
+
+
+def _reaction_invalid():
+    return TelegramBadRequest(method=SendMessage(chat_id=1, text="x"), message="Bad Request: REACTION_INVALID")
+
+
+@pytest.mark.asyncio
+async def test_reaction_the_chat_forbids_is_skipped_silently(group_message, monkeypatch):
+    """Админы чата оставили часть реакций: запрещённую бот пробует один раз и больше не трогает."""
+    monkeypatch.setattr(config, "TOPICS_ACK_EMOJI", ["🔥", "👍"])
+    monkeypatch.setattr(th, "_rejected_reactions", {})
+
+    async def only_thumbs_up(reactions):
+        if reactions[0].emoji != "👍":
+            raise _reaction_invalid()
+
+    for number in range(10):
+        msg = group_message("#тема про отпуск на море", message_id=300 + number)
+        msg.react = AsyncMock(side_effect=only_thumbs_up)
+        await th.react(msg)
+        assert msg.react.await_args.args[0][0].emoji == "👍"
+
+    assert th._rejected_reactions == {msg.chat.id: {"🔥"}}
+
+
+@pytest.mark.asyncio
+async def test_item_is_kept_when_no_reaction_is_allowed(fake_redis, bot, group_message, monkeypatch):
+    monkeypatch.setattr(config, "TOPICS_ACK_EMOJI", ["🔥", "👍"])
+    monkeypatch.setattr(th, "_rejected_reactions", {})
     msg = group_message("#тема про отпуск на море")
+    msg.react = AsyncMock(side_effect=_reaction_invalid())
 
     await th.collect_from_chat(msg, bot, Kind.TOPIC)
 
-    [reaction] = msg.react.await_args.args[0]
-    assert reaction.emoji == "🫡"
+    assert msg.react.await_count == 2
+    assert len(await _items()) == 1
 
 
 def test_hashtags_are_configurable(group_message, monkeypatch):
