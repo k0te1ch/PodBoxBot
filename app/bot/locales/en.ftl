@@ -10,6 +10,10 @@ publish_time_passed = That time has already passed: it is { $now } now. Type a l
 download_failed = did not download. Check the file and send it again
 episode_number_failed = FTP did not respond, the upload is cancelled. Start again: /new
     <code>{ $error }</code>
+episode_number_refused = FTP refused the request, the upload is cancelled. Check the FTP login and password in the bot settings and start again: /new
+    <code>{ $error }</code>
+episode_number_no_directory = There is no "{ $directory }" folder for aftershows on the FTP, the upload is cancelled. Create it on the FTP and start again: /new
+    <code>{ $error }</code>
 
 ## Episode upload (DialogEngine dialog)
 

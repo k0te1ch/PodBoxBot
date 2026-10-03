@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from handlers import wordpress_handler
+from services.i18n import t
 from shared.kafka.models.wordpress_event import WordPressEvent
 
 INFO = {
@@ -68,4 +69,5 @@ async def test_missing_sidecar_is_reported_without_publishing(monkeypatch, publi
 
     publish.assert_not_awaited()
     publish_board_stub.assert_not_awaited()
-    assert ctx.answer.await_args.kwargs == {"alert": True}
+    # Кнопка под файлом прошлого выпуска: бот говорит, что файл заменён.
+    ctx.answer.assert_awaited_once_with(t("episode_file_gone"), alert=True)

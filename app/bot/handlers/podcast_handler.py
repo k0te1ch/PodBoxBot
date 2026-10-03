@@ -60,7 +60,7 @@ from services.metrics import bot_metrics
 from services.none_module import _NoneModule
 from services.redis import redis
 from services.rss import mark_published
-from utils import date_picker
+from utils import date_picker, ftp_methods
 from utils.date_picker import DateCallback
 from utils.ftp_methods import EpisodeNumberError, get_last_post_id
 from utils.mp3_methods import audio_tag, read_duration_and_artist
@@ -386,6 +386,18 @@ async def get_MP3(msg: Message, state: FSMContext, bot: Bot, language: str, user
     await _take_mp3(msg.chat.id, msg.reply, files, state, bot, language, username)
 
 
+_NUMBER_FAILURE_TEXTS = {
+    ftp_methods.REFUSED: "episode_number_refused",
+    ftp_methods.NO_DIRECTORY: "episode_number_no_directory",
+}
+
+
+def _number_failure_text(error: EpisodeNumberError, language: str) -> str:
+    """Что сказать, когда номер выпуска не получен: FTP молчит, отказал или нет папки послешоу."""
+    key = _NUMBER_FAILURE_TEXTS.get(error.reason, "episode_number_failed")
+    return t(key, language, error=escape(str(error)), directory=escape(error.directory or ""))
+
+
 def _episode_title(type_episode: str, language: str) -> str:
     return "🎙 " + t("main_episode" if type_episode == "main" else "episode_aftershow", language)
 
@@ -462,7 +474,7 @@ async def _take_mp3(
         # Без номера шаблон не собрать: говорим, что случилось, и закрываем
         # диалог, иначе он висит на шаге MP3 без ответа.
         logger.error(f"[{username}]: номер эпизода не получен с FTP: {e}")
-        await fail(NUMBER, "number_failed", t("episode_number_failed", language, error=escape(str(e))))
+        await fail(NUMBER, "number_failed", _number_failure_text(e, language))
         return
 
     # Сообщение о загрузке становится вопросом про описание: диалог дальше

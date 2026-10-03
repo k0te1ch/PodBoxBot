@@ -4,6 +4,7 @@ import pytest
 
 from config import FILES_PATH
 from handlers import boosty_handler
+from services.i18n import t
 from shared.kafka.models.boosty_event import BoostyEvent
 
 
@@ -65,4 +66,5 @@ async def test_missing_sidecar_is_reported_without_publishing(monkeypatch, publi
     await boosty_handler.upload_Boosty(ctx)
 
     publish.assert_not_awaited()
-    assert ctx.answer.await_args.kwargs == {"alert": True}
+    # Кнопка под файлом прошлого выпуска: бот говорит, что файл заменён.
+    ctx.answer.assert_awaited_once_with(t("episode_file_gone"), alert=True)
