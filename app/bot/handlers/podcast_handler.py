@@ -4,6 +4,7 @@ import re
 import shutil
 import time
 from collections.abc import Awaitable, Callable
+from dataclasses import replace
 from html import escape
 from pathlib import Path
 from typing import Any
@@ -13,7 +14,7 @@ from aiogram.enums import ContentType
 from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, FSInputFile, InputMediaAudio, Message
+from aiogram.types import CallbackQuery, FSInputFile, InlineKeyboardMarkup, InputMediaAudio, Message
 from aiogram.utils.chat_action import ChatActionSender
 from dialog_engine import FileInfo, ValidationError, validate
 from dialog_engine.integrations.aiogram import (
@@ -22,6 +23,7 @@ from dialog_engine.integrations.aiogram import (
     DialogCallbackFilter,
     DialogTurn,
     MessageAnchor,
+    StepView,
     message_files,
 )
 from loguru import logger
@@ -38,13 +40,26 @@ from config import (
     PODCAST_PATH,
 )
 from filters.dispatcher_filters import IsAdmin, IsPrivate
-from forms.upload_file import DIALOG_ID, MP3, PENDING_MP3, TEMPLATE, TYPE_EPISODE, upload_file_runner
+from forms.upload_file import (
+    DATE_STEPS,
+    DIALOG_ID,
+    MP3,
+    PENDING_MP3,
+    PUBLISH_AT,
+    RECORDING_DATE,
+    TEMPLATE,
+    TYPE_EPISODE,
+    upload_file_runner,
+)
+from forms.upload_file import now as local_now
 from handlers.menus import audio_menu_markup
 from services.i18n import t
 from services.metrics import bot_metrics
 from services.none_module import _NoneModule
 from services.redis import redis
 from services.rss import mark_published
+from utils import date_picker
+from utils.date_picker import DateCallback
 from utils.ftp_methods import EpisodeNumberError, get_last_post_id
 from utils.mp3_methods import audio_tag, read_duration_and_artist
 from utils.podcast_methods import generate_file_name
@@ -132,18 +147,39 @@ async def clear_old_mp3_files():
     logger.debug("Старые MP3-файлы удалены")
 
 
-class _InPlaceSender(DefaultSender):
+class UploadSender(DefaultSender):
+    """Шаги диалога загрузки; на шагах дат над «Назад» и «Отмена» стоят
+    кнопки выбора даты (:mod:`utils.date_picker`)."""
+
+    def __init__(self, bot: Bot, chat_id: int, locale: str = "ru") -> None:
+        super().__init__(bot, chat_id)
+        self.locale = locale
+
+    async def show(self, view: StepView, anchor: MessageAnchor | None) -> MessageAnchor | None:
+        kind = DATE_STEPS.get(view.step.id) if view.step is not None else None
+        if kind is not None:
+            rows = date_picker.quick_rows(kind, local_now().date(), self.locale)
+            view = replace(view, keyboard=_with_rows(rows, view.keyboard))
+        return await super().show(view, anchor)
+
+
+def _with_rows(rows: date_picker.Rows, keyboard: InlineKeyboardMarkup | None) -> InlineKeyboardMarkup:
+    """Кнопки выбора даты над кнопками движка («Назад», «Отмена»)."""
+    return InlineKeyboardMarkup(inline_keyboard=[*rows, *(keyboard.inline_keyboard if keyboard else [])])
+
+
+class _InPlaceSender(UploadSender):
     """Первый шаг диалога рисуется в уже показанном сообщении, а не новым.
 
     Так кнопка «Новый выпуск» превращает главное меню в вопрос о типе
     выпуска: чат не прыгает от лишнего сообщения.
     """
 
-    def __init__(self, bot: Bot, chat_id: int, message_id: int) -> None:
-        super().__init__(bot, chat_id)
+    def __init__(self, bot: Bot, chat_id: int, message_id: int, locale: str = "ru") -> None:
+        super().__init__(bot, chat_id, locale)
         self._first = MessageAnchor(chat_id=chat_id, message_id=message_id)
 
-    async def show(self, view, anchor: MessageAnchor | None) -> MessageAnchor | None:
+    async def show(self, view: StepView, anchor: MessageAnchor | None) -> MessageAnchor | None:
         return await super().show(view, anchor or self._first)
 
 
@@ -165,7 +201,11 @@ async def start_upload(
     bot_metrics.admin_action("upload")
     bot_metrics.upload_step("start", "done")
     chat_id = message.chat.id
-    sender = _InPlaceSender(bot, chat_id, message.message_id) if in_place else DefaultSender(bot, chat_id)
+    sender = (
+        _InPlaceSender(bot, chat_id, message.message_id, language)
+        if in_place
+        else UploadSender(bot, chat_id, language)
+    )
     context: dict[str, Any] = {"lang": language}
     if pending is not None:
         context[PENDING_MP3] = pending.to_dict()
@@ -197,7 +237,7 @@ async def on_dialog_button(callback: CallbackQuery, state: FSMContext, bot: Bot,
     """Кнопки диалога: выбор типа эпизода, «Назад», «Отмена»."""
     session, _ui = await storage.load(state)
     before = _step_id(session)
-    turn = await runner.on_callback(callback.data, state, DefaultSender(bot, callback.message.chat.id))
+    turn = await runner.on_callback(callback.data, state, UploadSender(bot, callback.message.chat.id, language))
     await _track_turn(state, before, turn)
     await callback.answer(text=turn.alert, show_alert=bool(turn.alert))
     if turn.cancelled and not turn.expired:
@@ -212,6 +252,52 @@ async def on_dialog_button(callback: CallbackQuery, state: FSMContext, bot: Bot,
         await _take_mp3(
             message.chat.id, message.answer, [FileInfo.from_value(pending)], state, bot, language, username
         )
+
+
+async def _engine_rows(state: FSMContext) -> InlineKeyboardMarkup | None:
+    """Кнопки движка для текущего шага («Назад», «Отмена»)."""
+    session, ui = await storage.load(state)
+    view = await runner.build_view(session, ui) if session is not None else None
+    return view.keyboard if view is not None else None
+
+
+@logger.catch
+@router.callback_query(DateCallback.filter())
+async def on_date_button(
+    callback: CallbackQuery, callback_data: DateCallback, state: FSMContext, bot: Bot, language: str
+):
+    """Кнопки выбора даты: календарь и время листаются в том же сообщении,
+    выбранное значение уходит диалогу как ответ на шаг."""
+    session, _ui = await storage.load(state)
+    step = _step_id(session)
+    kind = callback_data.k
+    if session is None or DATE_STEPS.get(step) != kind:
+        await callback.answer(t("de-alert-stale_button", language), show_alert=True)
+        return
+    action, value = callback_data.a, callback_data.v
+    if action == date_picker.NOOP:
+        await callback.answer()
+        return
+    if action == date_picker.SET:
+        turn = await runner.submit_value(value, state, UploadSender(bot, callback.message.chat.id, language))
+        await _track_turn(state, step, turn)
+        await callback.answer(text=turn.alert, show_alert=bool(turn.alert))
+        return
+
+    today = local_now().date()
+    if action == date_picker.CALENDAR:
+        rows = date_picker.calendar_rows(kind, value, today, language)
+    elif action == date_picker.TIME:
+        rows = date_picker.time_rows(kind, date_picker.parse_date(value) or today, local_now(), language)
+    else:
+        rows = date_picker.quick_rows(kind, today, language)
+    await callback.answer()
+    try:
+        # Меняется только клавиатура: текст вопроса остаётся на месте.
+        await callback.message.edit_reply_markup(reply_markup=_with_rows(rows, await _engine_rows(state)))
+    except TelegramBadRequest as e:
+        if "message is not modified" not in str(e):
+            raise
 
 
 async def _download_mp3(mp3: FileInfo, bot: Bot, on_progress: Callable[[int], Awaitable[None]]) -> bool:
@@ -275,7 +361,7 @@ async def _take_mp3(
     его, дальше оно правится (скачивание с процентами, номер выпуска) и в
     конце превращается в вопрос про описание выпуска.
     """
-    sender = DefaultSender(bot, chat_id)
+    sender = UploadSender(bot, chat_id, language)
     session, ui = await storage.load(state)
     step = runner.engine.current_step(session) if session is not None else None
     try:
@@ -370,12 +456,18 @@ async def set_template(msg: Message, state: FSMContext, bot: Bot, language: str,
     """Текстовый ответ диалогу; на шаге шаблона его разбирает валидатор шага."""
     session, ui = await storage.load(state)
     before = _step_id(session)
-    turn = await runner.on_text(msg.text, state, DefaultSender(bot, msg.chat.id))
+    turn = await runner.on_text(msg.text, state, UploadSender(bot, msg.chat.id, language))
     await _track_turn(state, before, turn)
     if not turn.finished:
         return
     await _drop_keyboard(bot, ui.anchor)
     await publish_episode(msg, turn, language, username)
+
+
+def _publish_day(info: dict[str, Any]):
+    """День публикации, если его выбрали: он же стоит в имени файла."""
+    parsed = date_picker.parse_datetime(str(info.get("publish_at") or ""))
+    return parsed.date() if parsed else None
 
 
 async def publish_episode(msg: Message, turn: DialogTurn, language: str, username: str) -> None:
@@ -386,6 +478,12 @@ async def publish_episode(msg: Message, turn: DialogTurn, language: str, usernam
     """
     type_episode: str = turn.answers[TYPE_EPISODE]
     info: dict[str, Any] = turn.answers[TEMPLATE]
+    # Даты выбраны кнопками. Строка Recording Date в шаблоне, если её вписали
+    # по старой привычке, важнее выбранной даты записи.
+    if turn.answers.get(RECORDING_DATE):
+        info.setdefault("recording_date", turn.answers[RECORDING_DATE])
+    if turn.answers.get(PUBLISH_AT):
+        info["publish_at"] = turn.answers[PUBLISH_AT]
     bot: Bot = msg.bot
     chat_id = msg.chat.id
     logger.debug(f"[{username}]: Выбранный тип эпизода: {type_episode}")
@@ -398,7 +496,7 @@ async def publish_episode(msg: Message, turn: DialogTurn, language: str, usernam
     try:
         async with status.ticking(TAGS), ChatActionSender.typing(bot=bot, chat_id=chat_id):
             await asyncio.to_thread(audio_tag, info, type_episode)
-            new_file_name = generate_file_name(info["number"], type_episode)
+            new_file_name = generate_file_name(info["number"], type_episode, on_date=_publish_day(info))
             Path(PODCAST_PATH).rename(FILES_PATH / new_file_name)
     except Exception as e:
         logger.exception(f"[{username}]: теги не проставлены: {e!r}")

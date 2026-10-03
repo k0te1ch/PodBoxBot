@@ -97,6 +97,11 @@ class TestUpdateUploadResult:
                 {"platform": "wp", "action": "draft"},
                 "✅ Эпизод <b>100</b>: пост сохранён в черновики на сайте, подписчики его пока не видят",
             ),
+            (
+                {"platform": "wp", "action": "draft", "publish_at": "2026-10-05 20:00"},
+                "✅ Эпизод <b>100</b>: пост сохранён в черновики на сайте, подписчики его пока не видят. "
+                "Дата публикации в черновике: 2026-10-05 20:00",
+            ),
             ({"platform": "boosty", "action": "published"}, "✅ Эпизод <b>100</b> опубликован на Boosty"),
             ({"platform": "vk", "action": "published"}, "✅ Эпизод <b>100</b> опубликован в VK Donut"),
             ({"platform": "patreon", "action": "published"}, "✅ Эпизод <b>100</b> опубликован на Patreon"),
@@ -105,7 +110,7 @@ class TestUpdateUploadResult:
                 "✅ Эпизод <b>100</b>: отложенная публикация на Boosty запланирована на 01.10.2027 12:00",
             ),
         ],
-        ids=["wp-draft", "boosty", "vk", "patreon", "boosty-scheduled"],
+        ids=["wp-draft", "wp-dated-draft", "boosty", "vk", "patreon", "boosty-scheduled"],
     )
     async def test_success_text_matches_what_the_platform_did(self, updater, mock_bot, metadata, expected):
         event = {**IDS, "number": "100", "metadata": metadata}

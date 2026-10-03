@@ -16,6 +16,7 @@
     {"name": "comment", "type": "string", "doc": "Тело поста / описание эпизода"},
     {"name": "chapters", "type": {"type": "array", "items": {"type": "array", "items": "string"}}, "doc": "Таймлайн [[time, name], ...]"},
     {"name": "tags", "type": {"type": "array", "items": "string"}},
+    {"name": "publish_at", "type": ["null", "string"], "default": null, "doc": "Когда публиковать (YYYY-MM-DDTHH:MM, время бота); пусто: как обычно"},
     {"name": "type_episode", "type": ["null", "string"], "default": null, "doc": "main | aftershow — определяет paywall для платных publisher'ов"},
     {"name": "paywall_tier", "type": ["null", "string"], "default": null, "doc": "Имя уровня подписки Boosty или его id; приоритетнее type_episode"},
     {"name": "post_id", "type": ["null", "string"], "default": null, "doc": "ID созданного поста на Boosty (в success-result)"}

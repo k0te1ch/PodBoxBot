@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -80,7 +80,9 @@ def generate_podcast_text(info: dict[str, Any]) -> str | None:
         return None
 
 
-def generate_file_name(number: str, type_episode: str, extension: str = FILE_EXTENSION) -> str:
+def generate_file_name(
+    number: str, type_episode: str, extension: str = FILE_EXTENSION, on_date: date | None = None
+) -> str:
     """
     Генерирует имя файла для подкаста.
 
@@ -88,6 +90,7 @@ def generate_file_name(number: str, type_episode: str, extension: str = FILE_EXT
         number (str): Номер эпизода
         type_episode (str): Тип эпизода ('main', 'postshow' или алиас 'aftershow')
         extension (str, optional): Расширение файла. По умолчанию '.mp3'
+        on_date (date, optional): День публикации для имени файла. По умолчанию сегодня
 
     Returns:
         str: Имя файла в формате '{номер}_{префикс}_{дата}{расширение}'
@@ -118,7 +121,7 @@ def generate_file_name(number: str, type_episode: str, extension: str = FILE_EXT
         extension = f".{extension}"
 
     # Формирование имени файла
-    current_date = datetime.now(TIMEZONE).strftime(DATE_FORMAT)
+    current_date = (on_date or datetime.now(TIMEZONE)).strftime(DATE_FORMAT)
     prefix = EPISODE_PREFIXES[episode_type]
 
     return Path(f"{number.zfill(EPISODE_NUMBER_LENGTH)}_{prefix}_{current_date}{extension}").name

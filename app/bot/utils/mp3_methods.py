@@ -92,7 +92,8 @@ def audio_tag(info: dict, type: str) -> None:
     audio_file.tag.copyright = PODCAST_NAME
     audio_file.tag.publisher = PODCAST_NAME
     audio_file.tag.genre = PODCAST_GENRE
-    audio_file.tag.release_date = year
+    # День публикации, если его выбрали при оформлении, иначе текущий год.
+    audio_file.tag.release_date = (info.get("publish_at") or "")[:10] or year
     # Полная дата записи из шаблона точнее года, если она указана.
     audio_file.tag.recording_date = info.get("recording_date") or year
 

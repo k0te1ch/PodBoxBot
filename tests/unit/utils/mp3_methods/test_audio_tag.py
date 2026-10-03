@@ -231,3 +231,17 @@ def test_audio_tag_file_not_found(mock_eyed3_load, caplog, mock_paths):
 
     # Проверка, что ошибка была залогирована
     assert "Audio file not found or could not be loaded" in caplog.text
+
+
+@mock.patch("eyed3.load")
+@mock.patch("builtins.open", new_callable=mock.mock_open, read_data=b"mocked_image_data")
+def test_chosen_dates_go_into_the_tags(mock_open, mock_eyed3_load, mock_audio_file, mock_paths):
+    """Дата записи и день публикации, выбранные в боте, точнее текущего года."""
+    mock_eyed3_load.return_value = mock_audio_file
+    mock_audio_file.tag = mock.Mock(spec=eyed3.id3.Tag)
+    info = {"title": "T", "comment": "C", "recording_date": "2026-10-02", "publish_at": "2026-10-05T20:00"}
+
+    audio_tag(info, "main")
+
+    assert mock_audio_file.tag.recording_date == "2026-10-02"
+    assert mock_audio_file.tag.release_date == "2026-10-05"

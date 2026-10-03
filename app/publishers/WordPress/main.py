@@ -57,6 +57,7 @@ class WordPressPublisher(BasePublisher):
             "slug": event.slug,
             "duration": event.duration,
             "recording_date": event.recording_date,
+            "publish_at": event.publish_at,
         }
 
         # WordPress.upload_post() — синхронный (requests-based). Запускаем
@@ -80,6 +81,9 @@ class WordPressPublisher(BasePublisher):
             # Админу в бот уходит ссылка на редактор записи, а не адрес REST,
             # по которому черновик проверялся.
             metadata["url"] = edit_url(post_id)
+        if event.publish_at:
+            # Черновик сохранён с выбранной датой публикации: бот скажет об этом.
+            metadata["publish_at"] = event.publish_at.replace("T", " ")
 
         result = event.model_copy(update={"event_type": "result", "status": "success", "metadata": metadata})
         await self.producer.send(self.result_topic, result.model_dump())

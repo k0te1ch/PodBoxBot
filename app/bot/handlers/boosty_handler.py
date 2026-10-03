@@ -48,6 +48,7 @@ async def upload_Boosty(ctx: MenuContext) -> None:
             # postshow-эпизоды могут не иметь таймлайна/тегов в sidecar
             chapters=info.get("chapters", []),
             tags=info.get("tags", []),
+            publish_at=info.get("publish_at"),
             type_episode="aftershow",
         )
     except ValidationError as e:

@@ -210,6 +210,52 @@ async def test_default_mode_publishes_right_away(publisher, event_dict):
 
 
 @pytest.mark.asyncio
+async def test_chosen_publication_time_schedules_the_post(publisher, event_dict, monkeypatch):
+    """Время, выбранное при оформлении выпуска, важнее режима publish."""
+    main, client = publisher
+    monkeypatch.setattr(main.config, "TIMEZONE", "UTC")
+    monkeypatch.setattr(main.time, "time", lambda: 1_790_000_000.0)  # 2026-09-22
+    producer = AsyncMock()
+
+    await main.handle_upload({**event_dict, "publish_at": "2026-10-05T20:00"}, producer)
+
+    client.publish.assert_not_awaited()
+    # 20:00 5 октября 2026 года во времени сервиса (в тесте это UTC).
+    assert client.schedule.await_args.args[1] == 1_791_230_400
+    result = _result(producer)
+    assert result["metadata"]["action"] == "scheduled"
+    assert result["metadata"]["publish_at"].startswith("05.10.2026 20:00")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("publish_at", ["2026-09-01T10:00", "soon", None])
+async def test_passed_or_unreadable_time_publishes_by_the_mode(publisher, event_dict, monkeypatch, publish_at):
+    main, client = publisher
+    monkeypatch.setattr(main.config, "TIMEZONE", "UTC")
+    monkeypatch.setattr(main.time, "time", lambda: 1_790_000_000.0)
+    client.get_post.return_value = {"id": "post-1", "isPublished": True}
+    producer = AsyncMock()
+
+    await main.handle_upload({**event_dict, "publish_at": publish_at}, producer)
+
+    client.publish.assert_awaited_once()
+    client.schedule.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_draft_mode_ignores_the_chosen_time(publisher, event_dict, monkeypatch):
+    main, client = publisher
+    monkeypatch.setattr(main, "BOOSTY_PUBLISH_MODE", "draft")
+    monkeypatch.setattr(main.time, "time", lambda: 1_790_000_000.0)
+    producer = AsyncMock()
+
+    await main.handle_upload({**event_dict, "publish_at": "2026-10-05T20:00"}, producer)
+
+    client.save_draft.assert_awaited_once()
+    client.schedule.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_draft_mode_saves_draft_without_publishing(publisher, event_dict, monkeypatch):
     main, client = publisher
     monkeypatch.setattr(main, "BOOSTY_PUBLISH_MODE", "draft")
