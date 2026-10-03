@@ -3,7 +3,7 @@
 Driven by [tgtest](https://github.com/k0te1ch/tgtest) — a Telethon-based
 "real user talks to your bot" harness. Tests live here and are **excluded
 from the default `pytest` run** (`addopts = -m 'not e2e'` in
-`app/bot/pyproject.toml`).
+the root `pytest.ini`).
 
 ## What's covered
 
