@@ -3,10 +3,12 @@
 Кнопка несёт свой хендлер, callback_data и «Назад» генерирует SDK, а при
 старте ``Menus.setup`` валит бота, если какая-то кнопка ведёт в никуда.
 
-* Админ-панель (``/admin``): Бот → перезапустить / логи; сервисное сообщение;
-  заметки ведущих (:mod:`handlers.collector_handler`); темы и вопросы
-  слушателей (:mod:`handlers.topics_list_handler`), если включён
-  ``TOPICS_ENABLED``.
+* Главное меню (``/start``, :mod:`handlers.home_handler`). У админа: новый
+  выпуск, темы и вопросы слушателей (:mod:`handlers.topics_list_handler`,
+  если включён ``TOPICS_ENABLED``), заметки ведущих
+  (:mod:`handlers.collector_handler`) и админка. У остальных: предложить тему
+  или вопрос и короткая справка.
+* Админка (``/admin``): сервисное сообщение, логи, перезапуск.
 * Меню аудио висит под готовым MP3: FTP, сайт, пересылка в чат, а у
   послешоу — платные площадки (Boosty, VK Donut, Patreon, Sponsr), каждая
   видна, только когда включена флагом ``<ПЛОЩАДКА>_ENABLED``.
@@ -21,9 +23,10 @@ from typing import Any
 from aiogram import F, Router
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import Command
-from aiogram.types import CallbackQuery, InlineKeyboardMarkup, Message, User
+from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message, User
 from loguru import logger
 from sagenza_tgbot_sdk.menus import Button, Menu, MenuContext, Menus, Submenu
+from sagenza_tgbot_sdk.menus.callback import Action, MenuCallback
 
 import config as bot_config
 from config import LANGUAGES
@@ -35,12 +38,15 @@ from handlers.collector_handler import collection_submenus
 from handlers.ftp_handler import upload_FTP
 from handlers.paywalled_handler import PATREON, SPONSR, VK, Platform, upload_to
 from handlers.service_handler import open_from_menu as open_service_message
+from handlers.topics_form_handler import form_enabled, start_private_form
 from handlers.topics_list_handler import topics_submenu
 from handlers.wordpress_handler import upload_WP
 from services.i18n import DEFAULT_LOCALE, translator
 from services.metrics import bot_metrics
 from utils.menu_context import is_admin
 
+HOME_MENU = "home"
+HOME_USER_MENU = "home_user"
 ADMIN_MENU = "admin"
 AUDIO_MAIN_MENU = "audio_main"
 AUDIO_POST_MENU = "audio_post"
@@ -115,24 +121,67 @@ def _platform_submenu(platform: Platform) -> Submenu:
     )
 
 
-def build_menus() -> BotMenus:
-    bot_menu = Menu(
-        "bot",
-        title="bot_panel",
-        columns=2,
-        items=[
-            Button("bot_restart", id="restart", handler=restart, confirm=True),
-            Button("bot_logs", id="logs", handler=send_logs, row=True),
-        ],
+async def _new_episode(ctx: MenuContext) -> None:
+    """Кнопка «Новый выпуск»: диалог загрузки начинается в том же сообщении."""
+    # Импорт здесь: podcast_handler сам берёт из этого модуля меню аудио.
+    from handlers.podcast_handler import start_upload
+
+    await ctx.answer()
+    await start_upload(ctx.data["state"], ctx.data["bot"], ctx.message, ctx.locale)
+
+
+async def _suggest(ctx: MenuContext) -> None:
+    """Кнопка «Предложить тему или вопрос» в меню слушателя: анкета в личке."""
+    await ctx.answer()
+    user = ctx.event.from_user if ctx.event is not None else None
+    await start_private_form(
+        ctx.data["bot"],
+        ctx.data["state"],
+        ctx.message.chat.id,
+        user,
+        None,
+        trusted=is_admin(ctx),
+        metrics=ctx.data.get("metrics"),
     )
+
+
+async def _help(ctx: MenuContext) -> None:
+    """Короткая справка для слушателя, с возвратом в его меню."""
+    await ctx.answer()
+    back = InlineKeyboardButton(
+        text=ctx.text("menu-back"), callback_data=MenuCallback(m=HOME_USER_MENU, a=Action.OPEN).pack()
+    )
+    await ctx.put(ctx.text("help_text"), InlineKeyboardMarkup(inline_keyboard=[[back]]))
+
+
+def build_menus() -> BotMenus:
     admin_menu = Menu(
         ADMIN_MENU,
         title="admin_panel",
+        columns=2,
         items=[
-            Submenu("admin_bot", bot_menu, id="bot", visible_if=is_admin),
-            Button("admin_service", id="service", handler=open_service_message, visible_if=is_admin),
-            *collection_submenus(is_admin),
+            Button("admin_service", id="service", handler=open_service_message, row=True, visible_if=is_admin),
+            Button("bot_logs", id="logs", handler=send_logs, visible_if=is_admin),
+            Button("bot_restart", id="restart", handler=restart, confirm=True, visible_if=is_admin),
+        ],
+    )
+    home_menu = Menu(
+        HOME_MENU,
+        title="home_admin",
+        columns=2,
+        items=[
+            Button("home_new_episode", id="new", handler=_new_episode, row=True, visible_if=is_admin),
             topics_submenu(is_admin),
+            *collection_submenus(is_admin),
+            Submenu("home_admin_panel", admin_menu, id="admin", row=True, visible_if=is_admin),
+        ],
+    )
+    home_user = Menu(
+        HOME_USER_MENU,
+        title="home_user",
+        items=[
+            Button("topics_form_button", id="suggest", handler=_suggest, visible_if=form_enabled),
+            Button("home_help", id="help", handler=_help),
         ],
     )
     audio_main = Menu(
@@ -169,7 +218,7 @@ def build_menus() -> BotMenus:
             _platform_submenu(SPONSR),
         ],
     )
-    return BotMenus(admin_menu, audio_main, audio_post, translator=translator, locale_getter=_locale)
+    return BotMenus(home_menu, home_user, audio_main, audio_post, translator=translator, locale_getter=_locale)
 
 
 menus = build_menus()

@@ -44,7 +44,7 @@ def bot_username() -> str:
 async def _bot_speaks_e2e_lang(tester, bot_username):
     """Пропуск, если бот видит аккаунт на другом языке: фразы из .ftl не совпадут."""
     markers = {
-        lang: parse_ftl((LOCALES_DIR / f"{lang}.ftl").read_text(encoding="utf-8"))["ask_typeEpisode"]
+        lang: parse_ftl((LOCALES_DIR / f"{lang}.ftl").read_text(encoding="utf-8"))["home_admin"]
         .split(",")[-1]
         .strip(" ?")
         for lang in ("ru", "en")

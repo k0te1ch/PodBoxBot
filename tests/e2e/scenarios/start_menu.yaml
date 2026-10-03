@@ -1,11 +1,15 @@
-name: Smoke — /start opens episode-type menu
+name: Smoke — /start opens the menu, "New episode" asks the episode type
 timeout: 20
 steps:
   - command: start
   - expect:
-      contains: "что мы добавляем"
+      contains: "Что делаем"
+      buttons: ["🎙 Новый выпуск"]
+  - click: "🎙 Новый выпуск"
+  # the dialog edits the same message
+  - wait_until:
+      contains: "Какой выпуск оформляем"
       buttons: ["Основной эпизод", "Эпизод послешоу"]
   - click: "Основной эпизод"
-  # the dialog edits the same message
   - wait_until:
       icontains: "ожидаю mp3"

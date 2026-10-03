@@ -9,7 +9,8 @@
 Контекст сессии (сохраняется вместе с ней, поэтому только JSON):
 
 * ``lang`` — язык текстов;
-* ``first_name`` — имя для приветствия;
+* ``pending_mp3`` — mp3, с которого начали выпуск (прислали без меню): после
+  выбора типа он принимается без повторной отправки;
 * ``number`` — номер следующего эпизода, его хендлер кладёт после скачивания
   MP3, и он подставляется в шаблон.
 """
@@ -29,6 +30,7 @@ MP3 = "mp3"
 TEMPLATE = "template"
 
 DIALOG_ID = "upload_file"
+PENDING_MP3 = "pending_mp3"
 
 # Local Bot API отдаёт файлы до 2000 МБ — больше Telegram не пропустит.
 MP3_MAX_SIZE = 2000 * 1024 * 1024
@@ -58,8 +60,9 @@ def resolve_text(key: str, answers: dict[str, Any], context: dict[str, Any]) -> 
     type_episode = answers.get(TYPE_EPISODE, "main")
     if key == "ask_template":
         key = f"ask_template_{type_episode}"
+    if key == "ask_typeEpisode" and context.get(PENDING_MP3):
+        key = "ask_typeEpisode_for_file"
     params = {
-        "first_name": context.get("first_name", ""),
         "type_episode": t("main_episode" if type_episode == "main" else "episode_aftershow", lang),
         "number": context.get("number", ""),
     }

@@ -81,8 +81,10 @@ async def test_bad_recording_date_gets_its_own_error():
 
 @pytest.mark.parametrize("lang", ["ru", "en"])
 def test_texts_come_from_locales(lang):
-    context = {"lang": lang, "first_name": "Ann", "number": "43"}
-    assert "Ann" in resolve_text("ask_typeEpisode", {}, context)
+    context = {"lang": lang, "number": "43"}
+    assert resolve_text("ask_typeEpisode", {}, context) == t("ask_typeEpisode", lang)
+    with_file = {**context, "pending_mp3": {"file_id": "audio"}}
+    assert resolve_text("ask_typeEpisode", {}, with_file) == t("ask_typeEpisode_for_file", lang)
     assert t("episode_aftershow", lang) in resolve_text("ask_mp3", {TYPE_EPISODE: "aftershow"}, context)
     assert "Number: 43" in resolve_text("ask_template", {TYPE_EPISODE: "main"}, context)
     assert "Chapters" not in resolve_text("ask_template", {TYPE_EPISODE: "aftershow"}, context)

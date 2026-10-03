@@ -724,11 +724,11 @@ async def test_topics_menu_opens_and_is_wired(three, locale):
 @pytest.mark.asyncio
 async def test_topics_section_is_hidden_when_the_flag_is_off(fake_redis, monkeypatch):
     ctx = menus.menus.context(_admin_event(), locale="ru")
-    _text, markup = await menus.menus.render(ctx, menus.ADMIN_MENU)
+    _text, markup = await menus.menus.render(ctx, menus.HOME_MENU)
     assert t("admin_topics") in [button.text for row in markup.inline_keyboard for button in row]
 
     monkeypatch.setattr(config, "TOPICS_ENABLED", False)
-    _text, markup = await menus.menus.render(ctx, menus.ADMIN_MENU)
+    _text, markup = await menus.menus.render(ctx, menus.HOME_MENU)
     assert t("admin_topics") not in [button.text for row in markup.inline_keyboard for button in row]
 
 

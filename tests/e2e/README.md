@@ -7,9 +7,9 @@ from the default `pytest` run** (`addopts = -m 'not e2e'` in
 
 ## What's covered
 
-- `scenarios/start_menu.yaml` — smoke: `/start` opens the episode-type menu.
+- `scenarios/start_menu.yaml` — smoke: `/start` opens the menu, "New episode" asks the episode type.
 - `test_full_pipeline.py` — full pipeline (no chat forwarding):
-  - `test_full_pipeline_ftp` — start → choose type → upload MP3 → template → click **FTP menu → FTP upload**.
+  - `test_full_pipeline_ftp` — /start → "New episode" → choose type → upload MP3 → template → click **FTP menu → FTP upload**.
   - `test_full_pipeline_wordpress` — same flow ending in **WP menu → WP upload**.
 - `test_listener_topics.py` — the list of listener topics and questions,
   only with `E2E_TOPICS=1` and a bot started with `TOPICS_ENABLED=true`:
