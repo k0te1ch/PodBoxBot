@@ -5,12 +5,16 @@
 здесь только рисуются; что делать с нажатием, решает
 :mod:`handlers.podcast_handler`.
 
+Время публикации можно и написать: под слотами стоит кнопка «Другое
+время», а разбор набранного живёт в :func:`parse_time`.
+
 Значения в ``callback_data`` и в ответах диалога: дата ``YYYY-MM-DD``, дата
 со временем ``YYYY-MM-DDTHH:MM``, обе в часовом поясе бота.
 """
 
 import calendar
-from datetime import date, datetime, timedelta
+import re
+from datetime import date, datetime, time, timedelta
 
 from aiogram.filters.callback_data import CallbackData
 from aiogram.types import InlineKeyboardButton
@@ -27,6 +31,8 @@ CALENDAR = "cal"
 TIME = "time"
 HOME = "home"
 NOOP = "noop"
+TYPE = "type"
+"""«Другое время»: бот ждёт время сообщением, день уже выбран."""
 
 DEFAULT = "default"
 """Публикация «как обычно»: дата не задаётся, площадки работают по своим настройкам."""
@@ -34,6 +40,9 @@ DEFAULT = "default"
 TIME_SLOTS = ("09:00", "12:00", "15:00", "18:00", "20:00", "21:00")
 DATE_FORMAT = "%Y-%m-%d"
 DATETIME_FORMAT = "%Y-%m-%dT%H:%M"
+
+# «19:30», «19.30», «19-30», «19 30», «1930», «930» и просто час «19».
+_TIME = re.compile(r"(\d{1,2})(?:\s*[:.\-\s]\s*(\d{2})|(\d{2}))?")
 
 Rows = list[list[InlineKeyboardButton]]
 
@@ -81,14 +90,29 @@ def parse_date(raw: str) -> date | None:
     return None
 
 
+def parse_time(raw: str) -> time | None:
+    """Время, набранное руками: ``19:30``, ``19.30``, ``1930``, ``19 30``, ``19``."""
+    found = _TIME.fullmatch(raw.strip())
+    if found is None:
+        return None
+    hour, minute = int(found.group(1)), int(found.group(2) or found.group(3) or 0)
+    return time(hour, minute) if hour < 24 and minute < 60 else None
+
+
 def parse_datetime(raw: str) -> datetime | None:
-    """Дата со временем из кнопки или набранная руками: ``05.10.2026 20:00``."""
-    for fmt in (DATETIME_FORMAT, "%Y-%m-%dT%H%M", "%d.%m.%Y %H:%M", "%d/%m/%Y %H:%M", "%d-%m-%Y %H:%M"):
+    """Дата со временем из кнопки или набранная руками: ``05.10.2026 20:00``.
+
+    Время после даты пишется так же свободно, как отдельно: ``05.10.2026 1930``.
+    """
+    text = " ".join(raw.split())
+    for fmt in (DATETIME_FORMAT, "%Y-%m-%dT%H%M"):
         try:
-            return datetime.strptime(" ".join(raw.split()), fmt)
+            return datetime.strptime(text, fmt)
         except ValueError:
             continue
-    return None
+    day_text, _, time_text = text.partition(" ")
+    day, clock = parse_date(day_text), parse_time(time_text)
+    return datetime.combine(day, clock) if day and clock else None
 
 
 def quick_rows(kind: str, today: date, locale: str) -> Rows:
@@ -161,5 +185,6 @@ def time_rows(kind: str, day: date, now: datetime, locale: str) -> Rows:
         if datetime.strptime(f"{day} {slot}", "%Y-%m-%d %H:%M") > now
     ]
     rows = [slots[index : index + 3] for index in range(0, len(slots), 3)]
+    rows.append([_button(t("date_other_time", locale), kind, TYPE, f"{day}")])
     rows.append([_button(t("date_back", locale), kind, HOME)])
     return rows

@@ -5,6 +5,7 @@ import shutil
 import time
 from collections.abc import Awaitable, Callable
 from dataclasses import replace
+from datetime import date
 from html import escape
 from pathlib import Path
 from typing import Any
@@ -46,6 +47,7 @@ from forms.upload_file import (
     MP3,
     PENDING_MP3,
     PUBLISH_AT,
+    PUBLISH_DAY,
     RECORDING_DATE,
     TEMPLATE,
     TYPE_EPISODE,
@@ -151,13 +153,20 @@ class UploadSender(DefaultSender):
     """Шаги диалога загрузки; на шагах дат над «Назад» и «Отмена» стоят
     кнопки выбора даты (:mod:`utils.date_picker`)."""
 
-    def __init__(self, bot: Bot, chat_id: int, locale: str = "ru") -> None:
+    def __init__(self, bot: Bot, chat_id: int, locale: str = "ru", publish_day: date | None = None) -> None:
         super().__init__(bot, chat_id)
         self.locale = locale
+        self.publish_day = publish_day
+        """День, для которого под вопросом о публикации стоят слоты времени.
+        Если набранное время не подошло, вопрос рисуется заново с теми же
+        слотами: следующее время относится к тому же дню."""
 
     async def show(self, view: StepView, anchor: MessageAnchor | None) -> MessageAnchor | None:
         kind = DATE_STEPS.get(view.step.id) if view.step is not None else None
-        if kind is not None:
+        if kind == date_picker.PUBLISH and self.publish_day is not None:
+            rows = date_picker.time_rows(kind, self.publish_day, local_now(), self.locale)
+            view = replace(view, keyboard=_with_rows(rows, view.keyboard))
+        elif kind is not None:
             rows = date_picker.quick_rows(kind, local_now().date(), self.locale)
             view = replace(view, keyboard=_with_rows(rows, view.keyboard))
         return await super().show(view, anchor)
@@ -235,8 +244,11 @@ async def cancel(msg: Message, state: FSMContext, bot: Bot, language: str, usern
 @router.callback_query(DialogCallbackFilter(DIALOG_ID))
 async def on_dialog_button(callback: CallbackQuery, state: FSMContext, bot: Bot, language: str, username: str):
     """Кнопки диалога: выбор типа эпизода, «Назад», «Отмена»."""
-    session, _ui = await storage.load(state)
+    session, ui = await storage.load(state)
     before = _step_id(session)
+    # «Назад» и другие кнопки движка рисуют шаг с быстрым выбором: день,
+    # выбранный под слоты времени, к нему уже не относится.
+    await _set_publish_day(state, session, ui, None)
     turn = await runner.on_callback(callback.data, state, UploadSender(bot, callback.message.chat.id, language))
     await _track_turn(state, before, turn)
     await callback.answer(text=turn.alert, show_alert=bool(turn.alert))
@@ -256,6 +268,17 @@ async def on_dialog_button(callback: CallbackQuery, state: FSMContext, bot: Bot,
         )
 
 
+async def _set_publish_day(state: FSMContext, session, ui, day: str | None) -> None:
+    """Запомнить день, под который показаны слоты времени, или забыть его."""
+    if session is None or session.context.get(PUBLISH_DAY) == day:
+        return
+    if day is None:
+        session.context.pop(PUBLISH_DAY, None)
+    else:
+        session.context[PUBLISH_DAY] = day
+    await storage.save(state, session, ui)
+
+
 async def _engine_rows(state: FSMContext) -> InlineKeyboardMarkup | None:
     """Кнопки движка для текущего шага («Назад», «Отмена»)."""
     session, ui = await storage.load(state)
@@ -270,7 +293,7 @@ async def on_date_button(
 ):
     """Кнопки выбора даты: календарь и время листаются в том же сообщении,
     выбранное значение уходит диалогу как ответ на шаг."""
-    session, _ui = await storage.load(state)
+    session, ui = await storage.load(state)
     step = _step_id(session)
     kind = callback_data.k
     if session is None or DATE_STEPS.get(step) != kind:
@@ -287,12 +310,21 @@ async def on_date_button(
         return
 
     today = local_now().date()
+    day = date_picker.parse_date(value) or today
+    if action == date_picker.TYPE:
+        # Время пишут сообщением: слоты остаются на месте, день запомнен.
+        await _set_publish_day(state, session, ui, f"{day}")
+        hint = t("date_type_time", language, date=date_picker.human_date(day, language, today=today))
+        await callback.answer(hint, show_alert=True)
+        return
     if action == date_picker.CALENDAR:
         rows = date_picker.calendar_rows(kind, value, today, language)
     elif action == date_picker.TIME:
-        rows = date_picker.time_rows(kind, date_picker.parse_date(value) or today, local_now(), language)
+        rows = date_picker.time_rows(kind, day, local_now(), language)
     else:
         rows = date_picker.quick_rows(kind, today, language)
+    # Набранное время относится к дню, под который сейчас показаны слоты.
+    await _set_publish_day(state, session, ui, f"{day}" if action == date_picker.TIME else None)
     await callback.answer()
     try:
         # Меняется только клавиатура: текст вопроса остаётся на месте.
@@ -468,7 +500,9 @@ async def set_template(msg: Message, state: FSMContext, bot: Bot, language: str,
     """Текстовый ответ диалогу; на шаге шаблона его разбирает валидатор шага."""
     session, ui = await storage.load(state)
     before = _step_id(session)
-    turn = await runner.on_text(msg.text, state, UploadSender(bot, msg.chat.id, language))
+    chosen = session.context.get(PUBLISH_DAY) if session is not None and before == PUBLISH_AT else None
+    sender = UploadSender(bot, msg.chat.id, language, date_picker.parse_date(chosen) if chosen else None)
+    turn = await runner.on_text(msg.text, state, sender)
     await _track_turn(state, before, turn)
     if not turn.finished:
         return

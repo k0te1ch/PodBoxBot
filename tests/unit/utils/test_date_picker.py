@@ -56,7 +56,7 @@ def test_time_slots_skip_the_hours_that_passed():
     assert _texts(rows)[0] == ["20:00", "21:00"]
 
     tomorrow = date_picker.time_rows(date_picker.PUBLISH, date(2026, 10, 4), datetime(2026, 10, 3, 18, 0), "ru")
-    assert [text for row in _texts(tomorrow)[:-1] for text in row] == list(date_picker.TIME_SLOTS)
+    assert [text for row in _texts(tomorrow)[:-2] for text in row] == list(date_picker.TIME_SLOTS)
     assert _values(tomorrow)[0] == ("set", "2026-10-04T0900")
 
 
@@ -86,3 +86,43 @@ def test_callback_data_fits_the_telegram_limit():
     rows += date_picker.time_rows(date_picker.PUBLISH, TODAY, datetime(2026, 10, 3, 0, 0), "ru")
 
     assert max(len(button.callback_data.encode()) for row in rows for button in row) <= 64
+
+
+def test_time_slots_offer_to_type_another_time():
+    rows = date_picker.time_rows(date_picker.PUBLISH, date(2026, 10, 4), datetime(2026, 10, 3, 18, 0), "ru")
+
+    assert _texts(rows)[-2:] == [["⌨️ Другое время"], ["« К быстрому выбору"]]
+    assert _values(rows)[-2] == ("type", "2026-10-04")
+    # Вечером слоты сегодняшнего дня кончились, а написать время всё ещё можно.
+    late = date_picker.time_rows(date_picker.PUBLISH, TODAY, datetime(2026, 10, 3, 22, 0), "ru")
+    assert _texts(late) == [["⌨️ Другое время"], ["« К быстрому выбору"]]
+
+
+@pytest.mark.parametrize(
+    ("typed", "expected"),
+    [
+        ("19:30", (19, 30)),
+        ("19.30", (19, 30)),
+        ("1930", (19, 30)),
+        ("19 30", (19, 30)),
+        ("19-30", (19, 30)),
+        (" 9:05 ", (9, 5)),
+        ("930", (9, 30)),
+        ("0:00", (0, 0)),
+        ("19", (19, 0)),
+    ],
+)
+def test_typed_time_is_read_in_the_usual_spellings(typed, expected):
+    parsed = date_picker.parse_time(typed)
+
+    assert (parsed.hour, parsed.minute) == expected
+
+
+@pytest.mark.parametrize("typed", ["", "вечером", "24:00", "19:60", "19:3", "19:300", "12345", "19:30:00", "-5"])
+def test_what_is_not_a_time_is_not_read_as_one(typed):
+    assert date_picker.parse_time(typed) is None
+
+
+@pytest.mark.parametrize("typed", ["05.10.2026 19:30", "05.10.2026 19.30", "5/10/2026 1930", "2026-10-05T1930"])
+def test_typed_date_takes_the_time_in_any_spelling(typed):
+    assert date_picker.parse_datetime(typed) == datetime(2026, 10, 5, 19, 30)
