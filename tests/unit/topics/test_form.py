@@ -388,20 +388,81 @@ def test_plain_group_messages_and_commands_are_not_form_answers(bot):
     assert not fh._is_answer(_private(bot, "/start"))
 
 
+def _reply_gone():
+    return TelegramBadRequest(method=SendMessage(chat_id=1, text="x"), message="Bad Request: REPLY_TO_INVALID")
+
+
 @pytest.mark.asyncio
 async def test_command_falls_back_to_private_link(fake_redis, bot, state):
-    bot.send_message = AsyncMock(side_effect=_bad_request())
+    """Эфемерно нельзя совсем: ссылка на личку уходит в чат ответом, который переживёт удаление команды."""
+    bot.send_message = AsyncMock(side_effect=[_bad_request(), _bad_request(), MagicMock()])
     msg = _message(bot, "/topic")
     metrics = MagicMock()
 
     await fh.group_command(msg, _command("topic"), state, bot, metrics)
 
-    text, markup = msg.reply.await_args.args[0], msg.reply.await_args.kwargs["reply_markup"]
-    assert text == t("topics_form_go_private")
-    assert markup.inline_keyboard[0][0].url == LINK
+    sent = bot.send_message.await_args.kwargs
+    assert sent["text"] == t("topics_form_go_private")
+    assert sent["reply_markup"].inline_keyboard[0][0].url == LINK
+    assert sent.get("ephemeral_message_parameters") is None
+    assert (sent["reply_parameters"].message_id, sent["reply_parameters"].allow_sending_without_reply) == (100, True)
+    msg.reply.assert_not_awaited()
     session, _ui = await form.FULL.storage.load(state)
     assert session is None
     metrics.event.assert_called_once_with("topic_form", mode="fallback")
+
+
+@pytest.mark.asyncio
+async def test_stale_ephemeral_command_still_gets_the_form(fake_redis, bot, state):
+    """Команда пришла, пока бот был выключен: её эфемерного сообщения уже нет.
+
+    Ответ с привязкой к ней Telegram отклоняет как REPLY_TO_INVALID, поэтому
+    анкета уходит тому же человеку без привязки.
+    """
+    sent = MagicMock(ephemeral_message_id=77)
+    sent.chat.id = GROUP_ID
+    bot.send_message = AsyncMock(side_effect=[_reply_gone(), sent])
+    msg = _message(bot, "/topic", ephemeral_id=5, message_id=0)
+    metrics = MagicMock()
+
+    await fh.group_command(msg, _command("topic"), state, bot, metrics)
+
+    first, second = (call.kwargs for call in bot.send_message.await_args_list)
+    assert first["reply_parameters"].ephemeral_message_id == 5
+    assert second["reply_parameters"] is None
+    assert second["text"] == t("topics_form_kind")
+    assert second["ephemeral_message_parameters"].receiver_user_id == USER.id
+    session, _ui = await form.FULL.storage.load(state)
+    assert session is not None and session.is_active
+    metrics.event.assert_called_once_with("topic_form", mode="ephemeral")
+    msg.reply.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_stale_ephemeral_command_never_replies_to_the_missing_message(fake_redis, bot, state):
+    """Раньше здесь был ``msg.reply`` на сообщение с id 0 и необработанный REPLY_TO_INVALID."""
+    bot.send_message = AsyncMock(side_effect=[_reply_gone(), _bad_request(), _bad_request(), MagicMock()])
+    msg = _message(bot, "/topic", ephemeral_id=5, message_id=0)
+    msg.reply = AsyncMock(side_effect=_reply_gone())
+
+    await fh.group_command(msg, _command("topic"), state, bot)
+
+    msg.reply.assert_not_awaited()
+    link_ephemeral, link_public = (call.kwargs for call in bot.send_message.await_args_list[2:])
+    assert link_ephemeral["ephemeral_message_parameters"].receiver_user_id == USER.id
+    assert link_ephemeral["reply_parameters"] is None
+    assert link_public["text"] == t("topics_form_go_private")
+    assert link_public["reply_parameters"] is None
+    assert link_public.get("ephemeral_message_parameters") is None
+
+
+@pytest.mark.asyncio
+async def test_link_fallback_survives_a_closed_chat(fake_redis, bot, state):
+    bot.send_message = AsyncMock(side_effect=_bad_request())
+
+    await fh.group_command(_message(bot, "/topic"), _command("topic"), state, bot)
+
+    assert bot.send_message.await_count == 3
 
 
 @pytest.mark.asyncio

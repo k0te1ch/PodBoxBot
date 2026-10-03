@@ -14,7 +14,7 @@ from html import escape, unescape
 from aiogram import Bot
 from aiogram.enums import ParseMode
 from aiogram.exceptions import TelegramAPIError, TelegramBadRequest, TelegramForbiddenError
-from aiogram.types import Message
+from aiogram.types import Message, ReplyParameters
 from loguru import logger
 from sagenza_tgbot_sdk.menus import MenuContext
 
@@ -92,7 +92,7 @@ async def _send_episode(bot: Bot, audio_file_id: str, podcast_text: str, chat: s
                 chat_id=FORWARD_CHAT_USERNAME,
                 text=podcast_text,
                 parse_mode=ParseMode.HTML,
-                reply_to_message_id=sent.message_id,
+                reply_parameters=ReplyParameters(message_id=sent.message_id, allow_sending_without_reply=True),
             )
         except TelegramAPIError as e:
             raise ForwardError(explain_telegram_error(e, "Аудио в чате, но текст поста не отправлен", chat)) from e

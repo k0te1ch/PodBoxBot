@@ -126,7 +126,8 @@ async def test_long_text_goes_as_reply_under_short_caption():
     assert bot.send_audio.call_args.kwargs["caption"] == "<b>Title</b>"
     bot.send_message.assert_awaited_once()
     assert bot.send_message.call_args.kwargs["text"] == text
-    assert bot.send_message.call_args.kwargs["reply_to_message_id"] == 5
+    reply = bot.send_message.call_args.kwargs["reply_parameters"]
+    assert (reply.message_id, reply.allow_sending_without_reply) == (5, True)
 
 
 @pytest.mark.asyncio
