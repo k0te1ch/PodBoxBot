@@ -23,6 +23,16 @@ WP_APP_PASSWORD = config.WP_APP_PASSWORD
 WP_COOKIE_PATH = config.WP_COOKIE_PATH
 TIMEZONE = config.TIMEZONE
 WP_VERIFY = config.WP_VERIFY
+WP_PUBLIC_URL = config.WP_PUBLIC_URL
+
+
+def edit_url(post_id: str) -> str:
+    """Страница редактирования записи в wp-admin: её открывает человек.
+
+    Не адрес REST API: по нему браузер показывает JSON, а не редактор.
+    """
+    base = (WP_PUBLIC_URL or WP_URL or "").rstrip("/")
+    return f"{base}/wp-admin/post.php?post={post_id}&action=edit"
 
 
 class WordPressPublisher(BasePublisher):
@@ -66,20 +76,22 @@ class WordPressPublisher(BasePublisher):
             metadata["post_id"] = post_id
             if WP_VERIFY:
                 path = rest_path if isinstance(rest_path, str) else f"/wp/v2/episodes/{post_id}"
-                metadata["url"] = await self._verify_draft(event, path)
+                await self._verify_draft(event, path)
+            # Админу в бот уходит ссылка на редактор записи, а не адрес REST,
+            # по которому черновик проверялся.
+            metadata["url"] = edit_url(post_id)
 
         result = event.model_copy(update={"event_type": "result", "status": "success", "metadata": metadata})
         await self.producer.send(self.result_topic, result.model_dump())
         logger.success(f"WordPress upload completed for episode {event.number}")
 
-    async def _verify_draft(self, event: WordPressEvent, rest_path: str) -> str:
+    async def _verify_draft(self, event: WordPressEvent, rest_path: str) -> None:
         """Пост сохраняется черновиком, публично его не видно — проверяем
         через REST под Application Password, что черновик действительно есть."""
         url = f"{(WP_URL or '').rstrip('/')}/wp-json{rest_path}?context=edit"
         auth = aiohttp.BasicAuth(WP_LOGIN or "", WP_APP_PASSWORD) if WP_APP_PASSWORD else None
         async with aiohttp.ClientSession(auth=auth) as session:
             await self.verify(event, url, session=session)
-        return url
 
     def event_key(self, event: WordPressEvent) -> str:  # type: ignore[override]
         return event.number

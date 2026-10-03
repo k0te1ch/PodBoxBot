@@ -61,6 +61,10 @@ class SharedSettings(BaseSettings):
 
     # WordPress
     WP_URL: str | None = None
+    # Адрес сайта для ссылок, которые открывает человек (редактор черновика в
+    # wp-admin). Пусто: тот же WP_URL. Нужен, когда publisher ходит на сайт по
+    # внутреннему адресу, которого у админа в браузере нет.
+    WP_PUBLIC_URL: str | None = None
     WP_LOGIN: str | None = None
     WP_PASSWORD: str | None = None
     WP_APP_PASSWORD: str | None = None

@@ -103,7 +103,41 @@ class TestHandleUpload:
             assert url.endswith("/wp-json/wp/v2/episodes/777?context=edit")
             result = mock_producer.send.call_args.args[1]
             assert result["status"] == "success"
-            assert result["metadata"] == {"platform": "wp", "action": "draft", "post_id": "777", "url": url}
+            # Проверка идёт по REST, а человеку уходит ссылка на редактор записи.
+            assert result["metadata"] == {
+                "platform": "wp",
+                "action": "draft",
+                "post_id": "777",
+                "url": "https://example.org/wp-admin/post.php?post=777&action=edit",
+            }
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("verify", [True, False])
+    async def test_result_link_opens_the_editor_not_the_rest_api(
+        self, sample_wp_event_dict, mock_producer, verify_published_mock, monkeypatch, verify
+    ):
+        monkeypatch.setattr("app.publishers.WordPress.main.WP_URL", "http://site:8080")
+        monkeypatch.setattr("app.publishers.WordPress.main.WP_PUBLIC_URL", "https://example.org/")
+        monkeypatch.setattr("app.publishers.WordPress.main.WP_VERIFY", verify)
+        with patch("app.publishers.WordPress.main.WordPress") as MockWP:
+            wp_instance = MagicMock()
+            wp_instance.upload_post.return_value = True
+            wp_instance.last_post_id = "9001"
+            wp_instance.podcast_rest_path.return_value = "/wp/v2/episodes/9001"
+            wp_instance.__enter__ = MagicMock(return_value=wp_instance)
+            wp_instance.__exit__ = MagicMock(return_value=False)
+            MockWP.return_value = wp_instance
+
+            from app.publishers.WordPress.main import handle_upload
+
+            await handle_upload(sample_wp_event_dict, mock_producer)
+
+            url = mock_producer.send.call_args.args[1]["metadata"]["url"]
+            assert url == "https://example.org/wp-admin/post.php?post=9001&action=edit"
+            assert "wp-json" not in url
+            if verify:
+                # Сам сайт publisher проверяет по внутреннему адресу.
+                assert verify_published_mock.await_args.args[0].startswith("http://site:8080/wp-json/")
 
     @pytest.mark.asyncio
     async def test_unverified_draft_reports_failure(
