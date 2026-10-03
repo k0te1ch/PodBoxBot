@@ -80,6 +80,17 @@ async def test_each_acknowledgement_can_be_turned_off(
     assert bot.send_message.await_count == int(noted)
 
 
+@pytest.mark.asyncio
+async def test_reaction_emoji_is_a_setting(fake_redis, bot, group_message, monkeypatch):
+    monkeypatch.setattr(config, "TOPICS_ACK_EMOJI", "🫡")
+    msg = group_message("#тема про отпуск на море")
+
+    await th.collect_from_chat(msg, bot, Kind.TOPIC)
+
+    [reaction] = msg.react.await_args.args[0]
+    assert reaction.emoji == "🫡"
+
+
 def test_hashtags_are_configurable(group_message, monkeypatch):
     monkeypatch.setattr(config, "TOPICS_HASHTAGS", ["идея", "topic"])
     monkeypatch.setattr(config, "TOPICS_QUESTION_HASHTAGS", [])

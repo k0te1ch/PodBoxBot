@@ -35,6 +35,25 @@ def test_topics_are_off_by_default():
     assert not [name for name in fields if name.startswith("TOPICS_POLL")]
 
 
+def test_ack_emoji_defaults_to_thumbs_up():
+    assert config.Settings.model_fields["TOPICS_ACK_EMOJI"].default == "👍"
+
+
+@pytest.mark.parametrize("emoji", ["👍", "🫡", "👌", "🔥"])
+def test_ack_emoji_accepts_telegram_reactions(emoji):
+    assert config.Settings.allowed_reaction(emoji) == emoji
+
+
+def test_ack_emoji_ignores_the_variation_selector():
+    assert config.Settings.allowed_reaction("✍️ ") == "✍"
+
+
+@pytest.mark.parametrize("emoji", ["✅", "ok", ""])
+def test_ack_emoji_that_telegram_rejects_falls_back(emoji):
+    """✅ не входит в реакции Telegram: с ней бот перестал бы отмечать сообщения."""
+    assert config.Settings.allowed_reaction(emoji) == "👍"
+
+
 def _list_size(kind: str) -> str:
     return f'podboxbot_topics_list_size{{bot="podboxbot",kind="{kind}"}}'
 
