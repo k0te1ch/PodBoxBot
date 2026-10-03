@@ -67,6 +67,7 @@ def _admins():
 def bot() -> MagicMock:
     bot = MagicMock()
     bot.send_message = AsyncMock()
+    bot.edit_message_text = AsyncMock()
     return bot
 
 

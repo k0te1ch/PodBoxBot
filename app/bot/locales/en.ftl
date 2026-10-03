@@ -206,11 +206,10 @@ topics_denied = This button is for the hosts only
 topics_view_missing = I do not remember which list I showed last. Here is a fresh one: take the numbers from it
 topics_numbers_unknown = The last list has { $total } items and no such numbers: { $numbers }. Nothing was deleted. Fresh list: /topics
 topics_remove_usage = Send the item numbers from the last list: /done 1 3 4 or "delete 1, 3, 4". The list: /topics
-topics_removed = Deleted from the list:
-topics_removed_more = … and { $count } more
+topics_removed = Deleted: { $numbers }
 topics_removed_gone = Already deleted earlier: { $numbers }
 topics_removed_nothing = These items are no longer on the list, they were deleted earlier: { $numbers }
-topics_restored = Back on the list:
+topics_restored = Restored: { $numbers }
 topics_undo_expired = Too late to restore: more than 10 minutes have passed or the items are already back
 topics_authors_title =
     Authors of the listed items and the ban list. Tap an author to ban or unban them.

@@ -206,11 +206,10 @@ topics_denied = Эта кнопка только для ведущих
 topics_view_missing = Не помню, какой список показывал последним. Вот свежий: номера бери из него
 topics_numbers_unknown = В последнем списке пунктов: { $total }, а таких номеров в нём нет: { $numbers }. Ничего не удалил. Свежий список: /topics
 topics_remove_usage = Напиши номера пунктов из последнего списка: /done 1 3 4 или «удали 1, 3, 4». Список: /topics
-topics_removed = Удалил из списка:
-topics_removed_more = … и ещё { $count }
+topics_removed = Удалил: { $numbers }
 topics_removed_gone = Уже были удалены раньше: { $numbers }
 topics_removed_nothing = Этих пунктов в списке уже нет, их удалили раньше: { $numbers }
-topics_restored = Вернул в список:
+topics_restored = Вернул: { $numbers }
 topics_undo_expired = Вернуть уже нельзя: прошло больше 10 минут или пункты уже вернули
 topics_authors_title =
     Авторы пунктов из списка и бан-лист. Нажми на автора, чтобы заблокировать его или разблокировать.

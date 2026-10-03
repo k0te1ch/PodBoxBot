@@ -1,10 +1,12 @@
 """Что бот показывает ведущим про список тем и вопросов.
 
-Сообщения списка с кнопками, отчёт об удалении с кнопкой «Вернуть», панель
-авторов. Кто и когда это вызывает, решает :mod:`handlers.topics_list_handler`.
+Сообщения списка с кнопками и панель авторов. Отдельного отчёта об удалении
+нет: под списком на время отмены стоит строка «Удалил: 1, 3» и кнопка
+«Вернуть». Кто и когда это вызывает, решает :mod:`handlers.topics_list_handler`.
 """
 
 from collections import Counter
+from html import escape
 from typing import Any
 
 from aiogram import Bot
@@ -15,11 +17,10 @@ from loguru import logger
 
 from config import TIMEZONE
 from services.i18n import t
-from services.topics import Item
 from services.topics.listing import MARK as MARKED_PREFIX
-from services.topics.listing import MAX_PAGE_CHARS, Page, item_line, list_pages, table_html
+from services.topics.listing import Page, item_line, list_pages, table_html
 from services.topics.runtime import count_event, report_list_size, topic_list, view_store
-from services.topics.views import ListView
+from services.topics.views import ListView, Removal
 from utils import rich
 
 MARK = "m"
@@ -69,12 +70,16 @@ def _remove_button(view: ListView, locale: str) -> InlineKeyboardButton:
     return InlineKeyboardButton(text=label, callback_data=ListCallback(a=REMOVE, v=view.token).pack())
 
 
-def page_markup(view: ListView, page: Page, locale: str, *, last: bool, private: bool) -> InlineKeyboardMarkup | None:
+def page_markup(
+    view: ListView, page: Page, locale: str, *, last: bool, private: bool, undo: str | None = None
+) -> InlineKeyboardMarkup | None:
     """Кнопки под сообщением списка: номера его пунктов, а под последним ещё
-    и действия со списком."""
+    и действия со списком. *undo*: метка удаления, которое можно вернуть."""
     numbers = [_number_button(view, number) for number in page.numbers]
     rows = [numbers[i : i + NUMBERS_PER_ROW] for i in range(0, len(numbers), NUMBERS_PER_ROW)]
     if last:
+        if undo:
+            rows.append([_control("topics_undo", UNDO, locale, undo)])
         refresh = _control("topics_refresh", REFRESH, locale)
         rows.append([_remove_button(view, locale), refresh] if view.ids else [refresh])
         if private:
@@ -107,9 +112,24 @@ def remark(markup: InlineKeyboardMarkup, view: ListView, locale: str) -> InlineK
     )
 
 
-def last_page_markup(view: ListView, locale: str, *, private: bool) -> InlineKeyboardMarkup | None:
+def last_page_markup(
+    view: ListView, locale: str, *, private: bool, undo: str | None = None
+) -> InlineKeyboardMarkup | None:
     """Клавиатура последнего сообщения списка под текущие отметки."""
-    return page_markup(view, Page("", view.last_numbers), locale, last=True, private=private)
+    return page_markup(view, Page("", view.last_numbers), locale, last=True, private=private, undo=undo)
+
+
+def removal_line(removal: Removal, locale: str) -> str:
+    """«Удалил: 1, 3»: стоит под списком, пока удаление можно вернуть."""
+    return t("topics_removed", locale, numbers=numbers_text(removal.numbers))
+
+
+def with_footer(page: Page, lines: list[str]) -> Page:
+    """Сообщение списка со строками под ним: что удалено, что вернули."""
+    if not lines:
+        return page
+    html = page.html + "".join(f"<p>{escape(line)}</p>" for line in lines)
+    return Page(page.text + "\n\n" + "\n".join(escape(line) for line in lines), page.numbers, html)
 
 
 def marked_text(view: ListView, locale: str) -> str:
@@ -121,21 +141,36 @@ def marked_text(view: ListView, locale: str) -> str:
 
 
 async def send_list(
-    bot: Bot, chat_id: int, locale: str, *, private: bool, replace: MaybeInaccessibleMessage | None = None
+    bot: Bot,
+    chat_id: int,
+    locale: str,
+    *,
+    private: bool,
+    replace: MaybeInaccessibleMessage | None = None,
+    note: str | None = None,
 ) -> ListView:
     """Показать список и запомнить его: номера следующей команды «удали» — отсюда.
 
     *replace*: сообщение прежнего списка. Если новый список умещается в одно
-    сообщение, он рисуется на его месте, а не присылается следом: кнопка
-    «Обновить» не двигает чат.
+    сообщение, он рисуется на его месте, а не присылается следом: кнопки
+    «Обновить», «Удалить отмеченные» и «Вернуть» не двигают чат.
+
+    *note*: строка под списком на один показ («Вернул: 2», «уже были
+    удалены»). Строку «Удалил: …» и кнопку «Вернуть» список рисует сам, пока
+    последнее удаление в чате можно отменить.
     """
     items = await topic_list().repository.items()
     views = view_store()
     view = views.new_view([item.id for item in items])
     pages = list_pages(items, locale, timezone=TIMEZONE)
+    removal = await views.pending_removal(chat_id)
+    footer = ([removal_line(removal, locale)] if removal else []) + ([note] if note else [])
+    pages[-1] = with_footer(pages[-1], footer)
+    undo = removal.token if removal else None
     in_place = replace is not None and len(pages) == 1
     for index, page in enumerate(pages):
-        markup = page_markup(view, page, locale, last=index == len(pages) - 1, private=private)
+        last = index == len(pages) - 1
+        markup = page_markup(view, page, locale, last=last, private=private, undo=undo if last else None)
         if in_place:
             await rich.edit(bot, chat_id, replace.message_id, page.html, page.text, markup)
             message_id = replace.message_id
@@ -150,11 +185,12 @@ async def send_list(
     return view
 
 
-async def marked_page(view: ListView, numbers: list[int], locale: str) -> Page:
+async def marked_page(view: ListView, numbers: list[int], locale: str, removal: Removal | None = None) -> Page:
     """Сообщение списка с пунктами *numbers* под текущие отметки *view*.
 
     Пункт, который уже удалили из другого места, остаётся строкой с тем же
-    номером: номера показанного списка не сдвигаются.
+    номером: номера показанного списка не сдвигаются. *removal*: удаление,
+    строка о котором стоит под этим сообщением.
     """
     by_id = {item.id: item for item in await topic_list().repository.items()}
     numbered = [(number, by_id[view.item_id(number)]) for number in numbers if view.item_id(number) in by_id]
@@ -166,30 +202,31 @@ async def marked_page(view: ListView, numbers: list[int], locale: str) -> Page:
         else:
             lines.append(item_line(number, item, locale))
     html = table_html(numbered, view.marked, locale, title=title, timezone=TIMEZONE)
-    return Page("\n".join(lines), [number for number, _item in numbered], html)
-
-
-def numbered_lines(title: str, numbered: list[tuple[int, Item]], locale: str) -> str:
-    """Заголовок и строки пунктов; длинный хвост сворачивается в «и ещё N»."""
-    lines = [title]
-    for index, (number, item) in enumerate(numbered):
-        line = item_line(number, item, locale)
-        if sum(map(len, lines)) + len(line) > MAX_PAGE_CHARS:
-            lines.append(t("topics_removed_more", locale, count=len(numbered) - index))
-            break
-        lines.append(line)
-    return "\n".join(lines)
+    page = Page("\n".join(lines), [number for number, _item in numbered], html)
+    return with_footer(page, [removal_line(removal, locale)] if removal else [])
 
 
 async def remove_numbers(
-    bot: Bot, chat_id: int, user_id: int, numbers: list[int], locale: str, *, private: bool, metrics: Any
+    bot: Bot,
+    chat_id: int,
+    user_id: int,
+    numbers: list[int],
+    locale: str,
+    *,
+    private: bool,
+    metrics: Any,
+    replace: MaybeInaccessibleMessage | None = None,
 ) -> None:
-    """Удалить пункты по номерам последнего показанного списка и показать остаток."""
+    """Удалить пункты по номерам последнего показанного списка и показать остаток.
+
+    Ответ один: свежий список, под ним «Удалил: 1, 3» и кнопка «Вернуть».
+    *replace*: сообщение списка, под которым нажали кнопку: остаток рисуется
+    на его месте.
+    """
     views = view_store()
     view = await views.last(chat_id)
     if view is None:
-        await bot.send_message(chat_id=chat_id, text=t("topics_view_missing", locale))
-        await send_list(bot, chat_id, locale, private=private)
+        await send_list(bot, chat_id, locale, private=private, replace=replace, note=t("topics_view_missing", locale))
         return
     unknown = [number for number in numbers if view.item_id(number) is None]
     if unknown:
@@ -202,16 +239,14 @@ async def remove_numbers(
     for item in removed:
         count_event(metrics, "topic_removed", kind=item.kind.value)
     logger.info(f"topics: removed {[item.id for item in removed]} by {user_id}, already gone: {gone}")
+    note = None
     if not removed:
-        await bot.send_message(chat_id=chat_id, text=t("topics_removed_nothing", locale, numbers=numbers_text(gone)))
+        note = t("topics_removed_nothing", locale, numbers=numbers_text(gone))
     else:
-        text = numbered_lines(t("topics_removed", locale), [(by_id[item.id], item) for item in removed], locale)
+        await views.keep_removed(chat_id, [item.id for item in removed], sorted(by_id[item.id] for item in removed))
         if gone:
-            text += "\n" + t("topics_removed_gone", locale, numbers=numbers_text(gone))
-        undo = await views.keep_removed([item.id for item in removed])
-        markup = InlineKeyboardMarkup(inline_keyboard=[[_control("topics_undo", UNDO, locale, undo)]])
-        await bot.send_message(chat_id=chat_id, text=text, reply_markup=markup, link_preview_options=NO_PREVIEW)
-    await send_list(bot, chat_id, locale, private=private)
+            note = t("topics_removed_gone", locale, numbers=numbers_text(gone))
+    await send_list(bot, chat_id, locale, private=private, replace=replace, note=note)
 
 
 async def authors_view(locale: str) -> tuple[str, InlineKeyboardMarkup | None]:
