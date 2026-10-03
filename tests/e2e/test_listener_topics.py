@@ -235,11 +235,15 @@ async def test_buttons_under_the_list_delete_ticked_items(tester, bot_username, 
         remove = MARK + phrase("topics_remove_marked", full=True).replace("{ $count }", "1")
         await ticked.click(text=remove)
         # Список из одного сообщения правится на месте; длинный приходит заново.
+        # Под списком могла стоять строка о прошлом удалении, поэтому правку
+        # узнаём по счётчику на кнопке: в свежем списке отмеченных снова ноль.
         removed = phrase("topics_removed", full=True).replace("{ $numbers }", str(number))
+        unticked = MARK + phrase("topics_remove_marked", full=True).replace("{ $count }", "0")
         try:
-            rest = await chat.wait_until(message=ticked, contains=removed, timeout=10)
+            rest = await chat.wait_until(message=ticked, buttons=[unticked], timeout=10)
         except AssertionError:
             rest = await chat.expect(contains=removed, timeout=15)
+        assert rest.message.splitlines()[-1] == removed
         assert text not in rest.message
         assert _has_button(rest, phrase("topics_undo", full=True))
 
