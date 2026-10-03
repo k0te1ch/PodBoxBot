@@ -95,7 +95,9 @@ def _get_bot_obj() -> Bot:
     bot = Bot(
         token=API_TOKEN,
         session=TG_SERVER,
-        default=DefaultBotProperties(parse_mode=PARSE_MODE),
+        # Ответ на сообщение, которое успели удалить, уходит без привязки, а не
+        # падает с REPLY_TO_INVALID / "message to be replied not found".
+        default=DefaultBotProperties(parse_mode=PARSE_MODE, allow_sending_without_reply=True),
     )
     logger.debug("Bot is configured")
     return bot

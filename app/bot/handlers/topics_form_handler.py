@@ -28,7 +28,7 @@ from typing import Any
 
 from aiogram import Bot, F, Router
 from aiogram.enums import ChatType
-from aiogram.exceptions import TelegramAPIError
+from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
 from aiogram.filters import Command, CommandObject, CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.types import (
@@ -38,6 +38,7 @@ from aiogram.types import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     Message,
+    ReplyParameters,
     User,
 )
 from aiogram.utils.deep_linking import create_start_link
@@ -158,12 +159,19 @@ async def _start_ephemeral(
     """Анкета эфемерно в группе; ``False``, если Telegram не дал её прислать."""
     form = FULL if kind is None else TYPED
     await _forget_forms(state)
+    context = _context(event.from_user, chat_id, kind, trusted=is_admin(event))
     try:
-        await form.group_runner.start(
-            state,
-            EphemeralSender.for_event(event),
-            context=_context(event.from_user, chat_id, kind, trusted=is_admin(event)),
-        )
+        try:
+            await form.group_runner.start(state, EphemeralSender.for_event(event), context=context)
+        except TelegramBadRequest as error:
+            if isinstance(event, CallbackQuery) or not _reply_target_gone(error):
+                raise
+            # Эфемерная команда живёт недолго: если бот был выключен, отвечать
+            # уже не на что. Анкета уходит без привязки к команде.
+            await form.storage.clear(state)
+            await form.group_runner.start(
+                state, EphemeralSender(event.bot, chat_id, event.from_user.id), context=context
+            )
     except (TelegramAPIError, DialogError) as error:
         logger.info(f"ephemeral topic form in {chat_id} failed, falling back to private: {error!r}")
         await form.storage.clear(state)
@@ -171,6 +179,32 @@ async def _start_ephemeral(
         return False
     count_event(metrics, "topic_form", mode=EPHEMERAL)
     return True
+
+
+def _reply_target_gone(error: TelegramBadRequest) -> bool:
+    """Telegram отказал, потому что сообщения, на которое отвечает бот, уже нет."""
+    text = str(error).lower()
+    return "reply_to_invalid" in text or "message to be replied not found" in text
+
+
+async def _send_private_link(msg: Message, bot: Bot, locale: str) -> None:
+    """Ссылка на анкету в личке, когда в группе её показать не удалось.
+
+    На эфемерную команду ответить обычным сообщением нельзя (её нет в чате),
+    а обычную могли удалить, пока бот думал: ссылка уходит автору эфемерно,
+    а если и так нельзя, то в чат без привязки к команде.
+    """
+    text = t("topics_form_go_private", locale)
+    markup = await _link_markup(bot, locale)
+    visible = msg.ephemeral_message_id is None
+    reply_to = msg.message_id if visible else None
+    if await send_ephemeral(bot, msg.chat.id, msg.from_user.id, text, reply_to=reply_to, reply_markup=markup):
+        return
+    reply = ReplyParameters(message_id=reply_to, allow_sending_without_reply=True) if visible else None
+    try:
+        await bot.send_message(chat_id=msg.chat.id, text=text, reply_markup=markup, reply_parameters=reply)
+    except TelegramAPIError as error:
+        logger.warning(f"topic form link in {msg.chat.id} was not sent: {error!r}")
 
 
 async def start_private_form(
@@ -219,7 +253,7 @@ async def group_command(msg: Message, command: CommandObject, state: FSMContext,
     asked = None if kind is Kind.TOPIC else kind
     if form_mode() == EPHEMERAL and await _start_ephemeral(msg, state, msg.chat.id, asked, metrics):
         return
-    await msg.reply(t("topics_form_go_private", locale), reply_markup=await _link_markup(bot, locale))
+    await _send_private_link(msg, bot, locale)
 
 
 async def _add_from_group(msg: Message, text: str, kind: Kind, bot: Bot, metrics: Any) -> None:

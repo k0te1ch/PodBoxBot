@@ -85,3 +85,10 @@ def test_disk_threshold_comes_from_config():
 
     settings = dp.workflow_data["sdk"].modules["host_watch"]._settings
     assert (settings.threshold_percent, settings.interval_seconds) == (70.0, 60)
+
+
+def test_bot_replies_survive_a_deleted_message():
+    """Ответ на удалённое сообщение уходит без привязки, а не падает REPLY_TO_INVALID."""
+    bot = main._get_bot_obj()
+
+    assert bot.default.allow_sending_without_reply is True

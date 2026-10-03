@@ -6,16 +6,24 @@
 
 from aiogram import Bot
 from aiogram.exceptions import TelegramAPIError
-from aiogram.types import EphemeralMessageParameters, ReplyParameters
+from aiogram.types import EphemeralMessageParameters, InlineKeyboardMarkup, ReplyParameters
 from loguru import logger
 
 
-async def send_ephemeral(bot: Bot, chat_id: int, user_id: int, text: str, reply_to: int | None = None) -> bool:
+async def send_ephemeral(
+    bot: Bot,
+    chat_id: int,
+    user_id: int,
+    text: str,
+    reply_to: int | None = None,
+    reply_markup: InlineKeyboardMarkup | None = None,
+) -> bool:
     """Эфемерное сообщение участнику группы; ``False``, если Telegram отказал."""
     try:
         await bot.send_message(
             chat_id=chat_id,
             text=text,
+            reply_markup=reply_markup,
             reply_parameters=ReplyParameters(message_id=reply_to, allow_sending_without_reply=True)
             if reply_to is not None
             else None,
