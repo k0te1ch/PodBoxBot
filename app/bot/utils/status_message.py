@@ -126,6 +126,9 @@ class StatusMessage:
         self._clock = clock
         self._last_edit = 0.0
         self._shown = ""
+        # Правки идут по одной: прогресс отправки файла приходит из фоновых
+        # задач, а Telegram отменяет правку, которую догнала следующая.
+        self._lock = asyncio.Lock()
 
     # --- что показать ---
 
@@ -200,17 +203,18 @@ class StatusMessage:
     # --- правка сообщения ---
 
     async def update(self, *, force: bool = False, reply_markup: InlineKeyboardMarkup | None = None) -> None:
-        text = self.render()
-        if text == self._shown:
+        if not force and (self.render() == self._shown or self._clock() - self._last_edit < MIN_INTERVAL):
             return
-        now = self._clock()
-        if not force and now - self._last_edit < MIN_INTERVAL:
-            return
-        await self._edit(text, reply_markup, final=force)
+        async with self._lock:
+            # Текст собирается под замком: отправляется самое свежее состояние.
+            text = self.render()
+            if text != self._shown:
+                await self._edit(text, reply_markup, final=force)
 
     async def replace(self, text: str, reply_markup: InlineKeyboardMarkup | None = None) -> None:
         """Заменяет всё сообщение итоговым текстом."""
-        await self._edit(text, reply_markup, final=True)
+        async with self._lock:
+            await self._edit(text, reply_markup, final=True)
 
     async def _edit(self, text: str, reply_markup: InlineKeyboardMarkup | None, *, final: bool) -> None:
         self._last_edit = self._clock()

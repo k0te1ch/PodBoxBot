@@ -41,6 +41,12 @@ Everything goes through tgtest (0.2+): the MP3 upload uses `chat.send_file`,
 menu edits are checked with `expect_edit` / `wait_until`, and the account
 language comes from `E2E_LANG` via `TG_LANG_CODE`.
 
+The e2e compose file starts the bot with `RICH_MESSAGES=false`: the topics
+list, the publication board and `/status` are rich messages by default, and
+Telethon (the test account's client) sees those as empty. With the flag off
+the bot sends their plain text twins, which is what the tests read. How the
+tables look is checked by hand in a real client.
+
 ## One-time setup
 
 1. Install deps (from `app/bot/`): `poetry install --with testing`.

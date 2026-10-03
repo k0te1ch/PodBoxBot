@@ -81,6 +81,7 @@ def _callback(data: str) -> MagicMock:
     callback.message.chat.id = CHAT_ID
     callback.message.edit_text = AsyncMock()
     callback.message.answer = AsyncMock(return_value=MagicMock(message_id=STATUS_MESSAGE_ID))
+    callback.message.edit_text = AsyncMock(return_value=MagicMock(message_id=STATUS_MESSAGE_ID))
     callback.answer = AsyncMock()
     return callback
 
@@ -445,7 +446,7 @@ async def test_publish_episode_tags_and_turns_the_status_into_the_audio(bot, epi
 
     audio_tag.assert_called_once_with(turn.answers[TEMPLATE], type_episode)
     menu.assert_awaited_once_with(msg, type_episode)
-    title = t("status_episode_title", number="42", title="T")
+    title = t("status_episode_title", title="T")
     msg.answer.assert_awaited_once_with(f"<b>{title}</b>")
     edits = _edits(bot)
     assert f"⏳ {t('status_tags')}" in edits[0]
@@ -518,7 +519,9 @@ async def test_mp3_without_a_dialog_starts_the_episode(state, bot, mp3_message):
         await podcast_handler.on_dialog_button(callback, state, bot, "ru", "admin")
 
     assert download.call_args.args[0] == FileInfo("audio", "audio/mpeg", "ep.mp3", 2048)
-    callback.message.answer.assert_awaited_once_with(t("got_mp3"))
+    # Вопрос о типе сам становится статусом загрузки: новых сообщений нет.
+    callback.message.edit_text.assert_awaited_once_with(t("got_mp3"))
+    callback.message.answer.assert_not_awaited()
     bot.send_message.assert_not_awaited()
     assert t("ask_recording_date") in _edits(bot)[-1]
     assert upload_file_engine.current_step(await _session(state)).id == RECORDING_DATE

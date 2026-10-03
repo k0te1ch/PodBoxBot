@@ -82,6 +82,12 @@ class Board:
     title: str
     rows: dict[str, Row] = field(default_factory=dict)
     last_edit: float = 0.0
+    shown: str = ""
+    """Что сейчас в сообщении: одинаковое второй раз не отправляется."""
+    lock: asyncio.Lock = field(default_factory=asyncio.Lock)
+    """Правки табло идут по одной. События площадок приходят одновременно с
+    нажатиями кнопок, а Telegram отменяет правку, которую догнала следующая:
+    без очереди в сообщении мог остаться не последний вариант."""
 
     def when(self, row: Row) -> str:
         return datetime.fromtimestamp(row.at, TIMEZONE).strftime("%H:%M")
@@ -145,9 +151,13 @@ class PublishBoards:
             await self._edit(board, final=True)
             return StatusRef(board.chat_id, board.message_id)
         board = Board(audio.bot, audio.chat.id, 0, title, {platform: Row(platform)})
-        sent = await rich.send(audio.bot, audio.chat.id, board.html(), board.text())
-        board.message_id, board.last_edit = sent.message_id, self._clock()
+        # Табло регистрируется до отправки: второе нажатие, пришедшее в ту же
+        # секунду, найдёт его и не заведёт второе сообщение.
         self._by_audio[key] = board
+        async with board.lock:
+            html = board.html()
+            sent = await rich.send(audio.bot, audio.chat.id, html, board.text())
+            board.message_id, board.last_edit, board.shown = sent.message_id, self._clock(), html
         self._by_status[(str(board.chat_id), str(board.message_id))] = board
         while len(self._by_audio) > MAX_BOARDS:
             _key, old = self._by_audio.popitem(last=False)
@@ -178,22 +188,31 @@ class PublishBoards:
         await self._edit(board, final=final)
 
     async def _edit(self, board: Board, *, final: bool) -> None:
-        """Правит табло; итог пережидает flood-лимит, промежуточное состояние нет."""
-        for attempt in (1, 2):
-            board.last_edit = self._clock()
-            try:
-                await rich.edit(board.bot, board.chat_id, board.message_id, board.html(), board.text())
-            except TelegramRetryAfter as error:
-                if not final or attempt == 2:
-                    board.last_edit = self._clock() + error.retry_after
-                    logger.warning(f"publish board hit the flood limit: {error}")
+        """Правит табло; итог пережидает flood-лимит, промежуточное состояние нет.
+
+        Текст собирается под замком, в момент отправки: какая бы правка ни
+        дошла последней, она несёт самое свежее состояние всех площадок.
+        """
+        async with board.lock:
+            for attempt in (1, 2):
+                html = board.html()
+                if html == board.shown:
                     return
-                await asyncio.sleep(error.retry_after)
-            except TelegramAPIError as error:
-                logger.warning(f"publish board was not updated: {error!r}")
-                return
-            else:
-                return
+                board.last_edit = self._clock()
+                try:
+                    await rich.edit(board.bot, board.chat_id, board.message_id, html, board.text())
+                except TelegramRetryAfter as error:
+                    if not final or attempt == 2:
+                        board.last_edit = self._clock() + error.retry_after
+                        logger.warning(f"publish board hit the flood limit: {error}")
+                        return
+                    await asyncio.sleep(error.retry_after)
+                except TelegramAPIError as error:
+                    logger.warning(f"publish board was not updated: {error!r}")
+                    return
+                else:
+                    board.shown = html
+                    return
 
 
 @dataclass(frozen=True)

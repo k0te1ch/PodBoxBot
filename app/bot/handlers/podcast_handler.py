@@ -248,9 +248,11 @@ async def on_dialog_button(callback: CallbackQuery, state: FSMContext, bot: Bot,
     pending = session.context.get(PENDING_MP3) if session is not None else None
     if pending and before == TYPE_EPISODE and _step_id(session) == MP3:
         # Выпуск начали с присланного mp3: тип выбран, файл уже у Telegram.
+        # Вопрос о типе сам становится сообщением о загрузке: просьба
+        # «пришли mp3» под уже присланным файлом была бы лишней.
         message = callback.message
         await _take_mp3(
-            message.chat.id, message.answer, [FileInfo.from_value(pending)], state, bot, language, username
+            message.chat.id, message.edit_text, [FileInfo.from_value(pending)], state, bot, language, username
         )
 
 
@@ -488,7 +490,8 @@ async def publish_episode(msg: Message, turn: DialogTurn, language: str, usernam
     chat_id = msg.chat.id
     logger.debug(f"[{username}]: Выбранный тип эпизода: {type_episode}")
 
-    title = t("status_episode_title", language, number=escape(str(info["number"])), title=escape(str(info["title"])))
+    # В названии из шаблона номер уже есть: «1001. Название».
+    title = t("status_episode_title", language, title=escape(str(info["title"])))
     sent = await msg.answer(f"<b>{title}</b>")
     status = StatusMessage(bot, chat_id, sent.message_id, title, [TAGS, SEND], language)
 

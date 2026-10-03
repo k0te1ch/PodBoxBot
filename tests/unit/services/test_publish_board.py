@@ -209,3 +209,43 @@ async def test_queue_state_and_send_failure_go_to_the_row(boards, bot):
     assert await publishing._set_board(ref, "wp", FAILED, publishing.FAILED_ROW, error="KafkaError: down") is True
     assert "<code>KafkaError: down</code>" in _html(bot)
     assert await publishing._set_board(StatusRef(1, 2), "wp", RUNNING, "x") is False
+
+
+@pytest.mark.asyncio
+async def test_overlapping_updates_leave_the_latest_state_in_the_message(boards, bot):
+    """Результат площадки и «запрос принят» от кнопки приходят одновременно.
+
+    Telegram отменяет правку, которую догнала следующая. Правки идут по
+    одной и каждая несёт свежее состояние: итог не теряется.
+    """
+    import asyncio
+
+    await boards.open(_audio(bot), "ftp", TITLE)
+    board = boards.get(CHAT_ID, BOARD_ID)
+    sent: list[str] = []
+
+    async def slow_edit(**kwargs):
+        await asyncio.sleep(0)
+        sent.append(kwargs["rich_message"].html)
+
+    bot.edit_message_text = AsyncMock(side_effect=slow_edit)
+
+    await asyncio.gather(
+        boards.update(board, "ftp", DONE, "✅ файл загружен"),
+        boards.update(board, "ftp", QUEUED, publish_board.QUEUED_TEXT),
+    )
+
+    assert "✅ файл загружен" in sent[-1]
+    assert all("жду сервис публикации" not in html for html in sent)
+
+
+@pytest.mark.asyncio
+async def test_two_buttons_at_once_share_one_board(boards, bot):
+    import asyncio
+
+    audio = _audio(bot)
+
+    first, second = await asyncio.gather(boards.open(audio, "ftp", TITLE), boards.open(audio, "wp", TITLE))
+
+    assert first == second == StatusRef(CHAT_ID, BOARD_ID)
+    bot.send_rich_message.assert_awaited_once()
