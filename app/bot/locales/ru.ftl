@@ -10,6 +10,10 @@ publish_time_passed = Это время уже прошло: сейчас { $now
 download_failed = не скачался. Проверь файл и пришли его ещё раз
 episode_number_failed = FTP не ответил, загрузка отменена. Начни заново: /new
     <code>{ $error }</code>
+episode_number_refused = FTP ответил отказом, загрузка отменена. Проверь логин и пароль FTP в настройках бота и начни заново: /new
+    <code>{ $error }</code>
+episode_number_no_directory = На FTP нет папки «{ $directory }» для послешоу, загрузка отменена. Создай её на FTP и начни заново: /new
+    <code>{ $error }</code>
 
 ## Загрузка эпизода (диалог DialogEngine)
 

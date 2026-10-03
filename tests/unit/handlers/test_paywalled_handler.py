@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from handlers import paywalled_handler
+from services.i18n import t
 from shared.kafka.models.paywalled_event import PatreonEvent, SponsrEvent, VkEvent
 
 INFO = {"number": "42", "title": "42. Послешоу", "comment": "Описание", "chapters": [["00:00", "Начало"]]}
@@ -63,4 +64,5 @@ async def test_missing_template_info_is_reported(monkeypatch, publish):
     await paywalled_handler.upload_to(paywalled_handler.VK)(ctx)
 
     publish.assert_not_awaited()
-    assert ctx.answer.await_args.kwargs == {"alert": True}
+    # Кнопка под файлом прошлого выпуска: бот говорит, что файл заменён.
+    ctx.answer.assert_awaited_once_with(t("episode_file_gone"), alert=True)

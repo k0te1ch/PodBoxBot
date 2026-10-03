@@ -23,7 +23,7 @@ from handlers import podcast_handler
 from services.i18n import t
 from utils import date_picker
 from utils.date_picker import DateCallback
-from utils.ftp_methods import EpisodeNumberError
+from utils.ftp_methods import NO_DIRECTORY, NO_REPLY, REFUSED, EpisodeNumberError
 from utils.status_message import human_size
 
 CHAT_ID = 100
@@ -238,6 +238,37 @@ async def test_ftp_failure_on_episode_number_is_reported_and_closes_the_dialog(s
     assert t("episode_number_failed", error="error_perm: 530 &lt;Login incorrect&gt;") in last
     assert await _session(state) is None
     bot.edit_message_reply_markup.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("failure", "key", "params"),
+    [
+        (
+            EpisodeNumberError("error_perm: 550 postshow: No such file", NO_DIRECTORY, "postshow"),
+            "episode_number_no_directory",
+            {"directory": "postshow"},
+        ),
+        (EpisodeNumberError("error_perm: 530 Login incorrect", REFUSED), "episode_number_refused", {}),
+        (EpisodeNumberError("TimeoutError: timed out"), "episode_number_failed", {}),
+    ],
+    ids=["no postshow directory", "refused", "no reply"],
+)
+async def test_episode_number_failure_says_what_happened(state, bot, mp3_message, failure, key, params):
+    await _choose(state, bot)
+
+    with (
+        patch.object(podcast_handler, "clear_old_mp3_files", new=AsyncMock()),
+        patch.object(podcast_handler, "_download_mp3", new=AsyncMock(return_value=True)),
+        patch.object(podcast_handler, "get_last_post_id", new=AsyncMock(side_effect=failure)),
+    ):
+        await podcast_handler.get_MP3(mp3_message, state, bot, "ru", "admin")
+
+    last = _edits(bot)[-1]
+    assert t(key, error=str(failure), **params) in last
+    # «FTP не ответил» остаётся только для сервера, который правда молчит.
+    assert ("FTP не ответил" in last) is (failure.reason == NO_REPLY)
+    assert await _session(state) is None
 
 
 async def _on_date_step(state, bot, mp3_message):
