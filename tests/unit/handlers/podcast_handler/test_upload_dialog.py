@@ -528,6 +528,35 @@ async def test_mp3_without_a_dialog_starts_the_episode(state, bot, mp3_message):
 
 
 @pytest.mark.asyncio
+async def test_new_mp3_in_the_middle_of_an_episode_starts_over(state, bot, mp3_message):
+    """Раньше бот отвечал «здесь нужен текст, а не файл» и держал старый выпуск."""
+    await _on_date_step(state, bot, mp3_message)
+    bot.send_message.reset_mock()
+    bot.edit_message_reply_markup.reset_mock()
+    audio = MagicMock(file_id="second", mime_type="audio/mpeg", file_name="new.mp3", file_size=4096)
+
+    await podcast_handler.get_MP3(_message(audio=audio), state, bot, "ru", "admin")
+
+    assert bot.send_message.call_args.kwargs["text"] == t("ask_typeEpisode_for_file")
+    session = await _session(state)
+    assert upload_file_engine.current_step(session).id == TYPE_EPISODE
+    assert session.context["pending_mp3"]["file_id"] == "second"
+    # Со старого вопроса сняты кнопки: отвечать на него уже нечем.
+    bot.edit_message_reply_markup.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_wrong_file_in_the_middle_of_an_episode_keeps_the_step(state, bot, mp3_message):
+    await _on_date_step(state, bot, mp3_message)
+    document = MagicMock(file_id="doc", mime_type="application/pdf", file_name="a.pdf", file_size=10)
+
+    await podcast_handler.get_MP3(_message(document=document), state, bot, "ru", "admin")
+
+    assert upload_file_engine.current_step(await _session(state)).id == RECORDING_DATE
+    assert "⚠️" in bot.edit_message_text.call_args.kwargs["text"]
+
+
+@pytest.mark.asyncio
 async def test_other_file_without_a_dialog_gets_a_hint(state, bot):
     document = MagicMock(file_id="doc", mime_type="application/pdf", file_name="a.pdf", file_size=10)
     msg = _message(document=document)

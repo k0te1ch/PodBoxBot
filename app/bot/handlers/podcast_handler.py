@@ -341,7 +341,17 @@ async def _download_mp3(mp3: FileInfo, bot: Bot, on_progress: Callable[[int], Aw
 @router.message(DialogActiveFilter(storage), F.content_type.in_(FILE_CONTENT_TYPES))
 async def get_MP3(msg: Message, state: FSMContext, bot: Bot, language: str, username: str):
     """Файл на шаге MP3: проверка ограничений шага, скачивание, номер эпизода."""
-    await _take_mp3(msg.chat.id, msg.reply, message_files(msg), state, bot, language, username)
+    files = message_files(msg)
+    session, ui = await storage.load(state)
+    if session is not None and _step_id(session) != MP3 and files and _looks_like_mp3(files[0]):
+        # Новый mp3 посреди незаконченного выпуска: человек начал заново.
+        # Отвечать «здесь нужен текст, а не файл» на него бессмысленно.
+        logger.debug(f"[{username}]: новый MP3 посреди диалога, выпуск начат заново")
+        bot_metrics.upload_step(_step_id(session), "restarted")
+        await _drop_keyboard(bot, ui.anchor)
+        await start_upload(state, bot, msg, language, in_place=False, pending=files[0])
+        return
+    await _take_mp3(msg.chat.id, msg.reply, files, state, bot, language, username)
 
 
 def _episode_title(type_episode: str, language: str) -> str:
