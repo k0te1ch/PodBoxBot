@@ -17,7 +17,8 @@ from pathlib import Path
 import aiofiles
 import aiohttp
 from aiogram import Bot, F, Router
-from aiogram.types import CallbackQuery, FSInputFile
+from aiogram.enums import ParseMode
+from aiogram.types import CallbackQuery, FSInputFile, LinkPreviewOptions
 from loguru import logger
 
 from config import COVER_PS_PATH, COVER_RZ_PATH, FILES_PATH, FORWARD_CHAT_USERNAME
@@ -50,9 +51,16 @@ async def download_enclosure(url: str, target: Path) -> None:
 
 
 async def _to_chat(bot: Bot, episode: Episode, locale: str) -> str:
-    text = t("rss_chat_post", locale, title=episode.title, link=episode.link)
+    # Название ведёт на выпуск, а карточку сайта Telegram подставит сам:
+    # голой ссылки в анонсе нет.
+    text = t("rss_chat_post", locale, title=escape(episode.title), link=escape(episode.link))
     try:
-        await bot.send_message(chat_id=FORWARD_CHAT_USERNAME, text=text)
+        await bot.send_message(
+            chat_id=FORWARD_CHAT_USERNAME,
+            text=text,
+            parse_mode=ParseMode.HTML,
+            link_preview_options=LinkPreviewOptions(url=episode.link, prefer_large_media=True),
+        )
     except Exception as e:
         logger.error(f"rss: announce to {FORWARD_CHAT_USERNAME} failed: {e!r}")
         return t("forward_failed", locale)
@@ -114,7 +122,8 @@ async def on_rss_button(callback: CallbackQuery, bot: Bot, language: str, userna
         result = t("rss_done_skip", language)
     else:
         return
+    # html_text, а не text: знак «<» в названии выпуска иначе ломал правку.
     await callback.message.edit_text(
-        f"{callback.message.text}\n\n{t('rss_choice', language, user=username, result=result)}",
+        f"{callback.message.html_text}\n\n{t('rss_choice', language, user=escape(username), result=result)}",
         reply_markup=None,
     )

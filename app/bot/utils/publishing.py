@@ -11,16 +11,15 @@ from sagenza_tgbot_sdk.menus import MenuContext
 
 from config import KAFKA_SERVER, SCHEMA_REGISTRY_URL
 from services import publish_board
+from services.i18n import t
 from services.metrics import bot_metrics
 from services.publish_board import StatusRef, boards
 from shared.kafka.producer import KafkaProducer
 
 SCHEMAS_DIR = "/app/shared/kafka/schemas"
-SENT_TEXT = "✅ Запрос на публикацию отправлен. Ожидайте результат"
-FAILED_TEXT = "Ошибка при отправке запроса"
-QUEUED_STATUS = "{title}: запрос принят, ждём сервис публикации…"
+QUEUED_STATUS = "{title}: запрос принят, жду сервис публикации…"
 FAILED_ROW = "❌ запрос не отправлен: очередь публикаций недоступна"
-FAILED_STATUS = "❌ {title}: запрос не отправлен — очередь публикаций недоступна.\n{error}"
+FAILED_STATUS = "❌ {title}: запрос не отправлен, очередь публикаций недоступна\n{error}"
 
 
 def board_title(info: dict | None, file_name: str) -> str:
@@ -77,7 +76,7 @@ async def publish_request(
             and await _set_board(status, platform, publish_board.FAILED, FAILED_ROW, error=reason)
         ):
             await _set_status(status, FAILED_STATUS.format(title=title, error=reason))
-        await ctx.answer(FAILED_TEXT, alert=True)
+        await ctx.answer(t("publish_send_failed", ctx.locale), alert=True)
         return False
     logger.info(f"[Kafka] {type(event).__name__} sent to {topic}")
     if platform:
@@ -92,5 +91,6 @@ async def publish_request(
         and await _set_board(status, platform, publish_board.QUEUED, publish_board.QUEUED_TEXT)
     ):
         await _set_status(status, QUEUED_STATUS.format(title=title))
-    await ctx.answer(SENT_TEXT, alert=True)
+    # Короткий всплывающий ответ, а не окно: статус и так виден в табло ниже.
+    await ctx.answer(t("publish_sent", ctx.locale))
     return True

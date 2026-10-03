@@ -49,17 +49,17 @@ def explain_telegram_error(error: TelegramAPIError, action: str, chat: str | Non
     text = str(error).lower()
     chat = chat or escape(FORWARD_CHAT_USERNAME)
     if isinstance(error, TelegramForbiddenError):
-        return f"{action}: бота нет в чате {chat} или ему запрещено писать туда. Добавьте бота в чат."
+        return f"{action}: бота нет в чате {chat} или ему запрещено писать туда. Добавь бота в чат"
     if "not enough rights" in text or "chat_admin_required" in text:
-        return f"{action}: у бота не хватает прав в чате {chat}. Дайте ему право закреплять сообщения."
+        return f"{action}: у бота не хватает прав в чате {chat}. Дай ему право закреплять сообщения"
     if "chat not found" in text:
-        return f"{action}: чат {chat} не найден. Проверьте FORWARD_CHAT_USERNAME."
+        return f"{action}: чат {chat} не найден. Проверь FORWARD_CHAT_USERNAME"
     if "caption is too long" in text:
-        return f"{action}: подпись длиннее {CAPTION_LIMIT} символов."
+        return f"{action}: подпись длиннее {CAPTION_LIMIT} символов"
     if "wrong file identifier" in text or "wrong remote file" in text:
-        return f"{action}: Telegram не принял файл аудио. Загрузите эпизод заново."
+        return f"{action}: Telegram не принял файл. Оформи выпуск заново: /new"
     if "can't parse entities" in text:
-        return f"{action}: Telegram не разобрал разметку текста поста."
+        return f"{action}: Telegram не разобрал разметку текста поста"
     return f"{action}: {escape(str(error))}"
 
 
@@ -84,7 +84,7 @@ async def _send_episode(bot: Bot, audio_file_id: str, podcast_text: str, chat: s
     except TelegramAPIError as e:
         raise ForwardError(explain_telegram_error(e, "Аудио не отправлено", chat)) from e
     if not isinstance(sent, Message) or sent.audio is None:
-        raise ForwardError("Аудио не отправлено: Telegram не вернул сообщение с аудио.")
+        raise ForwardError("Аудио не отправлено: Telegram не вернул сообщение с аудио")
 
     if long_text:
         try:
@@ -117,7 +117,7 @@ async def _pin_and_check(bot: Bot, message_id: int, chat: str | None = None) -> 
         return
     pinned = chat.pinned_message
     if pinned is None or pinned.message_id != message_id:
-        raise ForwardError("Аудио в чате, но закреп не подтвердился: закреплено другое сообщение.")
+        raise ForwardError("Аудио в чате, но закреп не подтвердился: закреплено другое сообщение")
 
 
 async def forward_to_chat(ctx: MenuContext):
@@ -136,7 +136,7 @@ async def forward_to_chat(ctx: MenuContext):
         stored = await load_template_info(file_name)
         if stored is None:
             logger.warning(f"[{username}]: template info not found for {file_name}")
-            await ctx.answer(t("invalid_input", ctx.locale), alert=True)
+            await ctx.answer(t("episode_file_gone", ctx.locale), alert=True)
             return
 
         type_episode = stored.get("type_episode")
@@ -144,7 +144,7 @@ async def forward_to_chat(ctx: MenuContext):
         status = await chat_card.send(bot, message, card, f"⏳ Пересылка в {chat}: отправляю аудио…")
         podcast_text = generate_podcast_text(stored["info"])
         if not podcast_text:
-            raise ForwardError("Не удалось собрать текст поста из шаблона эпизода.")
+            raise ForwardError("Не получилось собрать текст поста из описания выпуска")
 
         sent = await _send_episode(bot, message.audio.file_id, podcast_text, chat)
         await _status(status, f"⏳ Пересылка в {chat}: аудио отправлено, закрепляю…")
@@ -152,7 +152,7 @@ async def forward_to_chat(ctx: MenuContext):
 
         logger.success(f"[{username}]: Successfully forwarded audio")
         await bot_metrics.publish_succeeded(TELEGRAM, type_episode, "published", file_name=file_name)
-        await _status(status, f"✅ Эпизод опубликован в {chat} и закреплён.")
+        await _status(status, f"✅ Выпуск в {chat}, сообщение закреплено")
         await ctx.answer(t("forwarded", ctx.locale))
 
     except ForwardError as e:

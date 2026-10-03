@@ -277,7 +277,8 @@ async def test_forward_without_template_info_reports_it():
         await audio_handler.forward_to_chat(ctx)
 
     bot.send_audio.assert_not_awaited()
-    ctx.answer.assert_awaited_once_with(t("invalid_input"), alert=True)
+    # Кнопка под файлом прошлого выпуска: бот говорит, что файл заменён, а не «ошибка при вводе».
+    ctx.answer.assert_awaited_once_with(t("episode_file_gone"), alert=True)
     ctx.show.assert_awaited_once()
 
 

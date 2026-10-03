@@ -2,8 +2,8 @@
 # из sagenza-tgbot-sdk: `ключ = значение`, продолжение значения — строки с
 # отступом, подстановки — { $имя }.
 
-error_occurred = Произошла ошибка! Пожалуйста, попробуйте снова
-invalid_input = Ошибка при вводе!
+error_occurred = Что-то пошло не так, попробуй ещё раз
+invalid_input = Не разобрал описание. Проверь, что строки Number, Title и Comment на месте, как в шаблоне
 invalid_recording_date = Не понял дату записи. Выбери её кнопкой или напиши как ДД.ММ.ГГГГ, например 26.07.2026, не позже сегодняшнего дня
 invalid_publish_at = Не понял дату публикации. Выбери её кнопками или напиши дату и время, например 05.10.2026 20:00, не раньше текущего момента
 download_failed = не скачался. Проверь файл и пришли его ещё раз
@@ -13,12 +13,12 @@ episode_number_failed = FTP не ответил, загрузка отменен
 ## Загрузка эпизода (диалог DialogEngine)
 
 ask_typeEpisode = Какой выпуск оформляем?
-ask_typeEpisode_for_file = Вижу mp3. Какой это выпуск?
+ask_typeEpisode_for_file = Вижу mp3. Это основной выпуск или послешоу?
 file_not_mp3 = Это не mp3. Чтобы оформить выпуск, пришли mp3 или нажми «Новый выпуск» в /start
-ask_mp3 = Загружаем <u><b>{ $type_episode }</b></u>. Ожидаю MP3 файл
+ask_mp3 = Оформляем: <b>{ $type_episode }</b>. Пришли mp3
 got_mp3 = Вижу mp3, скачиваю
-done_mp3 = Вот твой готовый файл!
-canceled = Отменено
+done_mp3 = Выпуск готов. Куда выкладываем?
+canceled = Отменил
 
 ## Даты выпуска (utils/date_picker.py)
 
@@ -64,8 +64,8 @@ status_of = { $done } из { $total }
 status_left = ещё ~{ $time }
 status_slow = уже { $time }, дольше обычного, но я жду
 
-main_episode = Основной эпизод
-episode_aftershow = Эпизод послешоу
+main_episode = Основной выпуск
+episode_aftershow = Послешоу
 
 ask_template_main =
     Теперь пришли описание. Скопируй шаблон и поменяй только значения:
@@ -90,15 +90,15 @@ de-button-back = ⬅️ Назад
 de-button-cancel = Отмена
 de-button-keep = Оставить
 de-button-keep_value = Оставить: {value}
-de-error-media-mime = Нужен MP3 (допустимые типы: {allowed})
+de-error-media-mime = Нужен mp3, а это другой файл
 de-error-media-extension = Нужен файл с расширением {allowed}
 de-error-media-size = Файл больше {max_mb} МБ
-de-error-file-expected = Жду MP3 файл
+de-error-file-expected = Жду mp3 файлом
 de-error-media-unexpected = Здесь нужен текст, а не файл
 de-error-button_required = Выбери вариант кнопкой
-de-alert-no_session = Диалог уже закончился, начни заново: /start
+de-alert-no_session = Этот диалог уже закончился. Новый выпуск: /new
 de-alert-stale_button = Кнопка устарела
-de-alert-expired = Диалог устарел, начни заново: /start
+de-alert-expired = Диалог устарел. Новый выпуск: /new
 
 ## Меню аудио
 
@@ -108,15 +108,15 @@ audio_boosty = Boosty
 audio_vk = VK Donut
 audio_patreon = Patreon
 audio_sponsr = Sponsr
-audio_forward = Переслать в чат
-ftp_upload = Загрузить подкаст на FTP
-wp_upload = Загрузить подкаст на сайт
-boosty_upload = Опубликовать aftershow на Boosty
-vk_upload = Опубликовать aftershow для донов VK
-patreon_upload = Опубликовать aftershow на Patreon
-sponsr_upload = Опубликовать aftershow на Sponsr
-forwarded = Переслали в чат!
-forward_failed = Ошибка при пересылке, попробуйте позже
+audio_forward = В чат
+ftp_upload = Загрузить на FTP
+wp_upload = Сохранить черновик на сайте
+boosty_upload = Опубликовать послешоу на Boosty
+vk_upload = Опубликовать послешоу для донов VK
+patreon_upload = Опубликовать послешоу на Patreon
+sponsr_upload = Опубликовать послешоу на Sponsr
+forwarded = Переслал в чат
+forward_failed = Не получилось переслать, причина в сообщении ниже
 
 ## Админ-панель
 
@@ -131,34 +131,33 @@ help_text =
     Ведущие увидят всё в общем списке и разберут в одном из выпусков
 
 admin_panel = Админка
-bot_restart = Перезапустить бота
-bot_logs = Прислать лог-файлы
-bot_restarting = Бот перезапускается
-logs_failed = Ошибка: не удалось собрать логи
+bot_restart = Перезапустить
+bot_logs = Логи
+bot_restarting = Перезапускаюсь, вернусь через минуту
+logs_failed = Не получилось собрать логи
 
 ## Сервисные сообщения
 
-admin_service = Сервисное сообщение
-service_ask_text = Напиши текст сообщения — после подтверждения он уйдёт в { $chat }
+admin_service = Сообщение в чат
+service_ask_text = Напиши текст сообщения. После подтверждения он уйдёт в { $chat }
 service_confirm = Отправить это сообщение в { $chat }?
 service_sent = Отправили в { $chat }
-service_failed = Не удалось отправить сообщение, попробуйте позже
+service_failed = Не получилось отправить, попробуй позже
 de-button-confirm = ✅ Отправить
 
 ## Новый эпизод в RSS
 
 rss_new_episode = Вышел эпизод { $number }: { $title }. Выложить?
-rss_no_mp3 = В ленте нет mp3 нашего выпуска — для FTP, сайта и Boosty загрузи файл через /start
+rss_no_mp3 = В ленте нет mp3 этого выпуска. Для FTP, сайта и Boosty пришли файл сам
 rss_to_chat = В чат
-rss_prepare = На площадки (FTP, сайт, Boosty)
+rss_prepare = На площадки
 rss_skip = Не надо
-rss_chat_post = Вышел новый эпизод: { $title }
-    { $link }
+rss_chat_post = Вышел новый выпуск: <a href="{ $link }">{ $title }</a>
 rss_download_failed = mp3 не скачался, попробуй позже
 rss_done_chat = анонс отправлен в { $chat }
 rss_done_prepare = mp3 скачан, выбери площадку в меню под файлом
 rss_done_skip = не выкладываем
-rss_cannot_prepare = нет mp3 или номера эпизода, загрузи файл через /start
+rss_cannot_prepare = в ленте нет mp3 или номера выпуска, пришли файл сам
 rss_choice = { $user }: { $result }
 rss_expired = Уведомление устарело
 rss_feed_down = RSS не читается уже { $count } раз подряд: { $url }
@@ -180,10 +179,8 @@ collector_open_message = Открыть сообщение
 ## Topics and questions from listeners
 
 admin_topics = 💡 Темы и вопросы
-topics_panel =
-    Темы и вопросы от слушателей: один список для ведущих.
-    Обсудили пункты? Напиши «удали 1, 3» или отметь номера кнопками под списком.
-topics_show = 📋 Показать список
+topics_panel = Темы и вопросы от слушателей
+topics_show = 📋 Список
 topics_add_topic = ➕ Тема
 topics_add_question = ➕ Вопрос
 topics_authors = 🚷 Авторы
@@ -199,14 +196,14 @@ topics_column_text = Текст
 topics_column_author = От кого
 topics_column_when = Когда
 topics_list_title = Список тем и вопросов:
-topics_list_empty = Список тем и вопросов пуст: пока никто ничего не предложил.
+topics_list_empty = Список пуст: пока никто ничего не предложил
 topics_marked = Отмечено: { $numbers }
 topics_marked_count = Отмечено пунктов: { $count }
 topics_marked_none = Ничего не отмечено
 topics_mark_first = Сначала отметь пункты кнопками с номерами
-topics_list_stale = Этот список устарел. Вот свежий: отмечай в нём.
+topics_list_stale = Этот список устарел. Вот свежий: отмечай в нём
 topics_denied = Эта кнопка только для ведущих
-topics_view_missing = Не помню, какой список показывал последним. Вот свежий: номера бери из него.
+topics_view_missing = Не помню, какой список показывал последним. Вот свежий: номера бери из него
 topics_numbers_unknown = В последнем списке пунктов: { $total }, а таких номеров в нём нет: { $numbers }. Ничего не удалил. Свежий список: /topics
 topics_remove_usage = Напиши номера пунктов из последнего списка: /done 1 3 4 или «удали 1, 3, 4». Список: /topics
 topics_removed = Удалил из списка:
@@ -217,26 +214,26 @@ topics_restored = Вернул в список:
 topics_undo_expired = Вернуть уже нельзя: прошло больше 10 минут или пункты уже вернули
 topics_authors_title =
     Авторы пунктов из списка и бан-лист. Нажми на автора, чтобы заблокировать его или разблокировать.
-    От заблокированного бот ничего не принимает. Его пункты остаются в списке, пока их не удалишь.
-topics_authors_empty = Блокировать некого: в списке нет пунктов от слушателей, бан-лист пуст.
+    От заблокированного бот ничего не принимает. Его пункты остаются в списке, пока их не удалишь
+topics_authors_empty = Блокировать некого: в списке нет пунктов от слушателей, бан-лист пуст
 topics_author = 🚷 { $name } (пунктов: { $count })
 topics_author_banned = ✅ Разблокировать { $name }
 topics_ban_done = Автор заблокирован
 topics_unban_done = Автор разблокирован
-topics_added_topic = Добавил тему в список для ведущих. Спасибо!
-topics_added_question = Добавил вопрос в список для ведущих. Спасибо!
+topics_added_topic = Добавил тему в список для ведущих, спасибо
+topics_added_question = Добавил вопрос в список для ведущих, спасибо
 topics_admin_added =
     Добавил в список:
     { $line }
-topics_reply_no_text = В этом сообщении нет текста, добавлять нечего.
-topics_refused_too_short = Слишком коротко: нужно хотя бы { $min } символов.
-topics_refused_too_long = Слишком длинно: не больше { $max } символов.
-topics_refused_limit = Пока хватит: не больше { $limit } тем и вопросов за сутки. Попробуй позже!
-topics_refused_banned = Предлагать темы и вопросы тебе сейчас нельзя.
-topics_refused_duplicate = Это сообщение уже добавляли в список.
+topics_reply_no_text = В этом сообщении нет текста, добавлять нечего
+topics_refused_too_short = Слишком коротко: нужно хотя бы { $min } символов
+topics_refused_too_long = Слишком длинно: не больше { $max } символов
+topics_refused_limit = Пока хватит: не больше { $limit } тем и вопросов за сутки. Приходи завтра
+topics_refused_banned = Предлагать темы и вопросы тебе сейчас нельзя
+topics_refused_duplicate = Это сообщение уже добавляли в список
 topics_post_button = 📌 Кнопка «Предложить» в чат
 topics_form_button = 💡 Предложить тему или вопрос
-topics_form_invite = Есть тема для выпуска или вопрос ведущим? Нажми кнопку: анкету увидишь только ты.
+topics_form_invite = Есть тема для выпуска или вопрос ведущим? Нажми кнопку: анкету увидишь только ты
 topics_form_posted = Кнопка отправлена в { $chat }
 topics_form_post_failed = Не удалось отправить кнопку в чат. Бот состоит в нём и может писать?
 topics_form_command = Предложить тему или вопрос ведущим
@@ -247,21 +244,21 @@ topics_form_kind_topic = 💡 Тему
 topics_form_kind_question = ❓ Вопрос
 topics_form_ask_topic =
     Какую тему обсудить в выпуске?
-    Напиши её ответом на это сообщение, от { $min } до { $max } символов.
+    Напиши её ответом на это сообщение, от { $min } до { $max } символов
 topics_form_ask_question =
     Какой вопрос задать ведущим?
-    Напиши его ответом на это сообщение, от { $min } до { $max } символов.
+    Напиши его ответом на это сообщение, от { $min } до { $max } символов
 topics_form_ask_topic_admin =
     Какую тему добавить в список?
-    Напиши её следующим сообщением, до { $max } символов.
+    Напиши её следующим сообщением, до { $max } символов
 topics_form_ask_question_admin =
     Какой вопрос добавить в список?
-    Напиши его следующим сообщением, до { $max } символов.
+    Напиши его следующим сообщением, до { $max } символов
 topics_form_confirm =
     Добавить в список для ведущих?
     { $kind } - { $text }
-topics_form_cancelled = Хорошо, в другой раз.
-topics_form_expired = Анкета устарела. Начни заново: /topic или /question.
+topics_form_cancelled = Хорошо, в другой раз
+topics_form_expired = Анкета устарела. Начни заново: /topic или /question
 topics_form_open_private = Открыть анкету в личке
 topics_form_go_private = Показать анкету здесь не получилось. Открой её в личке бота:
 
@@ -284,3 +281,9 @@ status_column_episode = Выпуск
 status_column_platform = Площадка
 status_column_state = Состояние
 status_column_when = Когда
+
+## Устаревшие кнопки
+
+episode_file_gone = Этот файл уже заменён новым выпуском. Чтобы выложить его, оформи выпуск заново: /new
+publish_sent = Отправил, статус ниже
+publish_send_failed = Не получилось отправить запрос, причина в статусе ниже

@@ -42,6 +42,7 @@ def _callback(data: str, text: str = "notification") -> MagicMock:
     callback = MagicMock(data=data)
     callback.message.chat.id = CHAT_ID
     callback.message.text = text
+    callback.message.html_text = text
     callback.message.edit_text = AsyncMock()
     callback.answer = AsyncMock()
     return callback
@@ -154,7 +155,10 @@ async def _press(action: str, bot, episode: Episode | None = EPISODE) -> MagicMo
 async def test_rss_to_chat_posts_link(bot):
     callback = await _press("chat", bot)
 
-    assert _sent_to_chat(bot) == [t("rss_chat_post", "ru", title=EPISODE.title, link=EPISODE.link)]
+    # Название ссылкой и карточка сайта вместо голой ссылки.
+    assert _sent_to_chat(bot) == ['Вышел новый выпуск: <a href="https://example.com/43">Episode 43</a>']
+    preview = bot.send_message.call_args.kwargs["link_preview_options"]
+    assert (preview.url, preview.prefer_large_media) == (EPISODE.link, True)
     text = callback.message.edit_text.await_args.args[0]
     assert text.startswith("notification")
     assert t("rss_done_chat", "ru", chat=FORWARD_CHAT_USERNAME) in text
@@ -209,3 +213,14 @@ async def test_rss_prepare_download_failure(bot, tmp_path):
 
     bot.send_audio.assert_not_awaited()
     assert t("rss_download_failed", "ru") in callback.message.edit_text.await_args.args[0]
+
+
+@pytest.mark.asyncio
+async def test_rss_title_with_markup_does_not_break_the_messages(bot):
+    """Знак «<» в названии выпуска раньше ломал и анонс, и правку уведомления."""
+    episode = Episode(guid="g", title="5 < 6 & co", link="https://example.com/5?a=1&b=2", number="5")
+    callback = await _press("chat", bot, episode)
+
+    [announce] = _sent_to_chat(bot)
+    assert '<a href="https://example.com/5?a=1&amp;b=2">5 &lt; 6 &amp; co</a>' in announce
+    callback.message.edit_text.assert_awaited_once()

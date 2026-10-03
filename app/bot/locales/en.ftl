@@ -2,8 +2,8 @@
 # sagenza-tgbot-sdk: `key = value`, continuation lines are indented,
 # placeholders are { $name }.
 
-error_occurred = An error occurred! Please try again
-invalid_input = Invalid input!
+error_occurred = Something went wrong, try again
+invalid_input = Could not read the description. Check that the Number, Title and Comment lines are in place, as in the template
 invalid_recording_date = Could not read the recording date. Pick it with a button or type DD.MM.YYYY, e.g. 26.07.2026, no later than today
 invalid_publish_at = Could not read the publication date. Pick it with the buttons or type the date and time, e.g. 05.10.2026 20:00, not earlier than now
 download_failed = did not download. Check the file and send it again
@@ -13,12 +13,12 @@ episode_number_failed = FTP did not respond, the upload is cancelled. Start agai
 ## Episode upload (DialogEngine dialog)
 
 ask_typeEpisode = Which episode are we preparing?
-ask_typeEpisode_for_file = I see an MP3. Which episode is it?
+ask_typeEpisode_for_file = I see an MP3. Is it the main episode or the aftershow?
 file_not_mp3 = This is not an MP3. To prepare an episode, send an MP3 or press "New episode" in /start
-ask_mp3 = Loading <u><b>{ $type_episode }</b></u>. Waiting for MP3 file
+ask_mp3 = Preparing: <b>{ $type_episode }</b>. Send the MP3
 got_mp3 = I see an MP3, downloading
-done_mp3 = Here is your finished file!
-canceled = Canceled
+done_mp3 = The episode is ready. Where do we publish?
+canceled = Cancelled
 
 ## Episode dates (utils/date_picker.py)
 
@@ -65,7 +65,7 @@ status_left = ~{ $time } left
 status_slow = { $time } already, longer than usual, still waiting
 
 main_episode = Main episode
-episode_aftershow = Aftershow episode
+episode_aftershow = Aftershow
 
 ask_template_main =
     Now send the description. Copy the template and change only the values:
@@ -96,9 +96,9 @@ de-error-media-size = The file is larger than {max_mb} MB
 de-error-file-expected = Waiting for an MP3 file
 de-error-media-unexpected = Text is expected here, not a file
 de-error-button_required = Pick an option with a button
-de-alert-no_session = The dialog is over, start again: /start
+de-alert-no_session = This dialog is over. New episode: /new
 de-alert-stale_button = This button is outdated
-de-alert-expired = The dialog has expired, start again: /start
+de-alert-expired = The dialog has expired. New episode: /new
 
 ## Audio menu
 
@@ -108,15 +108,15 @@ audio_boosty = Boosty
 audio_vk = VK Donut
 audio_patreon = Patreon
 audio_sponsr = Sponsr
-audio_forward = Forward to chat
-ftp_upload = Upload the podcast to FTP
-wp_upload = Upload the podcast to the website
+audio_forward = To the chat
+ftp_upload = Upload to FTP
+wp_upload = Save a draft on the site
 boosty_upload = Publish the aftershow on Boosty
 vk_upload = Publish the aftershow for VK Donut
 patreon_upload = Publish the aftershow on Patreon
 sponsr_upload = Publish the aftershow on Sponsr
-forwarded = Forwarded to the chat!
-forward_failed = Forwarding failed, try again later
+forwarded = Forwarded to the chat
+forward_failed = Could not forward, the reason is in the message below
 
 ## Admin panel
 
@@ -131,14 +131,14 @@ help_text =
     The hosts see everything in one list and pick it up in one of the episodes
 
 admin_panel = Admin
-bot_restart = Restart the bot
-bot_logs = Send log files
+bot_restart = Restart
+bot_logs = Logs
 bot_restarting = Bot is restarting
 logs_failed = Error: could not collect the logs
 
 ## Service messages
 
-admin_service = Service message
+admin_service = Message to the chat
 service_ask_text = Send the message text; after confirmation it goes to { $chat }
 service_confirm = Send this message to { $chat }?
 service_sent = Sent to { $chat }
@@ -150,10 +150,9 @@ de-button-confirm = ✅ Send
 rss_new_episode = Episode { $number } is out: { $title }. Publish it?
 rss_no_mp3 = The feed has no mp3 of our episode; upload the file with /start for FTP, site and Boosty
 rss_to_chat = To chat
-rss_prepare = To platforms (FTP, site, Boosty)
+rss_prepare = To the platforms
 rss_skip = Skip
-rss_chat_post = New episode is out: { $title }
-    { $link }
+rss_chat_post = A new episode is out: <a href="{ $link }">{ $title }</a>
 rss_download_failed = the MP3 did not download, try later
 rss_done_chat = announcement sent to { $chat }
 rss_done_prepare = mp3 downloaded, pick a platform in the menu under the file
@@ -180,10 +179,8 @@ collector_open_message = Open message
 ## Topics and questions from listeners
 
 admin_topics = 💡 Topics and questions
-topics_panel =
-    Topics and questions from listeners: one list for the hosts.
-    Covered some items? Send "delete 1, 3" or tick the numbers under the list.
-topics_show = 📋 Show the list
+topics_panel = Topics and questions from listeners
+topics_show = 📋 List
 topics_add_topic = ➕ Topic
 topics_add_question = ➕ Question
 topics_authors = 🚷 Authors
@@ -193,20 +190,20 @@ topics_undo = ↩️ Restore
 topics_kind_topic = TOPIC
 topics_kind_question = QUESTION
 topics_list_heading = Topics and questions
-topics_column_number = No.
+topics_column_number = No
 topics_column_kind = Kind
 topics_column_text = Text
 topics_column_author = From
 topics_column_when = When
 topics_list_title = Topics and questions:
-topics_list_empty = The list of topics and questions is empty: nobody has suggested anything yet.
+topics_list_empty = The list of topics and questions is empty: nobody has suggested anything yet
 topics_marked = Ticked: { $numbers }
 topics_marked_count = Items ticked: { $count }
 topics_marked_none = Nothing is ticked
 topics_mark_first = Tick the items with the number buttons first
-topics_list_stale = This list is out of date. Here is a fresh one: tick the items there.
+topics_list_stale = This list is out of date. Here is a fresh one: tick the items there
 topics_denied = This button is for the hosts only
-topics_view_missing = I do not remember which list I showed last. Here is a fresh one: take the numbers from it.
+topics_view_missing = I do not remember which list I showed last. Here is a fresh one: take the numbers from it
 topics_numbers_unknown = The last list has { $total } items and no such numbers: { $numbers }. Nothing was deleted. Fresh list: /topics
 topics_remove_usage = Send the item numbers from the last list: /done 1 3 4 or "delete 1, 3, 4". The list: /topics
 topics_removed = Deleted from the list:
@@ -217,8 +214,8 @@ topics_restored = Back on the list:
 topics_undo_expired = Too late to restore: more than 10 minutes have passed or the items are already back
 topics_authors_title =
     Authors of the listed items and the ban list. Tap an author to ban or unban them.
-    The bot accepts nothing from a banned author. Their items stay on the list until you delete them.
-topics_authors_empty = Nobody to ban: the list has no items from listeners and the ban list is empty.
+    The bot accepts nothing from a banned author. Their items stay on the list until you delete them
+topics_authors_empty = Nobody to ban: the list has no items from listeners and the ban list is empty
 topics_author = 🚷 { $name } (items: { $count })
 topics_author_banned = ✅ Unban { $name }
 topics_ban_done = The author is banned
@@ -228,15 +225,15 @@ topics_added_question = Added your question to the hosts' list. Thank you!
 topics_admin_added =
     Added to the list:
     { $line }
-topics_reply_no_text = That message has no text, there is nothing to add.
-topics_refused_too_short = Too short: at least { $min } characters, please.
-topics_refused_too_long = Too long: { $max } characters at most.
+topics_reply_no_text = That message has no text, there is nothing to add
+topics_refused_too_short = Too short: at least { $min } characters, please
+topics_refused_too_long = Too long: { $max } characters at most
 topics_refused_limit = That's enough for now: up to { $limit } topics and questions a day. Try again later!
-topics_refused_banned = You cannot suggest topics and questions right now.
-topics_refused_duplicate = This message is already on the list.
+topics_refused_banned = You cannot suggest topics and questions right now
+topics_refused_duplicate = This message is already on the list
 topics_post_button = 📌 Post the "Suggest" button
 topics_form_button = 💡 Suggest a topic or a question
-topics_form_invite = Got a topic for an episode or a question for the hosts? Tap the button: only you will see the form.
+topics_form_invite = Got a topic for an episode or a question for the hosts? Tap the button: only you will see the form
 topics_form_posted = Button posted to { $chat }
 topics_form_post_failed = Could not post the button. Is the bot in the chat and allowed to write there?
 topics_form_command = Suggest a topic or a question to the hosts
@@ -247,21 +244,21 @@ topics_form_kind_topic = 💡 A topic
 topics_form_kind_question = ❓ A question
 topics_form_ask_topic =
     What should the hosts talk about?
-    Reply to this message with your topic, { $min } to { $max } characters.
+    Reply to this message with your topic, { $min } to { $max } characters
 topics_form_ask_question =
     What would you like to ask the hosts?
-    Reply to this message with your question, { $min } to { $max } characters.
+    Reply to this message with your question, { $min } to { $max } characters
 topics_form_ask_topic_admin =
     Which topic should go on the list?
-    Send it as your next message, up to { $max } characters.
+    Send it as your next message, up to { $max } characters
 topics_form_ask_question_admin =
     Which question should go on the list?
-    Send it as your next message, up to { $max } characters.
+    Send it as your next message, up to { $max } characters
 topics_form_confirm =
     Add this to the hosts' list?
     { $kind } - { $text }
-topics_form_cancelled = OK, maybe next time.
-topics_form_expired = The form has expired. Start again: /topic or /question.
+topics_form_cancelled = OK, maybe next time
+topics_form_expired = The form has expired. Start again: /topic or /question
 topics_form_open_private = Open the form in private chat
 topics_form_go_private = Could not show the form here. Open it in a private chat with the bot:
 
@@ -284,3 +281,9 @@ status_column_episode = Episode
 status_column_platform = Platform
 status_column_state = State
 status_column_when = When
+
+## Stale buttons
+
+episode_file_gone = This file has been replaced by a newer episode. To publish it, prepare the episode again: /new
+publish_sent = Sent, the status is below
+publish_send_failed = Could not send the request, the reason is in the status below

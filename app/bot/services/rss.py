@@ -150,7 +150,7 @@ def notification_markup(episode: Episode, locale: str) -> InlineKeyboardMarkup:
 
 
 def notification_text(episode: Episode, locale: str) -> str:
-    text = t("rss_new_episode", locale, number=episode.number or "?", title=episode.title)
+    text = t("rss_new_episode", locale, number=episode.number or "?", title=html.escape(episode.title))
     if not (episode.enclosure_url and episode.type_episode):
         text += "\n\n" + t("rss_no_mp3", locale)
     return text
@@ -231,10 +231,12 @@ class RssWatcher:
         await save_episode(self.redis, episode)
         for admin_id in self.admin_ids:
             try:
+                # Тихо и только админам: это предложение выложить, а не срочное дело.
                 await self.bot.send_message(
                     admin_id,
                     notification_text(episode, self.locale),
                     reply_markup=notification_markup(episode, self.locale),
+                    disable_notification=True,
                 )
             except Exception as e:
                 logger.warning(f"rss: could not notify admin {admin_id}: {e!r}")

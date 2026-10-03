@@ -9,7 +9,7 @@ steps:
   # the dialog edits the same message
   - wait_until:
       contains: "Какой выпуск оформляем"
-      buttons: ["Основной эпизод", "Эпизод послешоу"]
-  - click: "Основной эпизод"
+      buttons: ["Основной выпуск", "Послешоу"]
+  - click: "Основной выпуск"
   - wait_until:
-      icontains: "ожидаю mp3"
+      icontains: "пришли mp3"
