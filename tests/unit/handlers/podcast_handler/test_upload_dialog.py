@@ -9,6 +9,7 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.base import StorageKey
 from aiogram.fsm.storage.memory import MemoryStorage
@@ -19,6 +20,7 @@ from forms.upload_file import MP3, TEMPLATE, TYPE_EPISODE, upload_file_engine
 from handlers import podcast_handler
 from services.i18n import t
 from utils.ftp_methods import EpisodeNumberError
+from utils.status_message import human_size
 
 CHAT_ID = 100
 STEP_MESSAGE_ID = 7
@@ -37,7 +39,18 @@ def bot() -> MagicMock:
     bot.send_message = AsyncMock(return_value=sent)
     bot.edit_message_text = AsyncMock()
     bot.edit_message_reply_markup = AsyncMock()
+    bot.send_chat_action = AsyncMock()
     return bot
+
+
+STATUS_MESSAGE_ID = 21
+
+
+def _edits(bot, message_id=STATUS_MESSAGE_ID) -> list[str]:
+    """Тексты, которыми бот правил сообщение, по порядку."""
+    return [
+        call.kwargs["text"] for call in bot.edit_message_text.call_args_list if call.kwargs["message_id"] == message_id
+    ]
 
 
 def _message(text: str | None = None, **media) -> MagicMock:
@@ -56,7 +69,7 @@ def _callback(data: str) -> MagicMock:
     callback = MagicMock(data=data)
     callback.message.chat.id = CHAT_ID
     callback.message.edit_text = AsyncMock()
-    callback.message.answer = AsyncMock(return_value=MagicMock(edit_text=AsyncMock()))
+    callback.message.answer = AsyncMock(return_value=MagicMock(message_id=STATUS_MESSAGE_ID))
     callback.answer = AsyncMock()
     return callback
 
@@ -145,7 +158,7 @@ async def test_non_mp3_file_is_rejected_without_download(state, bot):
 def mp3_message() -> MagicMock:
     audio = MagicMock(file_id="audio", mime_type="audio/mpeg", file_name="ep.mp3", file_size=2048)
     msg = _message(audio=audio)
-    msg.reply = AsyncMock(return_value=MagicMock(edit_text=AsyncMock()))
+    msg.reply = AsyncMock(return_value=MagicMock(message_id=STATUS_MESSAGE_ID))
     return msg
 
 
@@ -164,11 +177,15 @@ async def test_mp3_is_downloaded_and_template_asked_with_next_number(state, bot,
 
     download.assert_awaited_once()
     assert download.call_args.args[0] == FileInfo("audio", "audio/mpeg", "ep.mp3", 2048)
+    # Одно сообщение на всё: ответ на файл, шаги загрузки и вопрос про описание.
     mp3_message.reply.assert_awaited_once_with(t("got_mp3", language))
-    mp3_message.reply.return_value.edit_text.assert_awaited_once_with(t("downloaded", language))
-
-    # Шаблон — новым сообщением, с номером следующего эпизода.
-    assert "Number: 43" in bot.send_message.call_args.kwargs["text"]
+    bot.send_message.assert_not_awaited()
+    edits = _edits(bot)
+    assert f"⏳ {t('status_download', language)}" in edits[0]
+    assert f"✅ {t('status_download_done', language)} · {human_size(2048, language)}" in edits[1]
+    assert f"⏳ {t('status_number', language)}" in edits[2]
+    assert "Number: 43" in edits[-1]
+    assert t("downloaded", language, size=human_size(2048, language), number="43") in edits[-1]
     session = await _session(state)
     assert upload_file_engine.current_step(session).id == TEMPLATE
     assert session.context["number"] == "43"
@@ -184,7 +201,7 @@ async def test_failed_download_cancels_the_dialog(state, bot, mp3_message):
     ):
         await podcast_handler.get_MP3(mp3_message, state, bot, "ru", "admin")
 
-    mp3_message.reply.return_value.edit_text.assert_awaited_once_with(t("download_failed"))
+    assert f"❌ {t('status_download')} · {t('download_failed')}" in _edits(bot)[-1]
     assert await _session(state) is None
 
 
@@ -203,9 +220,9 @@ async def test_ftp_failure_on_episode_number_is_reported_and_closes_the_dialog(s
 
     # Раньше исключение уходило в общий обработчик: админ не получал ответа,
     # а диалог висел на шаге MP3.
-    mp3_message.reply.return_value.edit_text.assert_awaited_once_with(
-        t("episode_number_failed", error="error_perm: 530 &lt;Login incorrect&gt;")
-    )
+    last = _edits(bot)[-1]
+    assert f"✅ {t('status_download_done')}" in last
+    assert t("episode_number_failed", error="error_perm: 530 &lt;Login incorrect&gt;") in last
     assert await _session(state) is None
     bot.edit_message_reply_markup.assert_awaited_once()
 
@@ -246,33 +263,83 @@ async def test_valid_template_finishes_and_publishes(state, bot, mp3_message):
     assert await _session(state) is None
 
 
-@pytest.mark.asyncio
-@pytest.mark.parametrize("type_episode", ["main", "aftershow"])
-async def test_publish_episode_tags_and_sends_audio_with_menu(tmp_path, type_episode):
+def _publish_message(bot) -> MagicMock:
+    msg = _message()
+    msg.bot = bot
+    msg.answer = AsyncMock(return_value=MagicMock(message_id=STATUS_MESSAGE_ID))
+    msg.answer_audio = AsyncMock()
+    bot.edit_message_media = AsyncMock()
+    return msg
+
+
+@pytest.fixture
+def episode_files(tmp_path):
     podcast = tmp_path / "podcast.mp3"
     podcast.write_bytes(b"mp3")
-    msg = _message()
-    msg.answer = AsyncMock(return_value=MagicMock(delete=AsyncMock()))
-    msg.reply_audio = AsyncMock()
-    turn = DialogTurn(finished=True, answers={TYPE_EPISODE: type_episode, TEMPLATE: {"number": "42", "title": "T"}})
-    markup = MagicMock()
-
     with (
         patch.object(podcast_handler, "FILES_PATH", tmp_path),
         patch.object(podcast_handler, "PODCAST_PATH", podcast),
-        patch.object(podcast_handler, "audio_tag") as audio_tag,
         patch.object(podcast_handler, "read_duration_and_artist", return_value=(1, "A")),
         patch.object(podcast_handler, "save_template_info", new=AsyncMock()),
-        patch.object(podcast_handler, "audio_menu_markup", new=AsyncMock(return_value=markup)) as menu,
+        patch.object(podcast_handler, "audio_menu_markup", new=AsyncMock(return_value=MagicMock())) as menu,
     ):
+        yield tmp_path, menu
+
+
+def _turn(type_episode="main") -> DialogTurn:
+    return DialogTurn(finished=True, answers={TYPE_EPISODE: type_episode, TEMPLATE: {"number": "42", "title": "T"}})
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("type_episode", ["main", "aftershow"])
+async def test_publish_episode_tags_and_turns_the_status_into_the_audio(bot, episode_files, type_episode):
+    """Статус не удаляется: то же сообщение становится готовым файлом с меню."""
+    tmp_path, menu = episode_files
+    msg = _publish_message(bot)
+    turn = _turn(type_episode)
+
+    with patch.object(podcast_handler, "audio_tag") as audio_tag:
         await podcast_handler.publish_episode(msg, turn, "ru", "admin")
 
     audio_tag.assert_called_once_with(turn.answers[TEMPLATE], type_episode)
     menu.assert_awaited_once_with(msg, type_episode)
-    kwargs = msg.reply_audio.call_args.kwargs
-    assert kwargs["caption"] == t("done_mp3")
-    assert kwargs["reply_markup"] is markup
+    title = t("status_episode_title", number="42", title="T")
+    msg.answer.assert_awaited_once_with(f"<b>{title}</b>")
+    edits = _edits(bot)
+    assert f"⏳ {t('status_tags')}" in edits[0]
+    assert f"✅ {t('status_tags_done')}" in edits[-1]
+    assert f"⏳ {t('status_send')}" in edits[-1]
+    replaced = bot.edit_message_media.call_args.kwargs
+    assert replaced["message_id"] == STATUS_MESSAGE_ID
+    assert replaced["media"].caption == t("done_mp3")
+    assert replaced["reply_markup"] is menu.return_value
+    msg.answer_audio.assert_not_awaited()
+    msg.answer.return_value.delete.assert_not_called()
     assert list(Path(tmp_path).glob("0042_*.mp3"))
+
+
+@pytest.mark.asyncio
+async def test_audio_is_sent_apart_when_the_status_cannot_become_a_file(bot, episode_files):
+    _tmp_path, menu = episode_files
+    msg = _publish_message(bot)
+    bot.edit_message_media = AsyncMock(side_effect=TelegramBadRequest(MagicMock(), "message can't be edited"))
+
+    with patch.object(podcast_handler, "audio_tag"):
+        await podcast_handler.publish_episode(msg, _turn(), "ru", "admin")
+
+    assert msg.answer_audio.call_args.kwargs["reply_markup"] is menu.return_value
+    assert f"✅ {t('status_send_done')}" in _edits(bot)[-1]
+
+
+@pytest.mark.asyncio
+async def test_failed_tagging_is_reported_in_the_status(bot, episode_files):
+    msg = _publish_message(bot)
+
+    with patch.object(podcast_handler, "audio_tag", side_effect=RuntimeError("no <cover>")):
+        await podcast_handler.publish_episode(msg, _turn(), "ru", "admin")
+
+    assert t("status_tags_failed", error="no &lt;cover&gt;") in _edits(bot)[-1]
+    bot.edit_message_media.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -310,7 +377,8 @@ async def test_mp3_without_a_dialog_starts_the_episode(state, bot, mp3_message):
 
     assert download.call_args.args[0] == FileInfo("audio", "audio/mpeg", "ep.mp3", 2048)
     callback.message.answer.assert_awaited_once_with(t("got_mp3"))
-    assert "Number: 43" in bot.send_message.call_args.kwargs["text"]
+    bot.send_message.assert_not_awaited()
+    assert "Number: 43" in _edits(bot)[-1]
     assert upload_file_engine.current_step(await _session(state)).id == TEMPLATE
 
 

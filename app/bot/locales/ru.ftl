@@ -5,10 +5,9 @@
 error_occurred = Произошла ошибка! Пожалуйста, попробуйте снова
 invalid_input = Ошибка при вводе!
 invalid_recording_date = Не понял дату записи. Укажи её как ДД.ММ.ГГГГ, например 26.07.2026, и не позже сегодняшнего дня.
-download_failed = ❌ MP3 не загружен. Проверь файл и попробуй ещё раз.
-episode_number_failed = ❌ Не удалось узнать номер эпизода: FTP не ответил.
+download_failed = не скачался. Проверь файл и пришли его ещё раз
+episode_number_failed = FTP не ответил, загрузка отменена. Начни заново: /new
     <code>{ $error }</code>
-    Загрузка отменена, начни заново: /new
 
 ## Загрузка эпизода (диалог DialogEngine)
 
@@ -16,14 +15,37 @@ ask_typeEpisode = Какой выпуск оформляем?
 ask_typeEpisode_for_file = Вижу mp3. Какой это выпуск?
 file_not_mp3 = Это не mp3. Чтобы оформить выпуск, пришли mp3 или нажми «Новый выпуск» в /start
 ask_mp3 = Загружаем <u><b>{ $type_episode }</b></u>. Ожидаю MP3 файл
-got_mp3 = Вижу MP3, начинаю загрузку
+got_mp3 = Вижу mp3, скачиваю
 done_mp3 = Вот твой готовый файл!
-set_tags = Проставляем теги
-downloaded = MP3 загружено! Теперь пришли описание эпизода в соответствии с шаблоном ниже, ничего не меняя, кроме значений полей:
-done_tag =
-    Теги проставлены.
-    Загрузка началась, подождите около 2-5 минут
+downloaded =
+    ✅ Файл получен ({ $size }), это будет выпуск { $number }
+
+    Теперь пришли описание. Скопируй шаблон и поменяй только значения:
 canceled = Отменено
+
+## Статус-сообщение долгой операции (utils/status_message.py)
+
+status_download = Скачиваю файл
+status_download_done = Файл получен
+status_number = Узнаю номер выпуска
+status_number_done = Номер выпуска известен
+status_description = Дальше: описание выпуска
+status_tags = Ставлю теги и обложку
+status_tags_done = Теги и обложка на месте
+status_send = Отправляю готовый файл
+status_send_done = Файл отправлен
+status_episode_title = 🎙 Выпуск { $number }: { $title }
+status_tags_failed = не получилось. Начни заново: /new
+    <code>{ $error }</code>
+status_send_failed = Telegram не принял файл. Начни заново: /new
+    <code>{ $error }</code>
+status_kilobytes = КБ
+status_megabytes = МБ
+status_seconds = { $seconds } с
+status_minutes = { $minutes } мин { $seconds } с
+status_of = { $done } из { $total }
+status_left = ещё ~{ $time }
+status_slow = уже { $time }, дольше обычного, но я жду
 
 main_episode = Основной эпизод
 episode_aftershow = Эпизод послешоу
@@ -116,6 +138,7 @@ rss_prepare = На площадки (FTP, сайт, Boosty)
 rss_skip = Не надо
 rss_chat_post = Вышел новый эпизод: { $title }
     { $link }
+rss_download_failed = mp3 не скачался, попробуй позже
 rss_done_chat = анонс отправлен в { $chat }
 rss_done_prepare = mp3 скачан, выбери площадку в меню под файлом
 rss_done_skip = не выкладываем

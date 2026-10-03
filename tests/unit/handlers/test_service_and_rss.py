@@ -208,4 +208,4 @@ async def test_rss_prepare_download_failure(bot, tmp_path):
         callback = await _press("prepare", bot)
 
     bot.send_audio.assert_not_awaited()
-    assert t("download_failed", "ru") in callback.message.edit_text.await_args.args[0]
+    assert t("rss_download_failed", "ru") in callback.message.edit_text.await_args.args[0]

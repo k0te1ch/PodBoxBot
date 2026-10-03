@@ -10,10 +10,11 @@ from typing import Any
 
 from aiogram import Bot, F, Router
 from aiogram.enums import ContentType
-from aiogram.exceptions import TelegramBadRequest
+from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, FSInputFile, Message
+from aiogram.types import CallbackQuery, FSInputFile, InputMediaAudio, Message
+from aiogram.utils.chat_action import ChatActionSender
 from dialog_engine import FileInfo, ValidationError, validate
 from dialog_engine.integrations.aiogram import (
     DefaultSender,
@@ -47,11 +48,8 @@ from services.rss import mark_published
 from utils.ftp_methods import EpisodeNumberError, get_last_post_id
 from utils.mp3_methods import audio_tag, read_duration_and_artist
 from utils.podcast_methods import generate_file_name
-from utils.progress_callbacks import (
-    CustomFSInputFile,
-    monitor_file_progress,
-    telegram_progress_callback,
-)
+from utils.progress_callbacks import CustomFSInputFile, monitor_file_progress
+from utils.status_message import StatusMessage, human_size
 from utils.template_store import save as save_template_info
 
 router = Router(name=os.path.splitext(os.path.basename(__file__))[0])
@@ -64,6 +62,13 @@ storage = runner.storage
 # Всё, что Telegram может прислать файлом: неподходящий файл отклоняет
 # сам движок по ограничениям MP3-шага, а не молчание бота.
 FILE_CONTENT_TYPES = {ContentType.AUDIO, ContentType.DOCUMENT, ContentType.VOICE, ContentType.VIDEO}
+
+# Шаги статус-сообщения (utils.status_message): тексты в локали, status_<шаг>.
+DOWNLOAD = "download"
+NUMBER = "number"
+DESCRIPTION = "description"
+TAGS = "tags"
+SEND = "send"
 
 
 async def _drop_keyboard(bot: Bot, anchor: MessageAnchor | None) -> None:
@@ -209,17 +214,16 @@ async def on_dialog_button(callback: CallbackQuery, state: FSMContext, bot: Bot,
         )
 
 
-async def _download_mp3(mp3: FileInfo, bot: Bot, download_msg: Message) -> bool:
-    """Скачивает присланный MP3 в PODCAST_PATH; False, если загрузка не дошла."""
+async def _download_mp3(mp3: FileInfo, bot: Bot, on_progress: Callable[[int], Awaitable[None]]) -> bool:
+    """Скачивает присланный MP3 в PODCAST_PATH; False, если загрузка не дошла.
 
-    async def progress_callback(bytes_uploaded: int):
-        await telegram_progress_callback(bytes_uploaded, download_msg, mp3.file_size)
-
+    *on_progress* получает число уже скачанных байт.
+    """
     monitor_task = asyncio.create_task(
         monitor_file_progress(
             (Path(f"/var/lib/telegram-bot-api/{API_TOKEN}/temp") if LOCAL else PODCAST_PATH),
             mp3.file_size,
-            progress_callback,
+            on_progress,
             (Path(f"/var/lib/telegram-bot-api/{API_TOKEN}/music") if LOCAL else PODCAST_PATH),
         )
     )
@@ -252,6 +256,10 @@ async def get_MP3(msg: Message, state: FSMContext, bot: Bot, language: str, user
     await _take_mp3(msg.chat.id, msg.reply, message_files(msg), state, bot, language, username)
 
 
+def _episode_title(type_episode: str, language: str) -> str:
+    return "🎙 " + t("main_episode" if type_episode == "main" else "episode_aftershow", language)
+
+
 async def _take_mp3(
     chat_id: int,
     reply: Callable[[str], Awaitable[Message]],
@@ -261,7 +269,12 @@ async def _take_mp3(
     language: str,
     username: str,
 ) -> None:
-    """Принимает mp3 на шаге MP3. *reply* отправляет сообщение о ходе загрузки."""
+    """Принимает mp3 на шаге MP3.
+
+    Всё, что происходит с файлом, видно в одном сообщении: *reply* отправляет
+    его, дальше оно правится (скачивание с процентами, номер выпуска) и в
+    конце превращается в вопрос про описание выпуска.
+    """
     sender = DefaultSender(bot, chat_id)
     session, ui = await storage.load(state)
     step = runner.engine.current_step(session) if session is not None else None
@@ -279,43 +292,59 @@ async def _take_mp3(
     await clear_old_mp3_files()
 
     logger.debug(f"[{username}]: Загружает MP3...")
-    download_msg = await reply(t("got_mp3", language))
+    mp3 = files[0]
+    type_episode = session.answers[TYPE_EPISODE]
+    sent = await reply(t("got_mp3", language))
+    status = StatusMessage(
+        bot,
+        chat_id,
+        sent.message_id,
+        _episode_title(type_episode, language),
+        [DOWNLOAD, NUMBER, DESCRIPTION],
+        language,
+    )
 
-    received_at = time.time()
-    downloaded = await _download_mp3(files[0], bot, download_msg)
-    if downloaded:
-        bot_metrics.mp3_downloaded(time.time() - received_at)
-    else:
-        logger.warning(f"[{username}]: MP3 не загрузился")
-        bot_metrics.upload_step(MP3, "download_failed")
-        await download_msg.edit_text(t("download_failed", language))
+    async def fail(step_key: str, outcome: str, reason: str) -> None:
+        bot_metrics.upload_step(MP3, outcome)
+        await status.fail(step_key, reason)
         await runner.cancel(state)
         await _drop_keyboard(bot, ui.anchor)
-        return
 
-    type_episode = session.answers[TYPE_EPISODE]
+    received_at = time.time()
+    await status.begin(DOWNLOAD)
+
+    async def on_progress(downloaded: int) -> None:
+        await status.progress(DOWNLOAD, downloaded, mp3.file_size or 0)
+
+    async with ChatActionSender.upload_document(bot=bot, chat_id=chat_id):
+        downloaded = await _download_mp3(mp3, bot, on_progress)
+    if not downloaded:
+        logger.warning(f"[{username}]: MP3 не загрузился")
+        await fail(DOWNLOAD, "download_failed", t("download_failed", language))
+        return
+    bot_metrics.mp3_downloaded(time.time() - received_at)
+    await status.done(DOWNLOAD, human_size(mp3.file_size or 0, language))
+
     try:
-        number = int(await get_last_post_id(type_episode, FTP_SERVER, FTP_LOGIN, FTP_PASSWORD)) + 1
+        async with status.ticking(NUMBER), ChatActionSender.typing(bot=bot, chat_id=chat_id):
+            number = int(await get_last_post_id(type_episode, FTP_SERVER, FTP_LOGIN, FTP_PASSWORD)) + 1
     except EpisodeNumberError as e:
         # Без номера шаблон не собрать: говорим, что случилось, и закрываем
         # диалог, иначе он висит на шаге MP3 без ответа.
         logger.error(f"[{username}]: номер эпизода не получен с FTP: {e}")
-        bot_metrics.upload_step(MP3, "number_failed")
-        await download_msg.edit_text(t("episode_number_failed", language, error=escape(str(e))))
-        await runner.cancel(state)
-        await _drop_keyboard(bot, ui.anchor)
+        await fail(NUMBER, "number_failed", t("episode_number_failed", language, error=escape(str(e))))
         return
 
-    # Шаблон уходит новым сообщением под скачанным файлом: старое сообщение
-    # шага осталось выше по чату, с него снимаются кнопки.
+    # Сообщение о загрузке становится вопросом про описание: диалог дальше
+    # правит его же. Со старого сообщения шага снимаются кнопки.
     await _drop_keyboard(bot, ui.anchor)
     session.context["number"] = str(number)
+    session.context["mp3_size"] = human_size(mp3.file_size or 0, language)
     # Отсюда считается время до публикации на площадках.
     session.context["mp3_received_at"] = received_at
-    ui.anchor = None
+    ui.anchor = MessageAnchor(chat_id=chat_id, message_id=sent.message_id)
     await storage.save(state, session, ui)
 
-    await download_msg.edit_text(t("downloaded", language))
     await _track_turn(state, MP3, await runner.on_files(files, state, sender))
 
 
@@ -350,30 +379,39 @@ async def set_template(msg: Message, state: FSMContext, bot: Bot, language: str,
 
 
 async def publish_episode(msg: Message, turn: DialogTurn, language: str, username: str) -> None:
-    """Теги, переименование и отправка готового MP3 с меню публикации."""
+    """Теги, переименование и отправка готового MP3 с меню публикации.
+
+    Ход виден в одном сообщении, и оно же в конце становится готовым файлом
+    с меню: бот ничего не удаляет и не присылает следом.
+    """
     type_episode: str = turn.answers[TYPE_EPISODE]
     info: dict[str, Any] = turn.answers[TEMPLATE]
+    bot: Bot = msg.bot
+    chat_id = msg.chat.id
     logger.debug(f"[{username}]: Выбранный тип эпизода: {type_episode}")
 
-    tmp1 = await msg.answer(t("set_tags", language))
+    title = t("status_episode_title", language, number=escape(str(info["number"])), title=escape(str(info["title"])))
+    sent = await msg.answer(f"<b>{title}</b>")
+    status = StatusMessage(bot, chat_id, sent.message_id, title, [TAGS, SEND], language)
 
     logger.debug(f"[{username}]: Начинается аудиотеггинг")
-    await asyncio.to_thread(audio_tag, info, type_episode)
-
-    new_file_name = generate_file_name(info["number"], type_episode)
-    Path(PODCAST_PATH).rename(FILES_PATH / new_file_name)
-
+    try:
+        async with status.ticking(TAGS), ChatActionSender.typing(bot=bot, chat_id=chat_id):
+            await asyncio.to_thread(audio_tag, info, type_episode)
+            new_file_name = generate_file_name(info["number"], type_episode)
+            Path(PODCAST_PATH).rename(FILES_PATH / new_file_name)
+    except Exception as e:
+        logger.exception(f"[{username}]: теги не проставлены: {e!r}")
+        await status.fail(TAGS, t("status_tags_failed", language, error=escape(str(e))))
+        return
+    await status.done(TAGS)
     logger.debug(f"[{username}]: MP3-файл тегирован и переименован -> {new_file_name}")
 
     file = FILES_PATH / new_file_name
-    try:
-        await tmp1.delete()
-    except Exception as e:
-        logger.error(f"Ошибка при удалении tmp1: {e}")
-    tmp = await msg.answer(t("done_tag", language))
+    size = file.stat().st_size
 
     async def progress_callback(bytes_uploaded: int):
-        await telegram_progress_callback(bytes_uploaded, tmp, file.stat().st_size)
+        await status.progress(SEND, bytes_uploaded, size)
 
     duration, performer = read_duration_and_artist(file)
     await bot_metrics.episode_prepared(
@@ -381,22 +419,41 @@ async def publish_episode(msg: Message, turn: DialogTurn, language: str, usernam
         type_episode,
         "upload",
         received_at=turn.context.get("mp3_received_at") or time.time(),
-        size_bytes=file.stat().st_size,
+        size_bytes=size,
         duration_seconds=duration,
     )
 
     await save_template_info(new_file_name, info, type_episode)
     await mark_published(None if isinstance(redis, _NoneModule) else redis, info["number"])
 
-    await msg.reply_audio(
-        CustomFSInputFile(file, new_file_name, progress_callback=progress_callback),
-        caption=t("done_mp3", language),
-        duration=duration,
-        performer=performer,
-        title=info["title"],
-        thumbnail=FSInputFile(COVER_RZ_PATH if type_episode == "main" else COVER_PS_PATH),
-        reply_markup=await audio_menu_markup(msg, type_episode),
-    )
-
-    await tmp.delete()
+    await status.begin(SEND)
+    audio = {
+        "caption": t("done_mp3", language),
+        "duration": duration,
+        "performer": performer,
+        "title": info["title"],
+        "thumbnail": FSInputFile(COVER_RZ_PATH if type_episode == "main" else COVER_PS_PATH),
+    }
+    markup = await audio_menu_markup(msg, type_episode)
+    try:
+        async with ChatActionSender.upload_document(bot=bot, chat_id=chat_id):
+            try:
+                # Статус сам становится файлом: одно сообщение вместо «удалил и прислал».
+                await bot.edit_message_media(
+                    chat_id=chat_id,
+                    message_id=sent.message_id,
+                    media=InputMediaAudio(
+                        media=CustomFSInputFile(file, new_file_name, progress_callback=progress_callback), **audio
+                    ),
+                    reply_markup=markup,
+                )
+            except TelegramBadRequest as e:
+                # Сервер или клиент без замены текста на файл: шлём файл отдельно.
+                logger.warning(f"[{username}]: status was not turned into the audio, sending it apart: {e!r}")
+                await msg.answer_audio(CustomFSInputFile(file, new_file_name), reply_markup=markup, **audio)
+                await status.done(SEND)
+    except TelegramAPIError as e:
+        logger.exception(f"[{username}]: готовый MP3 не отправлен: {e!r}")
+        await status.fail(SEND, t("status_send_failed", language, error=escape(str(e))))
+        return
     logger.debug(f"[{username}]: MP3 загружен и отправлен в чат")
