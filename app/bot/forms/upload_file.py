@@ -12,7 +12,8 @@
 * ``pending_mp3`` — mp3, с которого начали выпуск (прислали без меню): после
   выбора типа он принимается без повторной отправки;
 * ``number`` — номер следующего эпизода, его хендлер кладёт после скачивания
-  MP3, и он подставляется в шаблон.
+  MP3, и он подставляется в шаблон;
+* ``mp3_size`` — размер скачанного файла текстом, для строки «файл получен».
 """
 
 from datetime import timedelta
@@ -68,6 +69,11 @@ def resolve_text(key: str, answers: dict[str, Any], context: dict[str, Any]) -> 
     }
     lookup = key.replace(".", "-") if key.startswith("de.") else key
     text = t(lookup, lang, **params)
+    if lookup.startswith("ask_template_"):
+        # Сообщение о загрузке mp3 превращается в этот вопрос: итог загрузки
+        # остаётся в нём первой строкой.
+        intro = t("downloaded", lang, size=context.get("mp3_size", ""), number=params["number"])
+        return f"{intro}\n{text}"
     return key if text == lookup else text
 
 

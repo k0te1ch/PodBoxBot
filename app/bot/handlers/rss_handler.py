@@ -71,7 +71,7 @@ async def _prepare(callback: CallbackQuery, bot: Bot, episode: Episode, locale: 
     except Exception as e:
         logger.error(f"rss: download of {episode.enclosure_url} failed: {e!r}")
         target.unlink(missing_ok=True)
-        return t("download_failed", locale)
+        return t("rss_download_failed", locale)
 
     info = {
         "number": episode.number,

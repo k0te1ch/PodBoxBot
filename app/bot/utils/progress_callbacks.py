@@ -1,13 +1,11 @@
 import asyncio
 import itertools
 import os
-import time
 from collections.abc import AsyncGenerator, Callable
 from pathlib import Path
 
 import aiofiles
 from aiogram import Bot
-from aiogram.types import Message
 from aiogram.types.input_file import DEFAULT_CHUNK_SIZE, InputFile
 from loguru import logger
 
@@ -74,14 +72,6 @@ class CustomFSInputFile(InputFile):
                     _task = asyncio.create_task(result)  # noqa: RUF006
 
             logger.debug("Upload finished and read() complete")
-
-
-async def telegram_progress_callback(bytes_uploaded: int, message: Message, total_size: int):
-    progress = (bytes_uploaded / total_size) * 100
-    now = int(time.time())
-
-    if message.edit_date is None or (now - message.edit_date >= 1):
-        await message.edit_text(f"Загрузка файла: {progress:.2f}%")
 
 
 @logger.catch

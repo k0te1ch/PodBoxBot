@@ -5,10 +5,9 @@
 error_occurred = An error occurred! Please try again
 invalid_input = Invalid input!
 invalid_recording_date = Could not read the recording date. Use DD.MM.YYYY, e.g. 26.07.2026, no later than today.
-download_failed = ❌ MP3 was not uploaded. Check the file and try again.
-episode_number_failed = ❌ Could not get the episode number: FTP did not respond.
+download_failed = did not download. Check the file and send it again
+episode_number_failed = FTP did not respond, the upload is cancelled. Start again: /new
     <code>{ $error }</code>
-    Upload cancelled, start again: /new
 
 ## Episode upload (DialogEngine dialog)
 
@@ -16,14 +15,37 @@ ask_typeEpisode = Which episode are we preparing?
 ask_typeEpisode_for_file = I see an MP3. Which episode is it?
 file_not_mp3 = This is not an MP3. To prepare an episode, send an MP3 or press "New episode" in /start
 ask_mp3 = Loading <u><b>{ $type_episode }</b></u>. Waiting for MP3 file
-got_mp3 = I see an MP3, I start downloading
+got_mp3 = I see an MP3, downloading
 done_mp3 = Here is your finished file!
-set_tags = Setting tags
-downloaded = MP3 downloaded! Now send the episode description according to the template below, without changing anything except the field values:
-done_tag =
-    Tags are set.
-    Upload started, please wait about 2-5 minutes
+downloaded =
+    ✅ File received ({ $size }), this will be episode { $number }
+
+    Now send the description. Copy the template and change only the values:
 canceled = Canceled
+
+## Status message of a long operation (utils/status_message.py)
+
+status_download = Downloading the file
+status_download_done = File received
+status_number = Looking up the episode number
+status_number_done = Episode number is known
+status_description = Next: the episode description
+status_tags = Setting tags and the cover
+status_tags_done = Tags and the cover are set
+status_send = Sending the finished file
+status_send_done = File sent
+status_episode_title = 🎙 Episode { $number }: { $title }
+status_tags_failed = did not work. Start again: /new
+    <code>{ $error }</code>
+status_send_failed = Telegram did not accept the file. Start again: /new
+    <code>{ $error }</code>
+status_kilobytes = KB
+status_megabytes = MB
+status_seconds = { $seconds } s
+status_minutes = { $minutes } min { $seconds } s
+status_of = { $done } of { $total }
+status_left = ~{ $time } left
+status_slow = { $time } already, longer than usual, still waiting
 
 main_episode = Main episode
 episode_aftershow = Aftershow episode
@@ -116,6 +138,7 @@ rss_prepare = To platforms (FTP, site, Boosty)
 rss_skip = Skip
 rss_chat_post = New episode is out: { $title }
     { $link }
+rss_download_failed = the MP3 did not download, try later
 rss_done_chat = announcement sent to { $chat }
 rss_done_prepare = mp3 downloaded, pick a platform in the menu under the file
 rss_done_skip = skipped
