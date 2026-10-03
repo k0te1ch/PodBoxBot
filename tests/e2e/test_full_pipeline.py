@@ -1,4 +1,4 @@
-"""Full pipeline e2e: /start -> choose type -> upload MP3 -> template ->
+"""Full pipeline e2e: /start menu -> "New episode" -> choose type -> upload MP3 -> template ->
 FTP/WordPress publish (no chat forwarding).
 
 Buttons are clicked by their text from locales/*.ftl: callback data of the
@@ -27,10 +27,14 @@ async def _upload_audio_and_wait_template_prompt(tester, bot_username: str, mp3_
 @pytest.mark.asyncio
 async def test_full_pipeline_ftp(tester, bot_username, sample_mp3, episode_template, phrase):
     async with tester.conversation(bot_username) as chat:
+        # /start only greets and shows the menu; the upload starts with the button.
         await chat.command("start")
-        await chat.expect(
+        await chat.expect(contains=phrase("home_admin"), buttons=[phrase("home_new_episode", full=True)])
+        await chat.click(phrase("home_new_episode", full=True))
+        await chat.wait_until(
             contains=phrase("ask_typeEpisode"),
             buttons=[phrase("main_episode", full=True), phrase("episode_aftershow", full=True)],
+            timeout=20,
         )
 
         # Кнопки диалога inline: выбор типа правит то же сообщение.
@@ -63,7 +67,7 @@ async def test_full_pipeline_ftp(tester, bot_username, sample_mp3, episode_templ
 @pytest.mark.asyncio
 async def test_full_pipeline_wordpress(tester, bot_username, sample_mp3, episode_template, phrase):
     async with tester.conversation(bot_username) as chat:
-        await chat.command("start")
+        await chat.command("new")
         await chat.expect(contains=phrase("ask_typeEpisode"))
         await chat.click(phrase("main_episode", full=True))
         await chat.wait_until(contains=phrase("ask_mp3"), timeout=20)

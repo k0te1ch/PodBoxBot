@@ -8,7 +8,7 @@ from aiogram.types import CallbackQuery, Message
 from sagenza_tgbot_sdk.menus import Button, MenuContext
 from sagenza_tgbot_sdk.menus.testing import crawl
 
-from handlers import admin_handler, audio_handler, menus
+from handlers import admin_handler, audio_handler, home_handler, menus
 from services.i18n import t
 
 
@@ -47,8 +47,9 @@ async def test_every_menu_opens_and_every_button_is_wired(locale, fake_redis):
 
     report.raise_for_problems()
     assert {
+        "home@0",
+        "home_user@0",
         "admin@0",
-        "bot@0",
         "audio_main@0",
         "audio_post@0",
         "ftp_main@0",
@@ -158,6 +159,80 @@ async def test_admin_command_sends_the_panel():
         await menus.admin(msg, username="admin", language="en")
 
     send.assert_awaited_once_with(msg, menus.ADMIN_MENU, language="en")
+
+
+def _start_message(username: str) -> MagicMock:
+    msg = MagicMock(spec=Message, text="/start", answer=AsyncMock())
+    msg.from_user = MagicMock(username=username, language_code="ru")
+    return msg
+
+
+def _labels(markup) -> list[str]:
+    return [b.text for row in markup.inline_keyboard for b in row]
+
+
+@pytest.mark.asyncio
+async def test_start_shows_the_admin_home_and_starts_nothing(fake_redis, monkeypatch):
+    """/start: приветствие и меню. Выпуск начинается только кнопкой или присланным mp3."""
+    import config
+
+    monkeypatch.setattr(config, "TOPICS_ENABLED", True)
+    msg = _start_message("admin")
+    with patch.object(menus, "_new_episode", new=AsyncMock()) as new_episode:
+        await home_handler.start(msg, language="ru")
+
+    new_episode.assert_not_awaited()
+    text, markup = msg.answer.await_args.args[0], msg.answer.await_args.kwargs["reply_markup"]
+    assert text == t("home_admin")
+    assert _labels(markup) == [t("home_new_episode"), t("admin_topics"), t("admin_notes"), t("home_admin_panel")]
+
+
+@pytest.mark.asyncio
+async def test_start_shows_a_listener_their_own_menu(fake_redis, monkeypatch):
+    import config
+
+    monkeypatch.setattr(config, "TOPICS_ENABLED", True)
+    monkeypatch.setattr(config, "TOPICS_FORM_MODE", "ephemeral")
+    msg = _start_message("listener")
+
+    await home_handler.start(msg, language="ru")
+
+    text, markup = msg.answer.await_args.args[0], msg.answer.await_args.kwargs["reply_markup"]
+    assert text == t("home_user")
+    assert _labels(markup) == [t("topics_form_button"), t("home_help")]
+
+
+@pytest.mark.asyncio
+async def test_listener_cannot_open_the_admin_home():
+    stranger = _admin_event()
+    stranger.from_user.username = "stranger"
+
+    _text, markup = await menus.menus.render(menus.menus.context(stranger), menus.HOME_MENU)
+
+    assert markup.inline_keyboard == []
+
+
+@pytest.mark.asyncio
+async def test_new_episode_button_starts_the_upload_in_the_menu_message():
+    ctx = _ctx(state=MagicMock(), bot=MagicMock())
+    with patch("handlers.podcast_handler.start_upload", new=AsyncMock()) as start_upload:
+        await menus._new_episode(ctx)
+
+    start_upload.assert_awaited_once_with(ctx.data["state"], ctx.data["bot"], ctx.message, "ru")
+    ctx.answer.assert_awaited_once_with()
+
+
+@pytest.mark.asyncio
+async def test_help_is_shown_in_place_with_a_way_back():
+    message = MagicMock(spec=Message, text="menu", edit_text=AsyncMock())
+    ctx = _pressed_under(message)
+    ctx.callback.answer = AsyncMock()
+
+    await menus._help(ctx)
+
+    text, markup = message.edit_text.await_args.args[0], message.edit_text.await_args.kwargs["reply_markup"]
+    assert text == t("help_text")
+    assert _labels(markup) == [menus.menus.text("menu-back", "ru")]
 
 
 def _ctx(**data) -> MagicMock:

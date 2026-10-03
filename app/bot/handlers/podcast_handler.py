@@ -3,6 +3,7 @@ import os
 import re
 import shutil
 import time
+from collections.abc import Awaitable, Callable
 from html import escape
 from pathlib import Path
 from typing import Any
@@ -10,7 +11,7 @@ from typing import Any
 from aiogram import Bot, F, Router
 from aiogram.enums import ContentType
 from aiogram.exceptions import TelegramBadRequest
-from aiogram.filters import Command, CommandStart
+from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, FSInputFile, Message
 from dialog_engine import FileInfo, ValidationError, validate
@@ -36,7 +37,7 @@ from config import (
     PODCAST_PATH,
 )
 from filters.dispatcher_filters import IsAdmin, IsPrivate
-from forms.upload_file import DIALOG_ID, MP3, TEMPLATE, TYPE_EPISODE, upload_file_runner
+from forms.upload_file import DIALOG_ID, MP3, PENDING_MP3, TEMPLATE, TYPE_EPISODE, upload_file_runner
 from handlers.menus import audio_menu_markup
 from services.i18n import t
 from services.metrics import bot_metrics
@@ -126,17 +127,51 @@ async def clear_old_mp3_files():
     logger.debug("Старые MP3-файлы удалены")
 
 
-@logger.catch
-@router.message(F.text, CommandStart())
-async def start(msg: Message, state: FSMContext, bot: Bot, language: str):
-    """Обработчик команды /start: новый диалог загрузки поверх любого старого."""
+class _InPlaceSender(DefaultSender):
+    """Первый шаг диалога рисуется в уже показанном сообщении, а не новым.
+
+    Так кнопка «Новый выпуск» превращает главное меню в вопрос о типе
+    выпуска: чат не прыгает от лишнего сообщения.
+    """
+
+    def __init__(self, bot: Bot, chat_id: int, message_id: int) -> None:
+        super().__init__(bot, chat_id)
+        self._first = MessageAnchor(chat_id=chat_id, message_id=message_id)
+
+    async def show(self, view, anchor: MessageAnchor | None) -> MessageAnchor | None:
+        return await super().show(view, anchor or self._first)
+
+
+async def start_upload(
+    state: FSMContext,
+    bot: Bot,
+    message: Message,
+    language: str,
+    *,
+    in_place: bool = True,
+    pending: FileInfo | None = None,
+) -> None:
+    """Начинает диалог загрузки поверх любого старого.
+
+    *in_place*: первый вопрос правит *message* (нажатие кнопки меню), иначе
+    уходит новым сообщением. *pending*: mp3, с которого всё началось; после
+    выбора типа выпуска он обрабатывается без повторной отправки.
+    """
     bot_metrics.admin_action("upload")
     bot_metrics.upload_step("start", "done")
-    await runner.start(
-        state,
-        DefaultSender(bot, msg.chat.id),
-        context={"lang": language, "first_name": msg.from_user.first_name},
-    )
+    chat_id = message.chat.id
+    sender = _InPlaceSender(bot, chat_id, message.message_id) if in_place else DefaultSender(bot, chat_id)
+    context: dict[str, Any] = {"lang": language}
+    if pending is not None:
+        context[PENDING_MP3] = pending.to_dict()
+    await runner.start(state, sender, context=context)
+
+
+@logger.catch
+@router.message(F.text, Command("new"))
+async def new_episode(msg: Message, state: FSMContext, bot: Bot, language: str):
+    """``/new``: то же, что кнопка «Новый выпуск» главного меню."""
+    await start_upload(state, bot, msg, language, in_place=False)
 
 
 @logger.catch
@@ -163,6 +198,15 @@ async def on_dialog_button(callback: CallbackQuery, state: FSMContext, bot: Bot,
     if turn.cancelled and not turn.expired:
         logger.debug(f"[{username}]: Отмена загрузки MP3")
         await callback.message.edit_text(t("canceled", language))
+        return
+    session, _ui = await storage.load(state)
+    pending = session.context.get(PENDING_MP3) if session is not None else None
+    if pending and before == TYPE_EPISODE and _step_id(session) == MP3:
+        # Выпуск начали с присланного mp3: тип выбран, файл уже у Telegram.
+        message = callback.message
+        await _take_mp3(
+            message.chat.id, message.answer, [FileInfo.from_value(pending)], state, bot, language, username
+        )
 
 
 async def _download_mp3(mp3: FileInfo, bot: Bot, download_msg: Message) -> bool:
@@ -205,8 +249,20 @@ async def _download_mp3(mp3: FileInfo, bot: Bot, download_msg: Message) -> bool:
 @router.message(DialogActiveFilter(storage), F.content_type.in_(FILE_CONTENT_TYPES))
 async def get_MP3(msg: Message, state: FSMContext, bot: Bot, language: str, username: str):
     """Файл на шаге MP3: проверка ограничений шага, скачивание, номер эпизода."""
-    sender = DefaultSender(bot, msg.chat.id)
-    files = message_files(msg)
+    await _take_mp3(msg.chat.id, msg.reply, message_files(msg), state, bot, language, username)
+
+
+async def _take_mp3(
+    chat_id: int,
+    reply: Callable[[str], Awaitable[Message]],
+    files: list[FileInfo],
+    state: FSMContext,
+    bot: Bot,
+    language: str,
+    username: str,
+) -> None:
+    """Принимает mp3 на шаге MP3. *reply* отправляет сообщение о ходе загрузки."""
+    sender = DefaultSender(bot, chat_id)
     session, ui = await storage.load(state)
     step = runner.engine.current_step(session) if session is not None else None
     try:
@@ -223,7 +279,7 @@ async def get_MP3(msg: Message, state: FSMContext, bot: Bot, language: str, user
     await clear_old_mp3_files()
 
     logger.debug(f"[{username}]: Загружает MP3...")
-    download_msg = await msg.reply(t("got_mp3", language))
+    download_msg = await reply(t("got_mp3", language))
 
     received_at = time.time()
     downloaded = await _download_mp3(files[0], bot, download_msg)
@@ -261,6 +317,22 @@ async def get_MP3(msg: Message, state: FSMContext, bot: Bot, language: str, user
 
     await download_msg.edit_text(t("downloaded", language))
     await _track_turn(state, MP3, await runner.on_files(files, state, sender))
+
+
+def _looks_like_mp3(file: FileInfo) -> bool:
+    return file.mime_type == "audio/mpeg" or file.extension == ".mp3"
+
+
+@logger.catch
+@router.message(F.content_type.in_(FILE_CONTENT_TYPES))
+async def mp3_without_dialog(msg: Message, state: FSMContext, bot: Bot, language: str, username: str):
+    """Файл вне диалога: mp3 начинает оформление выпуска, остальное получает подсказку."""
+    files = message_files(msg)
+    if not files or not _looks_like_mp3(files[0]):
+        await msg.reply(t("file_not_mp3", language))
+        return
+    logger.debug(f"[{username}]: выпуск начат с присланного MP3")
+    await start_upload(state, bot, msg, language, in_place=False, pending=files[0])
 
 
 @logger.catch

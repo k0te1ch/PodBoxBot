@@ -2,6 +2,7 @@ from aiogram.types import BotCommand
 
 from .bot_handler import router as bot_handler_router
 from .collector_handler import router as collector_handler_router
+from .home_handler import router as home_handler_router
 from .menus import menus as bot_menus
 from .menus import router as menus_router
 from .podcast_handler import router as podcast_handler_router
@@ -19,15 +20,16 @@ ROUTERS = [
     topics_handler_router,
     topics_list_handler_router,
     topics_form_handler_router,
+    home_handler_router,
     podcast_handler_router,
     service_handler_router,
     rss_handler_router,
     bot_handler_router,
 ]
 
-# Меню команд для всех приватных чатов. /admin сюда намеренно не попадает:
-# его роутер закрыт фильтрами IsPrivate+IsAdmin, и светить его всем незачем.
-# menu и feedback, стоявшие тут закомментированными, обработчиков не имеют.
+# Меню команд для всех приватных чатов. /admin и /new сюда намеренно не
+# попадают: их роутеры закрыты фильтрами IsPrivate+IsAdmin, и светить их всем
+# незачем. Обе вещи админ открывает кнопками главного меню.
 COMMANDS = [
-    BotCommand(command="start", description="Оформить эпизод"),
+    BotCommand(command="start", description="Главное меню"),
 ]

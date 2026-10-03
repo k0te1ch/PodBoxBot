@@ -1,4 +1,4 @@
-"""Диалог загрузки эпизода в хендлерах: /start, кнопки, MP3, шаблон.
+"""Диалог загрузки эпизода в хендлерах: /new, кнопки, MP3, шаблон.
 
 Хендлеры вызываются напрямую с настоящим FSMContext на MemoryStorage и
 ботом-заглушкой: так видно, что именно раннер DialogEngine отправил и что
@@ -56,6 +56,7 @@ def _callback(data: str) -> MagicMock:
     callback = MagicMock(data=data)
     callback.message.chat.id = CHAT_ID
     callback.message.edit_text = AsyncMock()
+    callback.message.answer = AsyncMock(return_value=MagicMock(edit_text=AsyncMock()))
     callback.answer = AsyncMock()
     return callback
 
@@ -70,7 +71,7 @@ async def _session(state: FSMContext):
 
 
 async def _start(state, bot, language="ru"):
-    await podcast_handler.start(_message("/start"), state, bot, language)
+    await podcast_handler.new_episode(_message("/new"), state, bot, language)
     return _buttons(bot.send_message.call_args.kwargs["reply_markup"])
 
 
@@ -85,7 +86,7 @@ async def _choose(state, bot, language="ru", type_episode="main"):
 async def test_start_asks_episode_type_with_inline_buttons(state, bot, language):
     buttons = await _start(state, bot, language)
 
-    assert "Ann" in bot.send_message.call_args.kwargs["text"]
+    assert bot.send_message.call_args.kwargs["text"] == t("ask_typeEpisode", language)
     assert {t("main_episode", language), t("episode_aftershow", language), t("de-button-cancel", language)} <= set(
         buttons
     )
@@ -272,6 +273,57 @@ async def test_publish_episode_tags_and_sends_audio_with_menu(tmp_path, type_epi
     assert kwargs["caption"] == t("done_mp3")
     assert kwargs["reply_markup"] is markup
     assert list(Path(tmp_path).glob("0042_*.mp3"))
+
+
+@pytest.mark.asyncio
+async def test_menu_button_turns_the_menu_into_the_first_question(state, bot):
+    """«Новый выпуск» правит сообщение меню, а не шлёт новое: чат не дёргается."""
+    menu_message = _message()
+    menu_message.message_id = 55
+
+    await podcast_handler.start_upload(state, bot, menu_message, "ru")
+
+    bot.send_message.assert_not_awaited()
+    edited = bot.edit_message_text.call_args.kwargs
+    assert (edited["chat_id"], edited["message_id"], edited["text"]) == (CHAT_ID, 55, t("ask_typeEpisode"))
+    assert upload_file_engine.current_step(await _session(state)).id == TYPE_EPISODE
+
+
+@pytest.mark.asyncio
+async def test_mp3_without_a_dialog_starts_the_episode(state, bot, mp3_message):
+    """Присланный mp3 сам начинает выпуск: бот спрашивает тип, файл повторять не надо."""
+    await podcast_handler.mp3_without_dialog(mp3_message, state, bot, "ru", "admin")
+
+    assert bot.send_message.call_args.kwargs["text"] == t("ask_typeEpisode_for_file")
+    buttons = _buttons(bot.send_message.call_args.kwargs["reply_markup"])
+    session = await _session(state)
+    assert upload_file_engine.current_step(session).id == TYPE_EPISODE
+    bot.send_message.reset_mock()
+
+    callback = _callback(buttons[t("main_episode")])
+    with (
+        patch.object(podcast_handler, "clear_old_mp3_files", new=AsyncMock()),
+        patch.object(podcast_handler, "_download_mp3", new=AsyncMock(return_value=True)) as download,
+        patch.object(podcast_handler, "get_last_post_id", new=AsyncMock(return_value=42)),
+    ):
+        await podcast_handler.on_dialog_button(callback, state, bot, "ru", "admin")
+
+    assert download.call_args.args[0] == FileInfo("audio", "audio/mpeg", "ep.mp3", 2048)
+    callback.message.answer.assert_awaited_once_with(t("got_mp3"))
+    assert "Number: 43" in bot.send_message.call_args.kwargs["text"]
+    assert upload_file_engine.current_step(await _session(state)).id == TEMPLATE
+
+
+@pytest.mark.asyncio
+async def test_other_file_without_a_dialog_gets_a_hint(state, bot):
+    document = MagicMock(file_id="doc", mime_type="application/pdf", file_name="a.pdf", file_size=10)
+    msg = _message(document=document)
+
+    await podcast_handler.mp3_without_dialog(msg, state, bot, "ru", "admin")
+
+    msg.reply.assert_awaited_once_with(t("file_not_mp3"))
+    assert await _session(state) is None
+    bot.send_message.assert_not_awaited()
 
 
 @pytest.fixture

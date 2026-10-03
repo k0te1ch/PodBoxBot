@@ -8,11 +8,13 @@ invalid_recording_date = Could not read the recording date. Use DD.MM.YYYY, e.g.
 download_failed = ❌ MP3 was not uploaded. Check the file and try again.
 episode_number_failed = ❌ Could not get the episode number: FTP did not respond.
     <code>{ $error }</code>
-    Upload cancelled, start again with /start.
+    Upload cancelled, start again: /new
 
 ## Episode upload (DialogEngine dialog)
 
-ask_typeEpisode = Hello <b>{ $first_name }</b>, what are we adding?
+ask_typeEpisode = Which episode are we preparing?
+ask_typeEpisode_for_file = I see an MP3. Which episode is it?
+file_not_mp3 = This is not an MP3. To prepare an episode, send an MP3 or press "New episode" in /start
 ask_mp3 = Loading <u><b>{ $type_episode }</b></u>. Waiting for MP3 file
 got_mp3 = I see an MP3, I start downloading
 done_mp3 = Here is your finished file!
@@ -80,9 +82,17 @@ forward_failed = Forwarding failed, try again later
 
 ## Admin panel
 
-admin_panel = Admin panel
-admin_bot = Bot
-bot_panel = Bot management
+home_admin = Hi! What are we doing?
+home_user = Hi! This is the podcast bot. Here you can suggest a topic for an episode or ask the hosts a question
+home_new_episode = 🎙 New episode
+home_admin_panel = ⚙️ Admin
+home_help = ❓ How it works
+help_text =
+    Send /topic to suggest a topic for an episode, or /question to ask the hosts a question.
+    You can add the text right away: /question why is the sky blue?
+    The hosts see everything in one list and pick it up in one of the episodes
+
+admin_panel = Admin
 bot_restart = Restart the bot
 bot_logs = Send log files
 bot_restarting = Bot is restarting
