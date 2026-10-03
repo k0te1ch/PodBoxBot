@@ -55,6 +55,21 @@ import pytest
 from loguru import logger
 
 
+def pytest_configure(config):
+    """Не даёт запустить тесты с rootdir мимо корня репозитория.
+
+    Фикстуры из conftest.py видны только своему каталогу, пока он лежит
+    внутри rootdir. Иначе они общие на весь прогон, и из двух одноимённых
+    (``fake_redis`` у хендлеров и у тем) побеждает та, чей conftest загрузился
+    последним: тесты проходят или падают в зависимости от набора файлов.
+    """
+    if not config.rootpath.samefile(_REPO_ROOT):
+        raise pytest.UsageError(
+            f"pytest rootdir is {config.rootpath}, expected the repository root {_REPO_ROOT}: "
+            "run pytest from the repository root without -c (settings live in pytest.ini there)"
+        )
+
+
 # Перенаправление логов loguru в caplog
 @pytest.fixture(autouse=True, scope="function")
 def loguru_caplog(caplog):

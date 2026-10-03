@@ -254,12 +254,15 @@ Schema Registry. Защита выстроена в три слоя:
   - `cd app/publishers/WordPress && poetry install`
   - `cd app/publishers/Boosty && poetry install`
 - Lint: `poetry -C app/bot run ruff check app`
-- Unit-тесты бота:
-  `poetry -C app/bot run pytest -c app/bot/pyproject.toml --ignore=tests/unit/publishers -q`
+- Unit-тесты бота: `make test`, или из корня репозитория в окружении бота
+  `pytest --ignore=tests/e2e --ignore=tests/unit/publishers -q`.
+  Настройки pytest лежат в корневом `pytest.ini`, запускать нужно из корня
+  и без `-c`: иначе фикстуры из `conftest.py` разных каталогов смешиваются.
   Тесты publisher-сервисов зависят от их собственных пакетов (`asyncssh`,
   `aioprometheus` и т.д.), которых нет в venv бота — запускай их из venv
   соответствующего сервиса, например:
-  `poetry -C app/publishers/FTP run pytest -c app/bot/pyproject.toml -o addopts="" tests/unit/publishers/ftp -q`
+  `make test-publishers`, или из корня в окружении сервиса
+  `pytest -o addopts="" tests/unit/publishers/ftp -q`
 - CI (GitHub Actions, `.github/workflows/ci.yml`): ruff lint + format,
   тесты бота и отдельная джоба на каждый publisher-сервис
   (`test-publisher-ftp` / `test-publisher-wordpress` /
