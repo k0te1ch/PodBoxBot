@@ -7,6 +7,7 @@ from aiogram.__meta__ import __version__ as aiogram_version
 from aiogram.client.default import DefaultBotProperties
 from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.dispatcher.event.telegram import TelegramEventObserver
+from aiogram.fsm.storage.base import BaseStorage
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.fsm.storage.redis import RedisStorage
 from aiohttp import ClientSession
@@ -239,15 +240,18 @@ def _setup_sdk(dp: Dispatcher) -> None:
     setup_sdk(dp, settings, modules=modules)
 
 
+def _get_storage(redis) -> BaseStorage:
+    """Хранилище состояний: Redis, если он настроен, иначе память процесса."""
+    if not isinstance(redis, _NoneModule):
+        logger.debug("Used by Redis")
+        return RedisStorage(redis)
+    logger.debug("Used by MemoryStorage")
+    return MemoryStorage()
+
+
 def _get_dp_obj(bot, redis):
     logger.debug("Dispatcher configurate:")
-    if not isinstance(redis, _NoneModule):
-        storage = RedisStorage(redis)
-        logger.debug("Used by Redis")
-    else:
-        storage = MemoryStorage()
-        logger.debug("Used by MemoryStorage")
-    dp = Dispatcher(storage=storage)
+    dp = Dispatcher(storage=_get_storage(redis))
     _add_middlewares_to_observers(
         [dp.message, dp.callback_query], [UserContextMiddleware(), AdminActivityMiddleware(ADMINS_ID)]
     )
