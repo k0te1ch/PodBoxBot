@@ -21,6 +21,7 @@ import json
 from pathlib import Path
 
 import httpx
+from sagenza_tgbot_sdk.masking import register_secrets
 from sagenza_tgbot_sdk.resilience import PermanentError
 
 BASE_URL = "https://sponsr.ru"
@@ -54,6 +55,8 @@ def load_session(path: str) -> dict:
         raise SponsrAuthError(f"файл сессии {path} повреждён") from e
     if not isinstance(raw, dict) or not raw.get("SESS"):
         raise SponsrAuthError(f"в {path} нет куки SESS")
+    # Кука сессии не должна попасть в логи и в текст ошибки, который уходит боту.
+    register_secrets(str(raw["SESS"]))
     return raw
 
 
