@@ -34,7 +34,7 @@ pytz = "^2026.1.post1"
 dialog-engine = { git = "https://github.com/k0te1ch/DialogEngine.git", tag = "v0.3.0", extras = ["aiogram"] }
 # Shared bot SDK (private repo): Docker builds pass a read token as a
 # BuildKit secret, see app/bot/Dockerfile.
-sagenza-tgbot-sdk = { git = "https://github.com/k0te1ch/sagenza-tgbot-sdk.git", tag = "v0.2.0", extras = ["aiogram", "redis"] }
+sagenza-tgbot-sdk = { git = "https://github.com/k0te1ch/sagenza-tgbot-sdk.git", tag = "v0.2.1", extras = ["aiogram", "redis"] }
 
 
 [tool.poetry.group.testing.dependencies]
