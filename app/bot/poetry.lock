@@ -2599,7 +2599,7 @@ files = [
 
 [[package]]
 name = "sagenza-tgbot-sdk"
-version = "0.2.0"
+version = "0.2.1"
 description = "Shared SDK for the Sagenza family of aiogram 3 Telegram bots."
 optional = false
 python-versions = ">=3.12,<4.0"
@@ -2623,8 +2623,8 @@ redis = ["redis (>=4.6,<9.0)"]
 [package.source]
 type = "git"
 url = "https://github.com/k0te1ch/sagenza-tgbot-sdk.git"
-reference = "v0.2.0"
-resolved_reference = "8c6d531a4205950851241d83c6eadd7d0c8337c7"
+reference = "v0.2.1"
+resolved_reference = "2ce44b9403fcb1b0d4602d8251d49886096ffaa3"
 
 [[package]]
 name = "sortedcontainers"
@@ -3061,4 +3061,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.15"
-content-hash = "f62d58319ab019bce095b075a740393e7b0cca838b6c0589af64a544e55a5501"
+content-hash = "fc9d27894c0575a70a1bea7facb0036c27004fd53a69144299c6f9525ac3c875"
