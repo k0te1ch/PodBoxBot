@@ -2,11 +2,15 @@
 
 import sys
 from pathlib import Path
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 from loguru import logger
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from sagenza_tgbot_sdk.masking import default_masker, format_traceback, mask_secrets, register_secrets
+
+if TYPE_CHECKING:
+    from loguru import Record
 
 # === ENV FILE DISCOVERY ===
 
@@ -131,8 +135,21 @@ class SharedSettings(BaseSettings):
     PUSHGATEWAY_URL: str = "http://localhost:9091"
 
 
+# Настройки, значения которых не должны попадать в логи и в события для бота.
+# Токены из файлов авторизации (Boosty, Patreon, Sponsr, куки WordPress)
+# клиенты площадок регистрируют сами, когда читают файл.
+SECRET_SETTINGS = ("FTP_PASSWORD", "WP_PASSWORD", "WP_APP_PASSWORD", "VK_ACCESS_TOKEN")
+
+
+def register_settings_secrets(source: SharedSettings) -> None:
+    """Отдаёт секреты из настроек маскировке sagenza-tgbot-sdk: после этого
+    они вырезаются точным совпадением из логов и из текста ошибок."""
+    register_secrets(*(getattr(source, name) for name in SECRET_SETTINGS))
+
+
 # Singleton
 settings = SharedSettings()
+register_settings_secrets(settings)
 
 # === PATHS ===
 PROJECT_PATH = Path.cwd()
@@ -142,15 +159,39 @@ SRC_PATH = Path(__file__).parent
 # === LOGGING ===
 
 
+def mask_record(record: "Record") -> None:
+    """Патчер loguru: вырезает секреты из сообщения, трейсбека и ``extra``.
+
+    Трейсбек переносится в текст записи, синк его уже не форматирует. То же
+    делает ``LoggingModule`` SDK у бота; публишеры ставят sagenza-tgbot-sdk
+    без aiogram, и модуль ``logs`` оттуда им недоступен.
+    """
+    message = record["message"]
+    exception = record["exception"]
+    if exception is not None:
+        if exception.value is not None:
+            message = f"{message}\n{format_traceback(exception.value)}"
+        record["exception"] = None
+    record["message"] = mask_secrets(message)
+    record["extra"] = default_masker.mask_data(record["extra"])
+
+
 def set_up_logger(level: str = "INFO", logs_path: Path = PROJECT_PATH / "logs"):
+    """Синки loguru публишера: stdout и файлы с ротацией.
+
+    ``diagnose`` и ``backtrace`` выключены явно: у ``logger.add`` они по
+    умолчанию включены, а ``diagnose=True`` печатает под каждым кадром
+    трейсбека значения локальных переменных, то есть пароли и токены.
+    """
     logger.remove()
+    logger.configure(patcher=mask_record)
     logger.add(
         sys.stdout,
         colorize=True,
         format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level}</level> :: <blue>{module}</blue>::<cyan>{function}</cyan>::<cyan>{line}</cyan> | <level>{message}</level>",
         level=level,
-        backtrace=True,
-        diagnose=True,
+        backtrace=False,
+        diagnose=False,
     )
     logger.add(
         logs_path / "file_{time:YYYY-MM-DD_HH-mm-ss}.log",
@@ -159,8 +200,8 @@ def set_up_logger(level: str = "INFO", logs_path: Path = PROJECT_PATH / "logs"):
         compression="gz",
         format="{time:YYYY-MM-DD HH:mm:ss} | {level}::{module}::{function}::{line} | {message}",
         level="TRACE",
-        backtrace=True,
-        diagnose=True,
+        backtrace=False,
+        diagnose=False,
     )
 
 
