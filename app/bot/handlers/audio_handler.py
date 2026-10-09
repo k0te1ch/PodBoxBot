@@ -24,6 +24,7 @@ from services.metrics import TELEGRAM, bot_metrics
 from utils import chat_card
 from utils.menu_context import username as username_of
 from utils.podcast_methods import generate_podcast_text
+from utils.safe_text import safe_html
 from utils.template_store import load as load_template_info
 
 CAPTION_LIMIT = 1024
@@ -60,7 +61,7 @@ def explain_telegram_error(error: TelegramAPIError, action: str, chat: str | Non
         return f"{action}: Telegram не принял файл. Оформи выпуск заново: /new"
     if "can't parse entities" in text:
         return f"{action}: Telegram не разобрал разметку текста поста"
-    return f"{action}: {escape(str(error))}"
+    return f"{action}: {safe_html(error)}"
 
 
 async def _status(status: chat_card.CardMessage, text: str) -> None:
@@ -165,7 +166,7 @@ async def forward_to_chat(ctx: MenuContext):
         logger.exception(f"[{username}]: Error in forward_to_chat - {e}")
         bot_metrics.publish_failed(TELEGRAM, type_episode, "forward")
         if status is not None:
-            await _status(status, f"❌ Пересылка в {chat} не удалась: {escape(str(e))}")
+            await _status(status, f"❌ Пересылка в {chat} не удалась: {safe_html(e)}")
         await ctx.answer(t("forward_failed", ctx.locale), alert=True)
     finally:
         # После «Да» на месте меню висит вопрос подтверждения — возвращаем меню.
