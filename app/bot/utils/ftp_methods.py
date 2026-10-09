@@ -1,7 +1,10 @@
 import asyncio
 import ftplib
 
+from sagenza_tgbot_sdk.masking import format_error
+
 from config import FTP_POSTSHOW_DIR
+from utils.safe_text import safe_text
 
 # Без таймаута зависший FTP держал бы поток и диалог бесконечно.
 FTP_TIMEOUT = 30
@@ -44,7 +47,7 @@ def _read_last_post_id(type_podcast: str, server: str, login: str, password: str
             try:
                 ftp.cwd(FTP_POSTSHOW_DIR)
             except ftplib.error_perm as e:
-                raise _NoDirectoryError(str(e)) from e
+                raise _NoDirectoryError(safe_text(e)) from e
         file_list = _episode_files(ftp.nlst(), type_podcast)
 
     # Пустой каталог (например, первое послешоу в новом FTP_POSTSHOW_DIR):
@@ -69,6 +72,6 @@ async def get_last_post_id(type_podcast: str, server: str, login: str, password:
         # нумерацию послешоу с первого выпуска.
         raise EpisodeNumberError(f"error_perm: {e}", NO_DIRECTORY, FTP_POSTSHOW_DIR) from e
     except ftplib.Error as e:
-        raise EpisodeNumberError(f"{type(e).__name__}: {e}", REFUSED) from e
+        raise EpisodeNumberError(format_error(e), REFUSED) from e
     except ftplib.all_errors as e:
-        raise EpisodeNumberError(f"{type(e).__name__}: {e}") from e
+        raise EpisodeNumberError(format_error(e)) from e

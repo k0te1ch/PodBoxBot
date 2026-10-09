@@ -33,6 +33,7 @@ from redis.asyncio import Redis
 
 from services.i18n import t
 from services.metrics import bot_metrics
+from utils.safe_text import safe_text
 
 SEEN_KEY = "rss:seen"
 INITIALIZED_KEY = "rss:initialized"
@@ -262,7 +263,7 @@ class RssWatcher:
             logger.warning(f"rss: poll #{self.failures} failed: {e!r}")
             bot_metrics.rss_polled("error", self.failures)
             if self.failures == self.failure_alert:
-                await self._alert(t("rss_feed_down", self.locale, count=self.failures, url=self.feed_url))
+                await self._alert(t("rss_feed_down", self.locale, count=self.failures, url=safe_text(self.feed_url)))
             return
         self.failures = 0
 
