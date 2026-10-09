@@ -20,6 +20,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from urllib.parse import unquote
 
+from sagenza_tgbot_sdk.masking import register_secrets
 from sagenza_tgbot_sdk.resilience import PermanentError
 
 DEFAULT_USER_AGENT = (
@@ -89,6 +90,7 @@ class AuthData:
         try:
             self.access_token = response["access_token"]
             self.refresh_token = response.get("refresh_token") or self.refresh_token
+            register_secrets(self.access_token, self.refresh_token)
             self.expires_at = int(time.time()) + int(response["expires_in"])
         except (KeyError, TypeError, ValueError) as e:
             raise BoostyAuthError(f"неожиданный ответ refresh: {response!r}") from e
@@ -123,6 +125,8 @@ def load(path: str | Path) -> AuthData:
     data = AuthData.from_dict(raw if isinstance(raw, dict) else {})
     if not data.access_token or not data.refresh_token or not data.device_id:
         raise BoostyAuthError(f"в {path} не хватает access_token, refresh_token или device_id")
+    # Токены не должны попасть в логи и в текст ошибки, который уходит боту.
+    register_secrets(data.access_token, data.refresh_token)
     return data
 
 

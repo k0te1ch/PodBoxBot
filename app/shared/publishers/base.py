@@ -32,6 +32,7 @@ from typing import TypeVar
 
 from loguru import logger
 from pydantic import BaseModel
+from sagenza_tgbot_sdk.masking import format_error, mask_secrets
 from sagenza_tgbot_sdk.resilience import PermanentError, retry, verify_published
 
 from shared.config import config
@@ -223,7 +224,8 @@ class BasePublisher(ABC):
         self.metrics.retry({"target": key, "stage": stage})
         metadata = {"stage": stage, "attempt": str(attempt), "attempts": str(attempts)}
         try:
-            retry_event = self.build_retry_event(event, f"{type(error).__name__}: {error}", metadata)
+            # Текст ошибки бот показывает админам: секреты вырезаются до отправки.
+            retry_event = self.build_retry_event(event, format_error(error), metadata)
             await self.producer.send(self.result_topic, retry_event.model_dump())
         except Exception as e:
             logger.error(f"Failed to emit retry result for {self.name}/{key}: {e!r}")
@@ -312,7 +314,7 @@ class BasePublisher(ABC):
             self.metrics.failure({"target": str(key)})
             self.metrics.error(getattr(e, "stage", stage), error_class(e))
             try:
-                failure = self.build_failure_event(event, str(e))
+                failure = self.build_failure_event(event, mask_secrets(str(e)))
                 if isinstance(e, StepFailedError) and "metadata" in type(failure).model_fields:
                     metadata = {"stage": e.stage, "attempt": str(e.attempts), "attempts": str(e.attempts)}
                     failure = failure.model_copy(update={"metadata": {**(failure.metadata or {}), **metadata}})

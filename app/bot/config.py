@@ -2,6 +2,7 @@
 # Pydantic-settings based configuration
 
 import json
+import logging
 import sys
 from collections.abc import Callable
 from pathlib import Path
@@ -11,6 +12,8 @@ import pytz
 from loguru import logger
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from sagenza_tgbot_sdk.logs import InterceptHandler, install_log_masking
+from sagenza_tgbot_sdk.masking import register_secrets
 
 if TYPE_CHECKING:
     from loguru import Record
@@ -157,6 +160,13 @@ class Settings(BaseSettings):
     PATREON_ENABLED: bool = False
     SPONSR_ENABLED: bool = False
 
+    # Секреты публишеров из общего .env. Бот ими не пользуется: они нужны,
+    # чтобы вырезать их из логов и отчётов об ошибках (SECRET_SETTINGS ниже),
+    # если значение придёт в тексте ошибки от публишера.
+    WP_PASSWORD: str | None = None
+    WP_APP_PASSWORD: str | None = None
+    VK_ACCESS_TOKEN: str | None = None
+
     # Темы и вопросы от слушателей: один список для ведущих. По умолчанию
     # выключено. TOPICS_CHAT — чат, где слушатели пишут (@username или числовой
     # id), пусто — чат форварда. Хештеги через запятую, без «#»; пустая строка
@@ -279,11 +289,36 @@ class Settings(BaseSettings):
         return int(v)
 
 
+# Настройки, значения которых не должны попадать в логи и в чат. Адреса с
+# учётными данными (REDIS_URL, DATABASE_URL, PROXY) маскировка SDK узнаёт по
+# виду, перечислять их не нужно.
+SECRET_SETTINGS = (
+    "TELEGRAM_API_TOKEN",
+    "TELEGRAM_SERVER_API_HASH",
+    "FTP_PASSWORD",
+    "REDIS_PASSWORD",
+    "PROXY_AUTH",
+    "WP_PASSWORD",
+    "WP_APP_PASSWORD",
+    "VK_ACCESS_TOKEN",
+)
+
+
+def register_settings_secrets(source: Settings) -> None:
+    """Отдаёт секреты из настроек маскировке sagenza-tgbot-sdk.
+
+    После этого они вырезаются точным совпадением из каждой записи loguru и
+    из отчётов об ошибках. Значения короче шести символов SDK пропускает.
+    """
+    register_secrets(*(getattr(source, name) for name in SECRET_SETTINGS))
+
+
 # -------------------------------------------------------------------
 # Singleton + backward-compatible module-level exports
 # -------------------------------------------------------------------
 
 settings = Settings()
+register_settings_secrets(settings)
 
 
 def _hashtags(raw: str) -> list[str]:
@@ -460,14 +495,21 @@ def with_context(log_format: str) -> Callable[["Record"], str]:
 
 
 def set_up_logger(log_level: str, logs_path: Path):
+    """Синки loguru бота: stdout и файлы с ротацией.
+
+    ``diagnose`` и ``backtrace`` выключены явно: у ``logger.add`` они по
+    умолчанию включены, а ``diagnose=True`` печатает под каждым кадром
+    трейсбека значения локальных переменных, то есть токены и пароли.
+    Каждая запись проходит через маскировку секретов SDK.
+    """
     logger.remove()
     logger.add(
         sys.stdout,
         colorize=True,
         format=with_context(STDOUT_LOG_FORMAT),
         level=log_level,
-        backtrace=True,
-        diagnose=True,
+        backtrace=False,
+        diagnose=False,
     )
     logger.add(
         logs_path / "file_{time:YYYY-MM-DD_HH-mm-ss}.log",
@@ -476,9 +518,21 @@ def set_up_logger(log_level: str, logs_path: Path):
         compression="gz",
         format=with_context(FILE_LOG_FORMAT),
         level="TRACE",
-        backtrace=True,
-        diagnose=True,
+        backtrace=False,
+        diagnose=False,
     )
+    install_log_masking()
+
+
+def route_stdlib_logging() -> None:
+    """Заводит stdlib-логгеры (aiogram, asyncio, aiohttp) в loguru.
+
+    Без этого их предупреждения и трейсбеки идут в stderr как есть, мимо
+    маскировки секретов. Уровень прежний, WARNING: строки aiogram о каждом
+    апдейте в лог не попадают. Вызывается при запуске процесса, а не при
+    импорте: в тестах loguru сам пишет в stdlib-логгеры.
+    """
+    logging.basicConfig(handlers=[InterceptHandler()], level=logging.WARNING, force=True)
 
 
 set_up_logger(LOG_LEVEL, LOGS_PATH)
