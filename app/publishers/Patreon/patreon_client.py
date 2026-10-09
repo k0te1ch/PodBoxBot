@@ -34,6 +34,7 @@ from pathlib import Path
 
 import httpx
 from loguru import logger
+from sagenza_tgbot_sdk.masking import register_secrets
 from sagenza_tgbot_sdk.resilience import PermanentError
 
 BASE_URL = "https://www.patreon.com"
@@ -67,6 +68,8 @@ def load_session(path: str) -> dict:
         raise PatreonAuthError(f"файл сессии {path} повреждён") from e
     if not isinstance(raw, dict) or not raw.get("session_id"):
         raise PatreonAuthError(f"в {path} нет session_id")
+    # Кука сессии не должна попасть в логи и в текст ошибки, который уходит боту.
+    register_secrets(str(raw["session_id"]))
     return raw
 
 

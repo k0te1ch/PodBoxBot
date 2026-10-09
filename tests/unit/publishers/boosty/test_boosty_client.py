@@ -11,6 +11,7 @@ import time
 import pytest
 from app.publishers.Boosty.boosty_client import BoostyApiError, BoostyClient, PostContent, Response
 from boosty_auth import AuthData, BoostyAuthError, load, save
+from sagenza_tgbot_sdk.masking import default_masker, mask_secrets
 
 
 class FakeTransport:
@@ -275,3 +276,20 @@ def test_legacy_auth_file_is_readable(tmp_path):
 
     assert data.expires_at == 1790000000
     assert data.user_agent is None
+
+
+def test_tokens_from_the_auth_file_are_masked(tmp_path):
+    """Токены из файла и из ответа refresh вырезаются из логов и текста ошибок."""
+    path = tmp_path / "boosty_auth.json"
+    save(path, AuthData(access_token="access-from-file", refresh_token="refresh-from-file", device_id="dev"))
+    try:
+        data = load(path)
+        data.apply_refresh(
+            {"access_token": "access-refreshed", "refresh_token": "refresh-refreshed", "expires_in": 60}
+        )
+
+        text = mask_secrets("401 for access-from-file / refresh-from-file / access-refreshed / refresh-refreshed")
+    finally:
+        default_masker.clear()
+
+    assert text == "401 for *** / *** / *** / ***"
