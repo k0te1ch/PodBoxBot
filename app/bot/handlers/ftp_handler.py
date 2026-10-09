@@ -5,6 +5,7 @@ from pydantic import ValidationError
 from sagenza_tgbot_sdk.menus import MenuContext
 
 from config import FILES_PATH
+from services.i18n import t
 from services.publish_board import boards
 from shared.kafka.models.upload_event import UploadEvent
 from utils.menu_context import username as username_of
@@ -27,14 +28,18 @@ async def upload_FTP(ctx: MenuContext):
     file_name = message.audio.file_name
     file_path = f"{FILES_PATH}/{file_name}"
 
-    # Подтягиваем type_episode из sidecar — для будущих платных publisher'ов
-    # это сигнал, надо ли вешать paywall. FTP сам paywall не использует,
-    # но прокидывает поле дальше через Kafka для совместимости со схемой.
+    # Без sidecar это файл прошлого выпуска: его mp3 на диске уже заменён,
+    # публишеру отправлять нечего. Остальные кнопки публикации отвечают так же.
     stored = await load_template_info(file_name)
-    type_episode = stored.get("type_episode") if stored else None
+    if stored is None:
+        logger.warning(f"[{username}]: template info not found for {file_name}")
+        return await ctx.answer(t("episode_file_gone", ctx.locale), alert=True)
+
+    # type_episode из sidecar: по нему публишер кладёт послешоу в свою папку.
+    type_episode = stored.get("type_episode")
 
     # Одно табло на все площадки этого файла (services.publish_board).
-    msg = await boards.open(message, "ftp", board_title(stored["info"] if stored else None, file_name))
+    msg = await boards.open(message, "ftp", board_title(stored["info"], file_name))
 
     try:
         event = UploadEvent(
