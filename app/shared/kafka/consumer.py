@@ -1,4 +1,5 @@
 import asyncio
+import threading
 from concurrent.futures import ThreadPoolExecutor
 
 from confluent_kafka import Consumer, KafkaError
@@ -27,6 +28,10 @@ class KafkaConsumer:
         self._kafka_server = kafka_server
         self._schema_registry_url = schema_registry_url
         self._running = True
+        self._closed = False
+        # poll и close идут из разных потоков: замок не даёт закрыть клиент,
+        # пока в нём выполняется poll.
+        self._lock = threading.Lock()
         self._executor = ThreadPoolExecutor(max_workers=max_workers)
 
         self.consumer = Consumer(
@@ -57,7 +62,7 @@ class KafkaConsumer:
 
         while self._running:
             try:
-                msg = await loop.run_in_executor(self._executor, self.consumer.poll, 1.0)
+                msg = await loop.run_in_executor(self._executor, self._poll, 1.0)
 
                 if msg is None:
                     continue
@@ -100,8 +105,30 @@ class KafkaConsumer:
                 await asyncio.sleep(retry_delay)
                 retry_delay = min(retry_delay * _RETRY_MULTIPLIER, _RETRY_MAX_DELAY)
 
-        self.consumer.close()
+        self.close()
         logger.info("[AsyncAvroConsumer] Stopped")
+
+    def _poll(self, timeout: float):
+        with self._lock:
+            if self._closed:
+                return None
+            return self.consumer.poll(timeout)
+
+    def close(self) -> None:
+        """Останавливает цикл и закрывает клиент: выход из группы, коммит.
+
+        Блокирующий вызов: ждёт текущий poll (до секунды) и ответ брокера.
+        Вызывать из потока, а не из цикла событий. Повторный вызов ничего
+        не делает. Без явного закрытия клиент закрывается сам при сборке
+        мусора, уже на выходе из процесса и без ограничения по времени.
+        """
+        self._running = False
+        with self._lock:
+            if self._closed:
+                return
+            self._closed = True
+            self.consumer.close()
+        self._executor.shutdown(wait=False)
 
     def stop(self):
         """Signal the consumer to stop gracefully."""

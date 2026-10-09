@@ -13,7 +13,8 @@ from loguru import logger
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sagenza_tgbot_sdk.logs import InterceptHandler, install_log_masking
-from sagenza_tgbot_sdk.masking import register_secrets
+
+from shared.secret_masking import register_named_secrets
 
 if TYPE_CHECKING:
     from loguru import Record
@@ -231,6 +232,11 @@ class Settings(BaseSettings):
     DISK_ALERT_PERCENT: float = 85.0
     DISK_CHECK_INTERVAL: int = 3600
 
+    # Сколько секунд у бота на остановку по SIGINT/SIGTERM. Должно быть меньше
+    # stop_grace_period контейнера (docker-compose.yml), иначе Docker убьёт
+    # процесс раньше. По истечении бот завершается сам, не дожидаясь зависшего.
+    SHUTDOWN_TIMEOUT: float = 8.0
+
     # JSON fields
     ADMINS: list[str] = Field(default_factory=list)
     ADMINS_ID: list[int] = Field(default_factory=list)
@@ -303,14 +309,22 @@ SECRET_SETTINGS = (
     "VK_ACCESS_TOKEN",
 )
 
+# Логины, рядом с которыми в тексте ошибки может стоять короткий пароль.
+LOGIN_SETTINGS = ("FTP_LOGIN",)
+
 
 def register_settings_secrets(source: Settings) -> None:
     """Отдаёт секреты из настроек маскировке sagenza-tgbot-sdk.
 
-    После этого они вырезаются точным совпадением из каждой записи loguru и
-    из отчётов об ошибках. Значения короче шести символов SDK пропускает.
+    После этого они вырезаются точным совпадением из каждой записи loguru,
+    из отчётов об ошибках и из сообщений бота. Значения короче шести символов
+    SDK точным совпадением не берёт: они вырезаются по имени ключа и по месту
+    (см. ``shared.secret_masking``).
     """
-    register_secrets(*(getattr(source, name) for name in SECRET_SETTINGS))
+    register_named_secrets(
+        {name: getattr(source, name, None) for name in SECRET_SETTINGS},
+        logins=[getattr(source, name, None) for name in LOGIN_SETTINGS],
+    )
 
 
 # -------------------------------------------------------------------
@@ -422,6 +436,7 @@ DEVELOPER = settings.DEVELOPER
 ENABLE_APSCHEDULER = settings.ENABLE_APSCHEDULER
 DISK_ALERT_PERCENT = settings.DISK_ALERT_PERCENT
 DISK_CHECK_INTERVAL = settings.DISK_CHECK_INTERVAL
+SHUTDOWN_TIMEOUT = settings.SHUTDOWN_TIMEOUT
 KAFKA_SERVER = settings.KAFKA_SERVER
 SCHEMA_REGISTRY_URL = settings.SCHEMA_REGISTRY_URL
 

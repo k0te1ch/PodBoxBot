@@ -7,6 +7,7 @@
 from aiogram.types import Message
 from loguru import logger
 from pydantic import BaseModel
+from sagenza_tgbot_sdk.masking import format_error
 from sagenza_tgbot_sdk.menus import MenuContext
 
 from config import KAFKA_SERVER, SCHEMA_REGISTRY_URL
@@ -70,7 +71,8 @@ async def publish_request(
         logger.error(f"[Kafka] failed to send {type(event).__name__} to {topic}: {e!r}")
         if platform:
             bot_metrics.publish_request_failed(platform)
-        reason = f"{type(e).__name__}: {e}"
+        # Текст уходит в статус публикации, который читают админы.
+        reason = format_error(e)
         if not (
             isinstance(status, StatusRef)
             and await _set_board(status, platform, publish_board.FAILED, FAILED_ROW, error=reason)

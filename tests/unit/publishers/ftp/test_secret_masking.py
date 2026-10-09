@@ -12,6 +12,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 from app.shared.config.config import (
+    LOGIN_SETTINGS,
     SECRET_SETTINGS,
     SharedSettings,
     mask_record,
@@ -25,6 +26,7 @@ from sagenza_tgbot_sdk.masking import default_masker
 # Собраны из частей: значения не похожи на настоящие и не цепляют сканеры секретов.
 FTP_SECRET = "Sftp)" + "pass-0123"
 LOCAL_SECRET = "Qwerty)" + "123-local"
+SHORT_SECRET = "x" + "7Qz"
 
 
 @pytest.fixture
@@ -60,6 +62,11 @@ def _fail_with_local(password: str) -> None:
 def test_every_secret_setting_exists():
     """Опечатка в SECRET_SETTINGS не должна молча выключить маскировку."""
     assert set(SECRET_SETTINGS) <= set(SharedSettings.model_fields)
+
+
+def test_every_login_setting_exists():
+    """Опечатка в LOGIN_SETTINGS не должна молча выключить маскировку по месту."""
+    assert set(LOGIN_SETTINGS) <= set(SharedSettings.model_fields)
 
 
 def test_settings_secrets_are_masked_in_the_log(log_output, clean_masker):
@@ -138,3 +145,24 @@ async def test_error_text_sent_to_the_bot_is_masked(sample_upload_event_dict, cl
         assert "login failed for podcast with ***" in event["error"]
         assert FTP_SECRET not in str(event)
         assert "abc123def456" not in str(event)
+
+
+@pytest.mark.asyncio
+async def test_short_password_in_the_error_text_is_masked(sample_upload_event_dict, clean_masker):
+    """Пароль короче шести знаков SDK точным совпадением не берёт: он
+    вырезается по ключу и рядом с логином, а в остальном тексте остаётся."""
+    source = dict.fromkeys(SECRET_SETTINGS) | {"FTP_PASSWORD": SHORT_SECRET, "FTP_LOGIN": "podcast"}
+    register_settings_secrets(SimpleNamespace(**source))
+    producer = AsyncMock()
+    with patch("app.publishers.FTP.main.upload_to_ftp", new_callable=AsyncMock) as upload:
+        upload.side_effect = PermissionError(
+            f"530 login failed for podcast/{SHORT_SECRET} (PASS {SHORT_SECRET}), file {SHORT_SECRET}.mp3"
+        )
+
+        from app.publishers.FTP.main import handle_upload
+
+        await handle_upload(sample_upload_event_dict, producer)
+
+    failure = [call.args[1] for call in producer.send.call_args_list if call.args[1]["status"] == "failure"][-1]
+    assert "530 login failed for podcast/*** (PASS ***)" in failure["error"]
+    assert f"file {SHORT_SECRET}.mp3" in failure["error"]
