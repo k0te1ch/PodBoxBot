@@ -7,7 +7,9 @@ from typing import TYPE_CHECKING, Literal
 from loguru import logger
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from sagenza_tgbot_sdk.masking import default_masker, format_traceback, mask_secrets, register_secrets
+from sagenza_tgbot_sdk.masking import default_masker, format_traceback, mask_secrets
+
+from ..secret_masking import register_named_secrets
 
 if TYPE_CHECKING:
     from loguru import Record
@@ -140,11 +142,18 @@ class SharedSettings(BaseSettings):
 # клиенты площадок регистрируют сами, когда читают файл.
 SECRET_SETTINGS = ("FTP_PASSWORD", "WP_PASSWORD", "WP_APP_PASSWORD", "VK_ACCESS_TOKEN")
 
+# Логины, рядом с которыми в тексте ошибки может стоять короткий пароль.
+LOGIN_SETTINGS = ("FTP_LOGIN", "WP_LOGIN")
+
 
 def register_settings_secrets(source: SharedSettings) -> None:
     """Отдаёт секреты из настроек маскировке sagenza-tgbot-sdk: после этого
-    они вырезаются точным совпадением из логов и из текста ошибок."""
-    register_secrets(*(getattr(source, name) for name in SECRET_SETTINGS))
+    они вырезаются точным совпадением из логов и из текста ошибок. Значения
+    короче шести символов вырезаются по имени ключа и по месту."""
+    register_named_secrets(
+        {name: getattr(source, name, None) for name in SECRET_SETTINGS},
+        logins=[getattr(source, name, None) for name in LOGIN_SETTINGS],
+    )
 
 
 # Singleton

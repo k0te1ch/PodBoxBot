@@ -25,6 +25,7 @@ from loguru import logger
 
 from services import publish_board
 from services.publish_board import boards
+from utils.safe_text import safe_html
 from utils.status_message import bar
 
 STAGE_TITLES = {
@@ -211,7 +212,7 @@ class TelegramUpdater:
             if stage := _stage(event):
                 text += f" на шаге <code>{escape(stage)}</code> ({escape(stage_title(stage))})"
             if error:
-                text += f"\n<code>{escape(error)}</code>"
+                text += f"\n<code>{safe_html(error)}</code>"
 
         self._mark_finished(chat_id, message_id)
         await self._edit(chat_id, message_id, text, final=True)
@@ -239,7 +240,7 @@ class TelegramUpdater:
             f"не удалась на шаге <code>{escape(stage)}</code>, повторяю"
         )
         if error := event.get("error"):
-            text += f"\n<code>{escape(error)}</code>"
+            text += f"\n<code>{safe_html(error)}</code>"
         await self._edit(chat_id, message_id, text)
 
     @staticmethod
