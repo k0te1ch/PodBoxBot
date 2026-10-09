@@ -17,14 +17,53 @@ updates:
       interval: weekly
     open-pull-requests-limit: 5
     groups:
-      # Один PR на все патч/минор-бампы: иначе четыре сервиса с почти
-      # одинаковым списком зависимостей дают четыре PR на каждый aiohttp.
-      pip:
+      # Порядок важен: пакет попадает в первую группу, под шаблон которой
+      # подошёл. Сначала то, что нельзя мержить по одним unit-тестам.
+      #
+      # Клиент Kafka и сериализация Avro: проверяются только прогоном на
+      # стенде с настоящим брокером, поэтому идут отдельным PR и не тянут за
+      # собой остальные обновления.
+      kafka:
         patterns:
-          - "*"
+          - confluent-kafka
+          - fastavro
         update-types:
           - minor
           - patch
+      # aiogram и redis ходят парой (см. ignore ниже) и тоже ждут стенда.
+      telegram:
+        patterns:
+          - aiogram
+          - redis
+        update-types:
+          - minor
+          - patch
+      # Один PR на все остальные патч/минор-бампы: иначе семь сервисов с почти
+      # одинаковым списком зависимостей дают семь PR на каждый aiohttp.
+      pip:
+        patterns:
+          - "*"
+        exclude-patterns:
+          - confluent-kafka
+          - fastavro
+          - aiogram
+          - redis
+        update-types:
+          - minor
+          - patch
+      # Обновления безопасности в группы выше не попадают (те только для
+      # обычных обновлений): без своей группы один алерт на транзитивный пакет
+      # открывал по PR на каждый каталог. Kafka, Avro, aiogram и redis сюда не
+      # входят и приходят отдельными PR.
+      security:
+        applies-to: security-updates
+        patterns:
+          - "*"
+        exclude-patterns:
+          - confluent-kafka
+          - fastavro
+          - aiogram
+          - redis
     ignore:
       # redis идёт в паре с aiogram: хранилище состояний работает только с теми
       # версиями, что aiogram объявляет в своём extra `redis` (для 3.31 это
