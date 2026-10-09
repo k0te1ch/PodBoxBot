@@ -12,6 +12,7 @@ from app.publishers.Patreon.patreon_client import (
     pick_access_rules,
     save_session,
 )
+from sagenza_tgbot_sdk.masking import default_masker, mask_secrets
 from sagenza_tgbot_sdk.resilience import PermanentError
 
 HOME = '<script>window.patreon = {"csrfSignature": "sig-1"}</script>'
@@ -179,3 +180,17 @@ async def test_handler_auth_error_is_reported(event_dict, publisher):
     result = producer.send.await_args.args[1]
     assert result["status"] == "failure"
     assert "import-cookie" in result["error"]
+
+
+def test_session_cookie_from_the_file_is_masked(tmp_path):
+    """Кука сессии вырезается из логов и текста ошибок."""
+    path = str(tmp_path / "patreon_session.json")
+    save_session(path, "patreon-session-value", "UA")
+    try:
+        load_session(path)
+
+        text = mask_secrets("HTTP 403: session patreon-session-value rejected")
+    finally:
+        default_masker.clear()
+
+    assert text == "HTTP 403: session *** rejected"

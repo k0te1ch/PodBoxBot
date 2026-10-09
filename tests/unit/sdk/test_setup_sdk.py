@@ -17,6 +17,7 @@ def test_sdk_installs_bot_modules():
 
     assert set(dp.workflow_data["sdk"].modules) == {
         "logging",
+        "errors",
         "metrics",
         "notify",
         "health",

@@ -14,10 +14,15 @@ from time import sleep
 import requests
 from loguru import logger
 from requests import Response
+from sagenza_tgbot_sdk.masking import register_secrets
 
 HTTP_TIMEOUT = 30
 HTTP_RETRIES = 3
 HTTP_BACKOFF_BASE = 2.0
+
+
+# Куки входа WordPress: wordpress_logged_in_<hash> и wordpress_sec_<hash>.
+AUTH_COOKIE_PREFIXES = ("wordpress_logged_in", "wordpress_sec")
 
 
 class WordPressHttpMixin:
@@ -39,6 +44,7 @@ class WordPressHttpMixin:
             ]
             with open(self._cookie_path, "w", encoding="utf-8") as f:
                 json.dump(jar, f, ensure_ascii=False, indent=2)
+            self._mask_auth_cookies(jar)
             return True
         except Exception as e:
             logger.error(f"Error saving cookies: {e}")
@@ -58,7 +64,13 @@ class WordPressHttpMixin:
             return False
         for c in jar:
             self._session.cookies.set(c["name"], c["value"], domain=c.get("domain", ""), path=c.get("path", "/"))
+        self._mask_auth_cookies(jar)
         return True
+
+    @staticmethod
+    def _mask_auth_cookies(jar: list[dict]) -> None:
+        """Куки входа не должны попасть в логи и в текст ошибки, который уходит боту."""
+        register_secrets(*(c["value"] for c in jar if c["name"].startswith(AUTH_COOKIE_PREFIXES)))
 
     @staticmethod
     def _bot_protection_cookie(html: str) -> tuple[str, str, str] | None:
