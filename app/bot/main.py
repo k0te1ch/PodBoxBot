@@ -30,6 +30,7 @@ from services.kafka.handlers.upload_event import record_publish_metrics
 from services.metrics import bot_metrics
 from services.none_module import _NoneModule
 from services.rss import RssWatcher
+from services.shutdown import background, stop_bot
 from services.telegram_updater import PLATFORM_KEY
 from services.topics.runtime import refresh_list_size, topics_enabled
 from utils.release_notes import get_version, send_release_note
@@ -49,6 +50,7 @@ from config import (
     RSS_FEED_URL,
     RSS_POLL_INTERVAL,
     SCHEMA_REGISTRY_URL,
+    SHUTDOWN_TIMEOUT,
 )
 from shared.kafka.consumer import KafkaConsumer
 
@@ -155,7 +157,10 @@ async def on_startup():
             group_id=group_id,
         )
         handler = functools.partial(_route_result, kafka_router.route, platform)
-        _task = asyncio.create_task(_supervise_consumer(consumer, handler))  # noqa: RUF006
+        # Задача и клиент на учёте: при остановке задача отменяется, клиент
+        # закрывается, и на то и на другое есть срок (services/shutdown.py).
+        background.add_consumer(consumer)
+        background.spawn(_supervise_consumer(consumer, handler), name=f"kafka-{topic}")
 
 
 async def _route_result(route, platform: str, event: dict) -> None:
@@ -195,10 +200,7 @@ async def start_rss_watcher(bot: Bot) -> None:
         logger.warning("RSS_FEED_URL is set but Redis is not configured: RSS watcher disabled")
         return
     watcher = RssWatcher(bot, redis, RSS_FEED_URL, ADMINS_ID, RSS_POLL_INTERVAL, RSS_FAILURE_ALERT)
-    _rss_tasks.add(asyncio.create_task(watcher.run()))
-
-
-_rss_tasks: set[asyncio.Task] = set()
+    background.spawn(watcher.run(), name="rss-watcher")
 
 
 async def report_topics_list_size() -> None:
@@ -210,6 +212,11 @@ async def report_topics_list_size() -> None:
         await refresh_list_size()
     except Exception as e:
         logger.warning(f"could not read the topics list size: {e!r}")
+
+
+async def on_shutdown() -> None:
+    """Останавливает слушателей Kafka и опрос RSS, не дольше SHUTDOWN_TIMEOUT."""
+    await stop_bot(SHUTDOWN_TIMEOUT)
 
 
 def _add_middlewares_to_observers(observers: list[TelegramEventObserver], middlewares: list[BaseMiddleware]) -> None:
@@ -266,6 +273,10 @@ def _get_storage(redis) -> BaseStorage:
 def _get_dp_obj(bot, redis):
     logger.debug("Dispatcher configurate:")
     dp = Dispatcher(storage=_get_storage(redis))
+    # До модулей SDK (раньше только закрытие хранилища состояний самим
+    # диспетчером): обработчик взводит сторожа, который не даст остановке
+    # затянуться дольше SHUTDOWN_TIMEOUT.
+    dp.shutdown.register(on_shutdown)
     _add_middlewares_to_observers(
         [dp.message, dp.callback_query], [UserContextMiddleware(), AdminActivityMiddleware(ADMINS_ID)]
     )

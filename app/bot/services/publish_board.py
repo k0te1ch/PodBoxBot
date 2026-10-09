@@ -40,6 +40,7 @@ from config import TIMEZONE
 from services.publish_board_store import BoardStore
 from services.redis import redis
 from utils import rich
+from utils.safe_text import safe_html, safe_text
 
 QUEUED = "queued"
 RUNNING = "running"
@@ -144,7 +145,7 @@ class Board:
             for row in self.rows.values()
         ]
         errors = "".join(
-            f"<p>❌ <b>{escape(platform_title(row.platform))}</b>: <code>{escape(row.error)}</code></p>"
+            f"<p>❌ <b>{escape(platform_title(row.platform))}</b>: <code>{safe_html(row.error)}</code></p>"
             for row in self.rows.values()
             if row.error
         )
@@ -158,7 +159,7 @@ class Board:
             if row.url:
                 line += f"\n{escape(row.url)}"
             if row.error:
-                line += f"\n<code>{escape(row.error)}</code>"
+                line += f"\n<code>{safe_html(row.error)}</code>"
             lines.append(line)
         return "\n".join(lines)
 
@@ -265,7 +266,9 @@ class PublishBoards:
             logger.debug(f"publish board: {platform} progress after the result ignored")
             return
         row.state, row.text, row.at = state, text, time.time()
-        row.url, row.error = url or row.url, error
+        # Текст ошибки пришёл от публишера или из исключения: в табло и в Redis
+        # он ложится уже без секретов.
+        row.url, row.error = url or row.url, safe_text(error) if error else None
         final = state in FINAL
         if not final and state == RUNNING and self._clock() - board.last_edit < MIN_INTERVAL:
             return

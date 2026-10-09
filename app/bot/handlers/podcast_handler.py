@@ -66,6 +66,7 @@ from utils.ftp_methods import EpisodeNumberError, get_last_post_id
 from utils.mp3_methods import audio_tag, read_duration_and_artist
 from utils.podcast_methods import generate_file_name
 from utils.progress_callbacks import CustomFSInputFile, monitor_file_progress
+from utils.safe_text import safe_html
 from utils.status_message import StatusMessage, human_size
 from utils.template_store import save as save_template_info
 
@@ -395,7 +396,7 @@ _NUMBER_FAILURE_TEXTS = {
 def _number_failure_text(error: EpisodeNumberError, language: str) -> str:
     """Что сказать, когда номер выпуска не получен: FTP молчит, отказал или нет папки послешоу."""
     key = _NUMBER_FAILURE_TEXTS.get(error.reason, "episode_number_failed")
-    return t(key, language, error=escape(str(error)), directory=escape(error.directory or ""))
+    return t(key, language, error=safe_html(error), directory=escape(error.directory or ""))
 
 
 def _episode_title(type_episode: str, language: str) -> str:
@@ -559,7 +560,7 @@ async def publish_episode(msg: Message, turn: DialogTurn, language: str, usernam
             Path(PODCAST_PATH).rename(FILES_PATH / new_file_name)
     except Exception as e:
         logger.exception(f"[{username}]: теги не проставлены: {e!r}")
-        await status.fail(TAGS, t("status_tags_failed", language, error=escape(str(e))))
+        await status.fail(TAGS, t("status_tags_failed", language, error=safe_html(e)))
         return
     await status.done(TAGS)
     logger.debug(f"[{username}]: MP3-файл тегирован и переименован -> {new_file_name}")
@@ -611,6 +612,6 @@ async def publish_episode(msg: Message, turn: DialogTurn, language: str, usernam
                 await status.done(SEND)
     except TelegramAPIError as e:
         logger.exception(f"[{username}]: готовый MP3 не отправлен: {e!r}")
-        await status.fail(SEND, t("status_send_failed", language, error=escape(str(e))))
+        await status.fail(SEND, t("status_send_failed", language, error=safe_html(e)))
         return
     logger.debug(f"[{username}]: MP3 загружен и отправлен в чат")
