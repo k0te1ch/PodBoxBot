@@ -4,6 +4,7 @@ import pytest
 
 from config import FILES_PATH
 from handlers import ftp_handler
+from services.i18n import t
 from services.publish_board import StatusRef
 from shared.kafka.models.upload_event import UploadEvent
 
@@ -55,8 +56,26 @@ async def test_sends_upload_event_with_episode_type_from_sidecar(monkeypatch, pu
 
 
 @pytest.mark.asyncio
-async def test_missing_sidecar_still_uploads_to_the_root(monkeypatch, publish, publish_board_stub):
+async def test_button_under_a_replaced_file_says_so_and_sends_nothing(monkeypatch, publish, publish_board_stub):
+    """Нет sidecar: это файл прошлого выпуска, mp3 на диске уже заменён.
+
+    Раньше кнопка всё равно отправляла запрос публишеру, и тот падал на файле,
+    которого нет. Теперь ответ тот же, что у остальных кнопок публикации.
+    """
     monkeypatch.setattr(ftp_handler, "load_template_info", AsyncMock(return_value=None))
+    ctx = _ctx("0768_rz_30092026.mp3")
+
+    await ftp_handler.upload_FTP(ctx)
+
+    ctx.answer.assert_awaited_once_with(t("episode_file_gone"), alert=True)
+    publish.assert_not_awaited()
+    publish_board_stub.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_sidecar_without_episode_type_uploads_to_the_root(monkeypatch, publish, publish_board_stub):
+    stored = {"info": {"number": "768"}}
+    monkeypatch.setattr(ftp_handler, "load_template_info", AsyncMock(return_value=stored))
     ctx = _ctx("0768_rz_30092026.mp3")
 
     await ftp_handler.upload_FTP(ctx)
@@ -64,7 +83,6 @@ async def test_missing_sidecar_still_uploads_to_the_root(monkeypatch, publish, p
     event = publish.await_args.args[3]
     assert event.type_episode is None
     assert event.file_name == "0768_rz_30092026.mp3"
-    assert publish_board_stub.await_args.args[2] == "0768_rz_30092026.mp3: публикация"
 
 
 @pytest.mark.asyncio
