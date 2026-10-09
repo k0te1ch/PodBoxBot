@@ -23,8 +23,8 @@ def test_set_up_logger():
             colorize=True,
             format=ANY,
             level=log_level,
-            backtrace=True,
-            diagnose=True,
+            backtrace=False,
+            diagnose=False,
         )
         mock_add.assert_any_call(
             logs_path / "file_{time:YYYY-MM-DD_HH-mm-ss}.log",
@@ -33,8 +33,8 @@ def test_set_up_logger():
             compression="gz",
             format=ANY,
             level="TRACE",
-            backtrace=True,
-            diagnose=True,
+            backtrace=False,
+            diagnose=False,
         )
         assert all(callable(call.kwargs["format"]) for call in mock_add.call_args_list)
 

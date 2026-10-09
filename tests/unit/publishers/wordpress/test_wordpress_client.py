@@ -8,6 +8,7 @@ import pytz
 from app.publishers.WordPress.wordpress import WordPress
 from requests.auth import HTTPBasicAuth
 from requests.cookies import RequestsCookieJar
+from sagenza_tgbot_sdk.masking import default_masker, mask_secrets
 
 
 class TestWordPressInit:
@@ -363,3 +364,31 @@ class TestWordPressContextManager:
         wp.__exit__(None, None, None)
         mock_session.close.assert_called_once()
         wp._rest_session.close.assert_called_once()
+
+
+class TestAuthCookieMasking:
+    def test_login_cookies_are_masked_after_dump_and_load(self, tmp_path):
+        """Куки входа вырезаются из логов и текста ошибок, служебные остаются."""
+        cookie_path = str(tmp_path / "cookie.json")
+        source = RequestsCookieJar()
+        source.set("wordpress_logged_in_abc", "login-cookie-value", domain="example.com", path="/")
+        source.set("wordpress_sec_abc", "secure-cookie-value", domain="example.com", path="/")
+        source.set("wordpress_test_cookie", "WP Cookie check", domain="example.com", path="/")
+
+        writer = WordPress.__new__(WordPress)
+        writer._session = MagicMock(cookies=source)
+        writer._cookie_path = cookie_path
+        try:
+            assert writer._dump_cookies() is True
+            dumped = mask_secrets("sent login-cookie-value and secure-cookie-value, WP Cookie check")
+            default_masker.clear()
+
+            reader = WordPress.__new__(WordPress)
+            reader._session = MagicMock(cookies=RequestsCookieJar())
+            reader._cookie_path = cookie_path
+            assert reader._load_cookies() is True
+            loaded = mask_secrets("sent login-cookie-value and secure-cookie-value, WP Cookie check")
+        finally:
+            default_masker.clear()
+
+        assert dumped == loaded == "sent *** and ***, WP Cookie check"
