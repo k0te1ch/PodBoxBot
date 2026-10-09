@@ -15,6 +15,7 @@ from aiohttp.hdrs import USER_AGENT
 from aiohttp.http import SERVER_SOFTWARE
 from loguru import logger
 from sagenza_tgbot_sdk import SdkSettings, setup_sdk
+from sagenza_tgbot_sdk.errors import ErrorsModule, ErrorsSettings
 from sagenza_tgbot_sdk.health import HealthModule
 from sagenza_tgbot_sdk.host_watch import HostWatchModule, HostWatchSettings
 from sagenza_tgbot_sdk.logs import LoggingModule, LoggingSettings
@@ -31,7 +32,6 @@ from services.none_module import _NoneModule
 from services.rss import RssWatcher
 from services.telegram_updater import PLATFORM_KEY
 from services.topics.runtime import refresh_list_size, topics_enabled
-from utils.error_reporting import register_error_handler
 from utils.release_notes import get_version, send_release_note
 
 MAIN_MODULE_NAME = os.path.basename(__file__)[:-3]
@@ -40,6 +40,7 @@ from config import (
     ADMINS_ID,
     API_TOKEN,
     DEBUG,
+    DEVELOPER,
     DISK_ALERT_PERCENT,
     DISK_CHECK_INTERVAL,
     KAFKA_SERVER,
@@ -217,17 +218,30 @@ def _add_middlewares_to_observers(observers: list[TelegramEventObserver], middle
             observer.middleware(middleware)
 
 
+def _errors_module() -> ErrorsModule:
+    """Отчёт об ошибке получает только разработчик из ``DEVELOPER``.
+
+    Ему уходит текст исключения и хвост трейсбека, секреты в них вырезаны.
+    Админам и пользователю, у которого случился сбой, ничего не пишется:
+    ``recipients`` пуст, а ``user_message`` выключен намеренно, иначе бот
+    отвечал бы на сбой и в чате слушателей.
+    """
+    if DEVELOPER is None:
+        logger.warning("DEVELOPER is not set: error reports go to the log only")
+    developers = frozenset() if DEVELOPER is None else frozenset({DEVELOPER})
+    return ErrorsModule(ErrorsSettings(recipients=frozenset(), developer_ids=developers, user_message=None))
+
+
 def _setup_sdk(dp: Dispatcher) -> None:
     # Синки loguru настраивает config.py, поэтому logging из SDK ставится с
-    # configure=False: только контекст апдейта в логах и предупреждение о
-    # медленных апдейтах. Ошибки остаются на своём обработчике
-    # (utils/error_reporting.py): он шлёт разработчику полный трейсбек без
-    # токена бота, а errors из SDK шлёт всем админам только текст исключения.
-    # /status тоже свой (handlers/status_handler.py): с публикациями и списком тем.
+    # configure=False: контекст апдейта в логах, предупреждение о медленных
+    # апдейтах и маскировка секретов в каждой записи.
+    # /status свой (handlers/status_handler.py): с публикациями и списком тем.
     settings = SdkSettings(bot_token=API_TOKEN, admin_ids=frozenset(ADMINS_ID))
     host_watch = HostWatchSettings(threshold_percent=DISK_ALERT_PERCENT, interval_seconds=DISK_CHECK_INTERVAL)
     modules = [
         LoggingModule(LoggingSettings(configure=False)),
+        _errors_module(),
         # Реестр бота с бизнес-метриками и метриками процесса (services/metrics.py).
         MetricsModule(metrics=bot_metrics.sdk),
         HealthModule(),
@@ -257,7 +271,6 @@ def _get_dp_obj(bot, redis):
     )
     bot_metrics.use_redis(None if isinstance(redis, _NoneModule) else redis)
     bot_metrics.set_admins(len(ADMINS_ID))
-    register_error_handler(dp)
     _setup_sdk(dp)
     dp.include_routers(*ROUTERS)
 
@@ -277,6 +290,9 @@ if __name__ == MAIN_MODULE_NAME:
 if __name__ == "__main__":
     asyncio.set_event_loop_policy(asyncio.DefaultEventLoopPolicy())
     from cli import cli
+    from config import route_stdlib_logging
+
+    route_stdlib_logging()
 
     logger.debug("Calling the cli module")
 

@@ -9,9 +9,11 @@ from app.publishers.Sponsr.sponsr_client import (
     SponsrAuthError,
     SponsrClient,
     SponsrNotCalibratedError,
+    load_session,
     save_session,
 )
 from app.shared.publishers.har import summarize
+from sagenza_tgbot_sdk.masking import default_masker, mask_secrets
 
 
 def _client(tmp_path, handler, project="podbox"):
@@ -111,3 +113,17 @@ async def test_handler_reports_calibration_error(event_dict, monkeypatch):
     result = producer.send.await_args.args[1]
     assert result["status"] == "failure"
     assert "HAR" in result["error"]
+
+
+def test_session_cookie_from_the_file_is_masked(tmp_path):
+    """Кука сессии вырезается из логов и текста ошибок."""
+    path = str(tmp_path / "sponsr_session.json")
+    save_session(path, "sponsr-session-value", "UA")
+    try:
+        load_session(path)
+
+        text = mask_secrets("HTTP 403: SESS sponsr-session-value rejected")
+    finally:
+        default_masker.clear()
+
+    assert text == "HTTP 403: SESS *** rejected"
