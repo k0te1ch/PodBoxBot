@@ -41,6 +41,10 @@ services:
     image: podboxbot_bot:latest
     container_name: podboxbot_bot
     stop_signal: SIGINT
+    # Бот сам укладывает остановку в SHUTDOWN_TIMEOUT (8 секунд по умолчанию,
+    # см. app/bot/services/shutdown.py). Запас сверху нужен, чтобы Docker не
+    # убил процесс (код 137) раньше, чем тот выйдет сам.
+    stop_grace_period: 15s
     restart: always
     build:
       context: .

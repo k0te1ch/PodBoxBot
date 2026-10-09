@@ -231,6 +231,11 @@ class Settings(BaseSettings):
     DISK_ALERT_PERCENT: float = 85.0
     DISK_CHECK_INTERVAL: int = 3600
 
+    # Сколько секунд у бота на остановку по SIGINT/SIGTERM. Должно быть меньше
+    # stop_grace_period контейнера (docker-compose.yml), иначе Docker убьёт
+    # процесс раньше. По истечении бот завершается сам, не дожидаясь зависшего.
+    SHUTDOWN_TIMEOUT: float = 8.0
+
     # JSON fields
     ADMINS: list[str] = Field(default_factory=list)
     ADMINS_ID: list[int] = Field(default_factory=list)
@@ -422,6 +427,7 @@ DEVELOPER = settings.DEVELOPER
 ENABLE_APSCHEDULER = settings.ENABLE_APSCHEDULER
 DISK_ALERT_PERCENT = settings.DISK_ALERT_PERCENT
 DISK_CHECK_INTERVAL = settings.DISK_CHECK_INTERVAL
+SHUTDOWN_TIMEOUT = settings.SHUTDOWN_TIMEOUT
 KAFKA_SERVER = settings.KAFKA_SERVER
 SCHEMA_REGISTRY_URL = settings.SCHEMA_REGISTRY_URL
 
