@@ -127,6 +127,22 @@ class PodloveMixin:
         self._rest_request("POST", f"/podlove/v2/episodes/{episode_id}", json_body=payload)
         logger.debug(f"Podlove episode {episode_id} metadata updated")
 
+    def _restore_post_title(self, post_id: int, post_title: str) -> None:
+        """Возвращает заголовку записи вид «Разговорный жанр — N».
+
+        Podlove при сохранении эпизода по REST копирует его ``title`` в
+        заголовок записи WordPress, и «N. Название» вытесняет заголовок,
+        заданный формой. Поле Title эпизода при этом остаётся как есть.
+        Сбой не отменяет публикацию: черновик уже создан, заголовок
+        правится руками.
+        """
+        try:
+            self._rest_request("POST", self.podcast_rest_path(str(post_id)), json_body={"title": post_title})
+        except RuntimeError as e:
+            logger.warning(f"Could not restore post title {post_title!r} for post {post_id}: {e!r}")
+            return
+        logger.debug(f"Post {post_id} title restored to {post_title!r}")
+
     def _update_podlove_chapters(self, episode_id: int, chapters: list) -> None:
         payload = {"chapters": [{"start": start, "title": title} for start, title in chapters]}
         self._rest_request("POST", f"/podlove/v2/chapters/{episode_id}", json_body=payload)

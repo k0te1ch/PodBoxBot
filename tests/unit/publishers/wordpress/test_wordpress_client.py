@@ -199,6 +199,29 @@ class TestWordPressUploadPost:
         assert payload["title"] == sample_post_info["title"]
         assert payload["recording_date"] == "2026-06-05"
 
+    def test_post_title_is_restored_after_podlove_overwrites_it(self, mock_session, sample_post_info):
+        """Podlove копирует title эпизода в заголовок записи — возвращаем «Разговорный жанр — N»."""
+        get_resp = MagicMock(status_code=200, ok=True, content=_FORM_PAGE, text=_FORM_PAGE.decode())
+        mock_session.request.side_effect = lambda method, url, **kw: (
+            MagicMock(status_code=302, ok=True, text="") if method == "POST" else get_resp
+        )
+        wp = _make_wp(mock_session)
+        with (
+            patch.object(wp, "_dump_cookies", return_value=True),
+            patch.object(wp, "podcast_rest_path", return_value="/wp/v2/episodes/99"),
+        ):
+            assert wp.upload_post(sample_post_info) is True
+
+        calls = wp._rest_session.request.call_args_list
+        episode_update = next(i for i, c in enumerate(calls) if "/podlove/v2/episodes/" in c.args[1])
+        title_restore = [
+            i for i, c in enumerate(calls) if c.args[1].endswith("/wp/v2/episodes/99") and "title" in c.kwargs["json"]
+        ]
+        assert title_restore, "post title was not restored"
+        assert title_restore[0] > episode_update
+        number = sample_post_info["number"]
+        assert calls[title_restore[0]].kwargs["json"] == {"title": f"Разговорный жанр — {number}"}
+
     def _submitted_form(self, mock_session, info) -> dict:
         get_resp = MagicMock(status_code=200, ok=True, content=_FORM_PAGE, text=_FORM_PAGE.decode())
         post_resp = MagicMock(status_code=302, ok=True, text="")
@@ -306,7 +329,7 @@ class TestWordPressIdempotency:
         )
         wp = _make_wp(mock_session)
         rest_ok = MagicMock(ok=True, status_code=200, text="{}")
-        wp._rest_session.request.side_effect = [MagicMock(ok=False, status_code=500, text="boom"), rest_ok, rest_ok]
+        wp._rest_session.request.side_effect = [MagicMock(ok=False, status_code=500, text="boom"), *[rest_ok] * 4]
 
         with patch.object(wp, "_dump_cookies", return_value=True):
             assert wp.upload_post(sample_post_info) is True
