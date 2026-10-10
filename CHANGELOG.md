@@ -1,5 +1,48 @@
 # Changelog
 
+## [0.10.0](https://github.com/k0te1ch/PodBoxBot/compare/v0.9.0...v0.10.0) (2026-10-10)
+
+
+### Features
+
+* **bot:** accept a numeric chat id as the forward chat ([#124](https://github.com/k0te1ch/PodBoxBot/issues/124)) ([518fad7](https://github.com/k0te1ch/PodBoxBot/commit/518fad75a9633a7a5fff1c5f0b1b453f2eb13ac1))
+* **bot:** accept a typed publication time next to the time slots ([#143](https://github.com/k0te1ch/PodBoxBot/issues/143)) ([2b023b7](https://github.com/k0te1ch/PodBoxBot/commit/2b023b7e137027def46ea687b63300e475cfb905))
+* **bot:** answer a topic removal with one message and undo under the list ([#142](https://github.com/k0te1ch/PodBoxBot/issues/142)) ([9e6fa47](https://github.com/k0te1ch/PodBoxBot/commit/9e6fa47e1e63eb03910baa4c8191708b9e6387ef))
+* **bot:** collect listener topics by hashtag into a queue for hosts ([#109](https://github.com/k0te1ch/PodBoxBot/issues/109)) ([4938ceb](https://github.com/k0te1ch/PodBoxBot/commit/4938ceb3cdba289f578665243a0f441fb6083c46))
+* **bot:** keep listener topics and questions in one list for hosts ([#122](https://github.com/k0te1ch/PodBoxBot/issues/122)) ([608533e](https://github.com/k0te1ch/PodBoxBot/commit/608533e2a036a87871801bf33f423530364c6704))
+* **bot:** keep the publish board in redis across restarts ([#141](https://github.com/k0te1ch/PodBoxBot/issues/141)) ([8426f05](https://github.com/k0te1ch/PodBoxBot/commit/8426f0505fe62ec31ece3ad48d33ba381fafba3f))
+* **bot:** let hosts put queued topics to a listener poll ([#112](https://github.com/k0te1ch/PodBoxBot/issues/112)) ([dcdd109](https://github.com/k0te1ch/PodBoxBot/commit/dcdd109b147dd3662f4d3755175848ec2d3e2178))
+* **bot:** let listeners suggest a topic through an ephemeral form ([#111](https://github.com/k0te1ch/PodBoxBot/issues/111)) ([e6ecf4a](https://github.com/k0te1ch/PodBoxBot/commit/e6ecf4a59dc81c0414a4ed40b242b215b25bb983))
+* **bot:** make the reaction on an accepted topic configurable ([#130](https://github.com/k0te1ch/PodBoxBot/issues/130)) ([3df232a](https://github.com/k0te1ch/PodBoxBot/commit/3df232a5391ecbb19342bfd341b255df40d7b9d8))
+* **bot:** open a menu on /start instead of starting an episode ([#133](https://github.com/k0te1ch/PodBoxBot/issues/133)) ([c3e54ff](https://github.com/k0te1ch/PodBoxBot/commit/c3e54ffe2a92e275124fdf1569335c3680a2a200))
+* **bot:** pick the recording and publication dates with buttons ([#135](https://github.com/k0te1ch/PodBoxBot/issues/135)) ([fce7d2b](https://github.com/k0te1ch/PodBoxBot/commit/fce7d2b4783e25fe99dd320b52f60fa8c8eac092))
+* **bot:** pick the topic reaction at random from a set ([#132](https://github.com/k0te1ch/PodBoxBot/issues/132)) ([e3698f8](https://github.com/k0te1ch/PodBoxBot/commit/e3698f8d6f3c9d9eb972409e6b3681a5aec787fa))
+* **bot:** run listener topics on the sdk suggest queue ([#117](https://github.com/k0te1ch/PodBoxBot/issues/117)) ([dd5778a](https://github.com/k0te1ch/PodBoxBot/commit/dd5778a5374449300394065ad9dff565d96a9d5f))
+* **bot:** show admins chats by name with a chat card instead of an id ([#127](https://github.com/k0te1ch/PodBoxBot/issues/127)) ([6c3fedc](https://github.com/k0te1ch/PodBoxBot/commit/6c3fedcae1225dc1f50654a99ba175f8db63b355))
+* **bot:** show lists and the publication status as tables ([#136](https://github.com/k0te1ch/PodBoxBot/issues/136)) ([a622727](https://github.com/k0te1ch/PodBoxBot/commit/a6227276d724cfee8f4329ba79f72f15f78e365a))
+* **bot:** show the episode upload as one status message ([#134](https://github.com/k0te1ch/PodBoxBot/issues/134)) ([33dcc4a](https://github.com/k0te1ch/PodBoxBot/commit/33dcc4aa7bd8855b0b45a9a768b14a08b841664a))
+
+
+### Bug Fixes
+
+* **bot:** answer a topic command whose message is already gone ([#129](https://github.com/k0te1ch/PodBoxBot/issues/129)) ([d49aff5](https://github.com/k0te1ch/PodBoxBot/commit/d49aff53b0fb2e12330c83c02f183e634938d54c))
+* **bot:** answer the ftp button under a replaced file like the other buttons ([#162](https://github.com/k0te1ch/PodBoxBot/issues/162)) ([ef96a1e](https://github.com/k0te1ch/PodBoxBot/commit/ef96a1e9ccd754179ba34e4e0fba0697e230b9c6))
+* **bot:** bound the shutdown and stop background work explicitly ([#165](https://github.com/k0te1ch/PodBoxBot/issues/165)) ([000d74b](https://github.com/k0te1ch/PodBoxBot/commit/000d74bd323d051c9304abfee446a4a22e607211))
+* **bot:** escape the episode text in the post forwarded to the chat ([#148](https://github.com/k0te1ch/PodBoxBot/issues/148)) ([eeff2bc](https://github.com/k0te1ch/PodBoxBot/commit/eeff2bc70eff66c20e41444dcb7125e44eb45d76))
+* **bot:** forward episodes without chapters to the chat ([#126](https://github.com/k0te1ch/PodBoxBot/issues/126)) ([0819d60](https://github.com/k0te1ch/PodBoxBot/commit/0819d60e8dd1177468fa2d7d9e9353c04edaae6f))
+* **bot:** keep the latest state when status edits overlap ([#139](https://github.com/k0te1ch/PodBoxBot/issues/139)) ([8329e0f](https://github.com/k0te1ch/PodBoxBot/commit/8329e0fbdd52c6390452df3a1e0a4a644656cdfc))
+* **bot:** let admins use the group topic form past the limit and the ban ([#125](https://github.com/k0te1ch/PodBoxBot/issues/125)) ([4f5e5bc](https://github.com/k0te1ch/PodBoxBot/commit/4f5e5bc0ecc359ee6f641a4b8339fe8209170517))
+* **bot:** mask secrets in the bot's own messages to admins ([#164](https://github.com/k0te1ch/PodBoxBot/issues/164)) ([a142571](https://github.com/k0te1ch/PodBoxBot/commit/a1425713b0170dc703586901d3535aba1b8892a8))
+* **bot:** open host notes from their list ([#121](https://github.com/k0te1ch/PodBoxBot/issues/121)) ([cdf1bf3](https://github.com/k0te1ch/PodBoxBot/commit/cdf1bf3157e3221daae445e0b3b3a58f3f08ab1f))
+* **bot:** report errors through the sdk and keep secrets out of logs ([#152](https://github.com/k0te1ch/PodBoxBot/issues/152)) ([ae87477](https://github.com/k0te1ch/PodBoxBot/commit/ae87477665e3982c8dc34a98779fd6a14e0ce466))
+* **bot:** return to the menu after a confirmed admin action ([#128](https://github.com/k0te1ch/PodBoxBot/issues/128)) ([976c811](https://github.com/k0te1ch/PodBoxBot/commit/976c811c83bdfd770abe81d61fa0315f3f4ed8c7))
+* **bot:** say why the episode number could not be read from ftp ([#146](https://github.com/k0te1ch/PodBoxBot/issues/146)) ([b8c3e5f](https://github.com/k0te1ch/PodBoxBot/commit/b8c3e5f8a912c1befa2ec3c3d1e5841e326b8b00))
+* **bot:** start over when a new MP3 arrives mid-episode ([#140](https://github.com/k0te1ch/PodBoxBot/issues/140)) ([4b1856e](https://github.com/k0te1ch/PodBoxBot/commit/4b1856e14e691a8d1463f8176d2bd212158aa57a))
+* **bot:** write the bot texts the way a person would ([#137](https://github.com/k0te1ch/PodBoxBot/issues/137)) ([3b0ac4f](https://github.com/k0te1ch/PodBoxBot/commit/3b0ac4f7997917d7c931fa0907a947ea9c267962))
+* **publishers:** mask secrets in logs and in errors sent to the bot ([#159](https://github.com/k0te1ch/PodBoxBot/issues/159)) ([7c8d849](https://github.com/k0te1ch/PodBoxBot/commit/7c8d849d2a493df767dd59599c6c582976630cbf))
+* **wordpress:** link the saved draft to its editor page ([#131](https://github.com/k0te1ch/PodBoxBot/issues/131)) ([e0534d4](https://github.com/k0te1ch/PodBoxBot/commit/e0534d48a2356b6efbc84481b4de44a5e5cc94df))
+* **wordpress:** restore the post title after the podlove episode update ([#169](https://github.com/k0te1ch/PodBoxBot/issues/169)) ([4ab4a50](https://github.com/k0te1ch/PodBoxBot/commit/4ab4a50b4c847715db42f5bca07de12749efb898))
+
 ## [0.9.0](https://github.com/k0te1ch/PodBoxBot/compare/v0.8.0...v0.9.0) (2026-10-01)
 
 
