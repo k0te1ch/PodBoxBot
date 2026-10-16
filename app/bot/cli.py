@@ -12,7 +12,6 @@ from loguru import logger
 import main
 from config import (
     DATABASE_URL,
-    ENABLE_APSCHEDULER,
     SKIP_UPDATES,
 )
 from handlers import COMMANDS
@@ -70,11 +69,10 @@ async def _run():
     me = await main.bot.get_me()
     logger.opt(colors=True).info(f"Bot running as <light-blue>@{me.username}</light-blue>")
 
-    if ENABLE_APSCHEDULER is True:
-        # Задачи не стираем: в jobstore лежат запланированные сервисные сообщения.
-        scheduler.start()
-        await init_scheduler_jobs()
-        logger.success("Schedulers init jobs configurated and scheduler started!")
+    # Задачи не стираем: в jobstore лежат запланированные сервисные сообщения.
+    scheduler.start()
+    await init_scheduler_jobs()
+    logger.success("Schedulers init jobs configurated and scheduler started!")
 
     from aiogram.types import BotCommandScopeAllPrivateChats
 
