@@ -2,28 +2,34 @@
 
 Начать можно командой ``/service`` или кнопкой «Сервисное сообщение» в
 админ-панели. Шаги и подтверждение ведёт DialogEngine
-(:mod:`forms.service_message`), сюда приходит только готовый текст.
+(:mod:`forms.service_message`), сюда приходит готовый текст и расписание:
+«сейчас» уходит в чат сразу, остальное ставится в планировщик
+(:mod:`services.scheduled_messages`). ``/scheduled`` показывает очередь.
 """
 
 import os
+import uuid
 
 from aiogram import Bot, F, Router
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 from dialog_engine.integrations.aiogram import DialogActiveFilter, DialogCallbackFilter
 from loguru import logger
 from sagenza_tgbot_sdk.menus import MenuContext
 
 from config import FORWARD_CHAT_USERNAME
 from filters.dispatcher_filters import IsAdmin, IsPrivate
-from forms.service_message import DIALOG_ID, TEXT, service_message_runner
+from forms.service_message import DIALOG_ID, TEXT, WHEN, service_message_runner
+from services import scheduled_messages
 from services.i18n import t
 from services.metrics import bot_metrics
 from utils import chat_card
 
 runner = service_message_runner
 storage = runner.storage
+
+SCHEDULED_PREFIX = "sched:"
 
 router = Router(name=os.path.splitext(os.path.basename(__file__))[0])
 router.message.filter(IsPrivate, IsAdmin)
@@ -61,6 +67,44 @@ async def send_to_chat(bot: Bot, text: str, language: str, chat: str | None = No
     return t("service_sent", language, chat=chat or FORWARD_CHAT_USERNAME)
 
 
+def schedule_message(text: str, encoded: str, language: str, chat: str) -> str:
+    """Ставит повторное или отложенное сообщение в планировщик; возвращает ответ для админа."""
+    schedule = scheduled_messages.parse_schedule(encoded)
+    if schedule is None:
+        return t("invalid_service_when", language)
+    scheduled_messages.add_job(text, schedule, uuid.uuid4().hex[:8])
+    bot_metrics.admin_action("service_message_scheduled")
+    return t("service_scheduled", language, chat=chat, when=schedule.human(language))
+
+
+def _scheduled_view(language: str) -> tuple[str, InlineKeyboardMarkup | None]:
+    jobs = scheduled_messages.list_jobs()
+    if not jobs:
+        return t("scheduled_empty", language), None
+    lines, rows = [t("scheduled_title", language)], []
+    for number, job in enumerate(jobs, 1):
+        run_at = scheduled_messages.next_run(job)
+        when = run_at.strftime("%d.%m %H:%M") if run_at else "-"
+        next_run = t("scheduled_next", language, when=when)
+        lines.append(f"{number}. {job.name}\n   {next_run}")
+        rows.append([InlineKeyboardButton(text=f"🗑 {number}", callback_data=f"{SCHEDULED_PREFIX}{job.id}")])
+    return "\n".join(lines), InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+@router.message(F.text, Command("scheduled"))
+async def scheduled_command(msg: Message, language: str):
+    text, markup = _scheduled_view(language)
+    await msg.answer(text, reply_markup=markup)
+
+
+@router.callback_query(F.data.startswith(SCHEDULED_PREFIX))
+async def scheduled_remove(callback: CallbackQuery, language: str):
+    removed = scheduled_messages.remove_job(callback.data.removeprefix(SCHEDULED_PREFIX))
+    await callback.answer(t("scheduled_removed" if removed else "scheduled_missing", language))
+    text, markup = _scheduled_view(language)
+    await callback.message.edit_text(text, reply_markup=markup)
+
+
 @router.message(F.text, Command("service"))
 async def service_command(msg: Message, state: FSMContext, bot: Bot, language: str):
     await start_dialog(state, bot, msg.chat.id, language)
@@ -78,7 +122,11 @@ async def on_button(callback: CallbackQuery, state: FSMContext, bot: Bot, langua
     await callback.answer(text=turn.alert, show_alert=bool(turn.alert))
     if turn.finished:
         card = sender.card
-        result = await send_to_chat(bot, turn.answers[TEXT], language, card.html)
+        text, when = turn.answers[TEXT], turn.answers.get(WHEN, "now")
+        if when == "now":
+            result = await send_to_chat(bot, text, language, card.html)
+        else:
+            result = schedule_message(text, when, language, card.html)
         await callback.message.edit_text(result, link_preview_options=card.preview)
     elif turn.cancelled and not turn.expired:
         await callback.message.edit_text(t("canceled", language))
