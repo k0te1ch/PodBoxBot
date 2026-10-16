@@ -17,7 +17,7 @@ async def test_schedule_message(tester, bot_username, phrase):
         await chat.command("service")
         await chat.expect(contains=phrase("service_ask_text"))
         await chat.send(TEXT)
-        await chat.expect(contains=phrase("service_ask_when"))
+        await chat.wait_until(contains=phrase("service_ask_when"), timeout=10)
         await chat.send("когда-нибудь")
         await chat.wait_until(contains=phrase("invalid_service_when"), timeout=10)
         await chat.send("каждую неделю пн 12:00")
