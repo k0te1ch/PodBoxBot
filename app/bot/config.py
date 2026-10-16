@@ -226,7 +226,7 @@ class Settings(BaseSettings):
     MODELS_DIR: str | None = None
     DEVELOPER: int | None = None
 
-    ENABLE_APSCHEDULER: bool = False
+    ENABLE_APSCHEDULER: bool = True
 
     # Порог заполненности диска (%) и период проверки (сек) для host_watch SDK
     DISK_ALERT_PERCENT: float = 85.0

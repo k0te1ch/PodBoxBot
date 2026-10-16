@@ -71,8 +71,8 @@ async def _run():
     logger.opt(colors=True).info(f"Bot running as <light-blue>@{me.username}</light-blue>")
 
     if ENABLE_APSCHEDULER is True:
+        # Задачи не стираем: в jobstore лежат запланированные сервисные сообщения.
         scheduler.start()
-        scheduler.remove_all_jobs()
         await init_scheduler_jobs()
         logger.success("Schedulers init jobs configurated and scheduler started!")
 
