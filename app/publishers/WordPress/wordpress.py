@@ -336,6 +336,7 @@ class WordPress(WordPressHttpMixin, PodloveMixin):
 
         logger.debug(f"Post saved (post_id={post_id}); updating Podlove episode_id={episode_id}")
         self._update_podlove_episode(episode_id, info)
+        self._restore_post_title(post_id, form["post_title"])
         if info.get("chapters"):
             self._update_podlove_chapters(episode_id, info["chapters"])
         return True
