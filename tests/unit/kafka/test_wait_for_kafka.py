@@ -1,5 +1,7 @@
 """Tests for the Kafka/Schema-Registry readiness gates."""
 
+import asyncio
+import threading
 from unittest.mock import patch
 
 import pytest
@@ -41,6 +43,26 @@ class TestWaitForKafka:
             pytest.raises(RuntimeError),
         ):
             await wk.wait_for_kafka("kafka:9092", timeout=0.05)
+
+    @pytest.mark.asyncio
+    async def test_cancel_does_not_wait_for_running_probe(self):
+        """Отмена посреди пробы возвращается сразу, не дожидаясь потока пробы."""
+        release = threading.Event()
+        started = threading.Event()
+
+        def slow(_server):
+            started.set()
+            release.wait(5)
+            return True
+
+        with patch.object(wk, "_check_kafka", side_effect=slow):
+            task = asyncio.create_task(wk.wait_for_kafka("kafka:9092", timeout=5))
+            while not started.is_set():
+                await asyncio.sleep(0.01)
+            task.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await task
+        release.set()
 
     @pytest.mark.asyncio
     async def test_stack_waits_for_both(self):
