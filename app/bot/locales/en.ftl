@@ -147,8 +147,16 @@ logs_failed = Error: could not collect the logs
 
 admin_service = Message to the chat
 service_ask_text = Send the message text; after confirmation it goes to { $chat }
-service_confirm = Send this message to { $chat }?
+service_ask_when = When should it go out? Write "now", a date with time (20.10.2026 12:00) or a repeat: "every day 12:00", "every week mon 12:00"
+service_confirm = Send this message to { $chat }, when: { $when }?
 service_sent = Sent to { $chat }
+service_scheduled = Scheduled for { $chat }: { $when }. List and cancel: /scheduled
+invalid_service_when = Could not understand the time. Examples: now; 20.10.2026 12:00; every day 12:00; every week mon 12:00
+scheduled_empty = No scheduled messages
+scheduled_title = Scheduled messages
+scheduled_next = next run { $when }
+scheduled_removed = Scheduled message removed
+scheduled_missing = That message is already gone
 service_failed = Could not send the message, try again later
 de-button-confirm = ✅ Send
 

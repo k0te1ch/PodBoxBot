@@ -9,6 +9,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 
 from config import FORWARD_CHAT_USERNAME
 from handlers import rss_handler, service_handler
+from services import scheduled_messages
 from services.i18n import t
 from services.rss import Episode
 
@@ -65,6 +66,7 @@ async def _ask_confirmation(state, bot):
     await service_handler.service_command(_message("/service"), state, bot, "ru")
     assert t("service_ask_text", "ru", chat=FORWARD_CHAT_USERNAME) in str(bot.send_message.call_args)
     await service_handler.on_text(_message("Эфир переносится на завтра"), state, bot)
+    await service_handler.on_text(_message("сейчас"), state, bot)
     buttons = _last_buttons(bot)
     return buttons[t("de-button-confirm", "ru")], buttons[t("de-button-cancel", "ru")]
 
@@ -91,12 +93,44 @@ async def test_service_message_names_the_chat_by_its_title(state, bot):
     await service_handler.service_command(_message("/service"), state, bot, "ru")
     assert bot.send_message.call_args.kwargs["text"] == t("service_ask_text", "ru", chat=title)
     await service_handler.on_text(_message("Эфир переносится на завтра"), state, bot)
-    assert bot.edit_message_text.call_args.kwargs["text"] == t("service_confirm", "ru", chat=title)
+    await service_handler.on_text(_message("сейчас"), state, bot)
+    assert bot.edit_message_text.call_args.kwargs["text"] == t("service_confirm", "ru", chat=title, when="сейчас")
     callback = _callback(_last_buttons(bot)[t("de-button-confirm", "ru")])
     await service_handler.on_button(callback, state, bot, "ru")
 
     assert callback.message.edit_text.await_args.args == (t("service_sent", "ru", chat=title),)
     assert callback.message.edit_text.await_args.kwargs["link_preview_options"].is_disabled is True
+
+
+@pytest.mark.asyncio
+async def test_service_message_can_be_scheduled_listed_and_removed(state, bot):
+    await service_handler.service_command(_message("/service"), state, bot, "ru")
+    await service_handler.on_text(_message("Совет недели"), state, bot)
+    await service_handler.on_text(_message("когда-нибудь"), state, bot)
+    assert t("invalid_service_when", "ru") in bot.edit_message_text.call_args.kwargs["text"]
+    await service_handler.on_text(_message("каждую неделю пн 12:00"), state, bot)
+    callback = _callback(_last_buttons(bot)[t("de-button-confirm", "ru")])
+
+    await service_handler.on_button(callback, state, bot, "ru")
+
+    assert _sent_to_chat(bot) == []
+    when = "каждую неделю, пн в 12:00"
+    assert callback.message.edit_text.await_args.args == (
+        t("service_scheduled", "ru", chat=FORWARD_CHAT_USERNAME, when=when),
+    )
+    [job] = scheduled_messages.list_jobs()
+    try:
+        msg = _message("/scheduled")
+        msg.answer = AsyncMock()
+        await service_handler.scheduled_command(msg, "ru")
+        assert "Совет недели" in msg.answer.await_args.args[0]
+
+        remove = _callback(f"{service_handler.SCHEDULED_PREFIX}{job.id}")
+        await service_handler.scheduled_remove(remove, "ru")
+        assert scheduled_messages.list_jobs() == []
+        assert remove.message.edit_text.await_args.args == (t("scheduled_empty", "ru"),)
+    finally:
+        scheduled_messages.remove_job(job.id)
 
 
 @pytest.mark.asyncio
