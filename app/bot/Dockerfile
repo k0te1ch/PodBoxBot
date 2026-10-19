@@ -57,7 +57,7 @@ COPY release-notes /app/release-notes/
 
 ENV SCHEMA_REGISTRY_URL=http://schema-registry:8081
 
-CMD ["bash", "-c", "python /app/shared/register_schemas.py && python main.py"]
+CMD ["bash", "-c", "python /app/shared/register_schemas.py && exec python main.py"]
 
 
 # Stage 2: Образ для запуска тестов
