@@ -13,6 +13,7 @@ WordPress их не тянут), поэтому импортить их в share
 """
 
 import asyncio
+import threading
 import time
 import urllib.request
 
@@ -47,15 +48,41 @@ def _check_schema_registry(url: str) -> bool:
         return False
 
 
+async def _probe(check, target: str) -> bool:
+    """Запустить blocking-пробу в daemon-потоке.
+
+    Поток общего пула цикл при остановке дожидается (до 5 секунд на пробу), а
+    daemon-поток не держит ни закрытие цикла, ни выход процесса.
+    """
+    loop = asyncio.get_running_loop()
+    future: asyncio.Future[bool] = loop.create_future()
+
+    def _set(value: bool) -> None:
+        if not future.done():
+            future.set_result(value)
+
+    def _run() -> None:
+        try:
+            result = check(target)
+        except Exception:
+            result = False
+        try:
+            loop.call_soon_threadsafe(_set, result)
+        except RuntimeError:  # цикл уже закрыт
+            pass
+
+    threading.Thread(target=_run, name="kafka-readiness-probe", daemon=True).start()
+    return await future
+
+
 async def _wait(name: str, check, target: str, timeout: float) -> None:
     """Общий цикл ожидания с экспоненциальным backoff'ом до готовности/таймаута."""
-    loop = asyncio.get_event_loop()
     delay = _RETRY_INITIAL_DELAY
     deadline = time.monotonic() + timeout
     attempt = 0
     while True:
         attempt += 1
-        if await loop.run_in_executor(None, check, target):
+        if await _probe(check, target):
             logger.info(f"[readiness] {name} ready ({target}) on attempt {attempt}")
             return
         if time.monotonic() >= deadline:
