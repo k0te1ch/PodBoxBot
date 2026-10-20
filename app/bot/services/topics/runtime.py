@@ -15,7 +15,10 @@
 from typing import Any
 
 from aiogram import Bot
+from aiogram.enums import ChatMemberStatus
+from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
 from aiogram.types import Chat, Message, User
+from loguru import logger
 from sagenza_tgbot_sdk.i18n import Texts
 from sagenza_tgbot_sdk.suggest import RedisSuggestStore, SuggestionBox, SuggestLimits
 from sagenza_tgbot_sdk.suggest.texts import DEFAULT_TEXTS
@@ -92,6 +95,31 @@ def _is_chat(chat: Chat, target: str | None) -> bool:
     if target.startswith("@"):
         return chat.username is not None and chat.username.lower() == target[1:].lower()
     return str(chat.id) == target
+
+
+async def is_chat_member(bot: Bot, user_id: int) -> bool:
+    """Состоит ли человек в чате тем.
+
+    Ответ Telegram «участника нет» значит отказ. Любая другая ошибка (бот вне
+    чата, сеть) не должна закрывать приём всем: остальные защиты, лимит и бан,
+    работают, поэтому такой сбой пропускает и пишется в журнал.
+    """
+    target = str(bot_config.TOPICS_CHAT or "").strip()
+    if not target:
+        return True
+    try:
+        member = await bot.get_chat_member(target, user_id)
+    except TelegramBadRequest as error:
+        if "user not found" in str(error).lower() or "participant" in str(error).lower():
+            return False
+        logger.warning(f"topics: cannot check membership of {user_id} in {target}: {error!r}")
+        return True
+    except TelegramAPIError as error:
+        logger.warning(f"topics: cannot check membership of {user_id} in {target}: {error!r}")
+        return True
+    if member.status in (ChatMemberStatus.LEFT, ChatMemberStatus.KICKED):
+        return False
+    return member.status != ChatMemberStatus.RESTRICTED or bool(getattr(member, "is_member", False))
 
 
 def is_topics_chat(chat: Chat) -> bool:

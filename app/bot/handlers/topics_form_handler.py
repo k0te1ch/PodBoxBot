@@ -68,7 +68,7 @@ from handlers.topics_handler import (
     refusal_text,
 )
 from services.i18n import t
-from services.topics import Added, Item, Kind, Source
+from services.topics import Added, Item, Kind, Refusal, Source
 from services.topics.delivery import send_ephemeral
 from services.topics.listing import item_text
 from services.topics.runtime import (
@@ -76,6 +76,7 @@ from services.topics.runtime import (
     author_of,
     count_event,
     is_admin,
+    is_chat_member,
     is_topics_chat,
     language_of,
     topic_list,
@@ -211,6 +212,9 @@ async def start_private_form(
     bot: Bot, state: FSMContext, chat_id: int, user: User | None, kind: Kind | None, *, trusted: bool, metrics: Any
 ) -> None:
     """Анкета в личке; с известным типом она сразу просит текст."""
+    if await _outsider(bot, user.id if user else None, trusted=trusted):
+        await bot.send_message(chat_id, refusal_text(Refusal.NOT_MEMBER, language_of(user)))
+        return
     form = FULL if kind is None else TYPED
     await _forget_forms(state)
     await form.private_runner.start(
@@ -219,7 +223,19 @@ async def start_private_form(
     count_event(metrics, "topic_form", mode=PRIVATE)
 
 
+async def _outsider(bot: Bot, user_id: int | None, *, trusted: bool) -> bool:
+    """Пишет ли из лички тот, кого нет в чате тем. Админов проверка не касается."""
+    if trusted or not bot_config.TOPICS_MEMBERS_ONLY or user_id is None:
+        return False
+    return not await is_chat_member(bot, user_id)
+
+
 async def _add(bot: Bot, item: Item, *, trusted: bool, metrics: Any) -> Added:
+    # Пункты из чата пишут его участники; из лички может написать кто угодно.
+    if item.chat_id is None and await _outsider(bot, item.author.user_id, trusted=trusted):
+        result = Added(refusal=Refusal.NOT_MEMBER)
+        await record_added(result, item.kind, item.source, metrics)
+        return result
     result = await topic_list(bot).add(item, trusted=trusted)
     await record_added(result, item.kind, item.source, metrics)
     return result

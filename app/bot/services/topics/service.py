@@ -21,6 +21,7 @@ class Refusal(StrEnum):
     LIMIT = "limit"
     BANNED = "banned"
     DUPLICATE = "duplicate"
+    NOT_MEMBER = "not_member"
 
 
 _SDK_REFUSALS = {
