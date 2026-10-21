@@ -678,3 +678,66 @@ async def test_listener_command_in_the_chat_is_limited(fake_redis, bot, state):
 
     assert len(await _items()) == 2
     assert bot.send_message.await_args.kwargs["text"] == t("topics_refused_limit", limit=2)
+
+
+def _member_of_chat(bot, status):
+    from aiogram.enums import ChatMemberStatus
+
+    bot.get_chat_member = AsyncMock(return_value=MagicMock(status=ChatMemberStatus(status), is_member=False))
+
+
+@pytest.mark.asyncio
+async def test_outsider_is_refused_in_private(fake_redis, bot, state, monkeypatch):
+    monkeypatch.setattr(config, "TOPICS_MEMBERS_ONLY", True)
+    _member_of_chat(bot, "left")
+    msg = _private(bot)
+
+    await fh.private_command(msg, _command("вопрос", "а можно мне спросить?"), state, bot)
+
+    msg.answer.assert_awaited_once_with(t("topics_refused_not_member"))
+    bot.get_chat_member.assert_awaited_once_with("@test_group", USER.id)
+    assert await _items() == []
+
+
+@pytest.mark.asyncio
+async def test_outsider_is_stopped_before_the_form_asks_for_text(fake_redis, bot, state, monkeypatch):
+    monkeypatch.setattr(config, "TOPICS_MEMBERS_ONLY", True)
+    _member_of_chat(bot, "kicked")
+
+    await fh.start_private_form(bot, state, USER.id, USER, None, trusted=False, metrics=None)
+
+    bot.send_message.assert_awaited_once_with(USER.id, t("topics_refused_not_member"))
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status", ["member", "administrator", "creator"])
+async def test_chat_member_is_accepted(fake_redis, bot, state, monkeypatch, status):
+    monkeypatch.setattr(config, "TOPICS_MEMBERS_ONLY", True)
+    _member_of_chat(bot, status)
+
+    await fh.private_command(_private(bot), _command("тема", "идея от участника"), state, bot)
+
+    assert len(await _items()) == 1
+
+
+@pytest.mark.asyncio
+async def test_admin_is_not_checked_for_membership(fake_redis, bot, state, monkeypatch):
+    monkeypatch.setattr(config, "TOPICS_MEMBERS_ONLY", True)
+    _member_of_chat(bot, "left")
+
+    await fh.private_command(_private(bot, user=ADMIN), _command("тема", "идея от админа"), state, bot)
+
+    bot.get_chat_member.assert_not_awaited()
+    assert len(await _items()) == 1
+
+
+@pytest.mark.asyncio
+async def test_failed_membership_check_does_not_close_the_intake(fake_redis, bot, state, monkeypatch):
+    from aiogram.exceptions import TelegramAPIError
+
+    monkeypatch.setattr(config, "TOPICS_MEMBERS_ONLY", True)
+    bot.get_chat_member = AsyncMock(side_effect=TelegramAPIError(method=MagicMock(), message="timeout"))
+
+    await fh.private_command(_private(bot), _command("тема", "идея при сбое проверки"), state, bot)
+
+    assert len(await _items()) == 1

@@ -55,6 +55,8 @@ def topics_on(monkeypatch):
     monkeypatch.setattr(config, "TOPICS_MIN_LENGTH", 5)
     monkeypatch.setattr(config, "TOPICS_MAX_LENGTH", 50)
     monkeypatch.setattr(config, "TOPICS_FORM_MODE", "ephemeral")
+    # Проверка участия ходит в Telegram: включается в тестах, которым она нужна.
+    monkeypatch.setattr(config, "TOPICS_MEMBERS_ONLY", False)
 
 
 @pytest.fixture(autouse=True)
