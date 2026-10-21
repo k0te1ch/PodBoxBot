@@ -1,5 +1,6 @@
 from aiogram.types import BotCommand
 
+from .boosty_login_handler import router as boosty_login_handler_router
 from .bot_handler import router as bot_handler_router
 from .collector_handler import router as collector_handler_router
 from .home_handler import router as home_handler_router
@@ -18,6 +19,7 @@ from .topics_list_handler import router as topics_list_handler_router
 ROUTERS = [
     menus_router,
     status_handler_router,
+    boosty_login_handler_router,
     collector_handler_router,
     topics_handler_router,
     topics_list_handler_router,
