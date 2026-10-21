@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.11.0](https://github.com/k0te1ch/PodBoxBot/compare/v0.10.0...v0.11.0) (2026-10-21)
+
+
+### Features
+
+* **boosty:** let admins update the boosty login by sending cookies to the bot ([#181](https://github.com/k0te1ch/PodBoxBot/issues/181)) ([7f1833e](https://github.com/k0te1ch/PodBoxBot/commit/7f1833e302554a324f461effd3bcee63db3f0441))
+* **boosty:** tell admins in the bot when the boosty login is lost ([#178](https://github.com/k0te1ch/PodBoxBot/issues/178)) ([85615d1](https://github.com/k0te1ch/PodBoxBot/commit/85615d1de2863851fb819d623588be96e7d734fe))
+* **bot:** accept private topic suggestions only from chat members ([#176](https://github.com/k0te1ch/PodBoxBot/issues/176)) ([4ce4e81](https://github.com/k0te1ch/PodBoxBot/commit/4ce4e812f47c001a7fa21c5a901f36778f4dc05c))
+
+
+### Bug Fixes
+
+* **boosty:** reload the token file when another process rewrites it ([#177](https://github.com/k0te1ch/PodBoxBot/issues/177)) ([4b2a5ea](https://github.com/k0te1ch/PodBoxBot/commit/4b2a5ea89bf708c867a0952c48f4ecc4ed3482fd))
+
 ## [0.10.0](https://github.com/k0te1ch/PodBoxBot/compare/v0.9.0...v0.10.0) (2026-10-19)
 
 
