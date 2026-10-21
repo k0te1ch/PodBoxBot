@@ -259,6 +259,7 @@ topics_refused_too_long = Too long: { $max } characters at most
 topics_refused_limit = That's enough for now: up to { $limit } topics and questions a day. Try again later!
 topics_refused_banned = You cannot suggest topics and questions right now
 topics_refused_duplicate = This message is already on the list
+topics_refused_not_member = Topics and questions are accepted from chat members only. Join the chat and try again
 topics_post_button = 📌 Post the "Suggest" button
 topics_form_button = 💡 Suggest a topic or a question
 topics_form_invite = Got a topic for an episode or a question for the hosts? Tap the button: only you will see the form

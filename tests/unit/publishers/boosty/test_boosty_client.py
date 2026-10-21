@@ -185,6 +185,68 @@ async def test_rejected_refresh_raises_auth_error(auth_file):
 
 
 @pytest.mark.asyncio
+async def test_new_login_in_the_file_is_picked_up_without_restart(auth_file):
+    client, transport = make_client(auth_file, [("GET", "/post/p1", [ok({"id": "p1"})])])
+    await client.get_post("p1")
+
+    save(
+        auth_file,
+        AuthData(
+            access_token="fresh-login", refresh_token="r9", expires_at=int(time.time()) + 86400, device_id="dev2"
+        ),
+    )
+    await client.get_post("p1")
+
+    assert transport.calls[0]["headers"]["Authorization"] == "Bearer old"
+    assert transport.calls[1]["headers"]["Authorization"] == "Bearer fresh-login"
+
+
+@pytest.mark.asyncio
+async def test_rejected_refresh_retries_with_the_pair_another_process_saved(auth_file):
+    """Пока сервис обновлял токен, смоук уже обменял тот же refresh_token и
+    записал новую пару: отказ Boosty не роняет сервис, он берёт пару из файла."""
+
+    class SmokeRefreshedFirst(FakeTransport):
+        async def send(self, method, url, **kwargs):
+            if url.endswith("/oauth/token/") and kwargs["data"]["refresh_token"] == "r1":
+                fresh = AuthData(
+                    access_token="by-smoke", refresh_token="r2", expires_at=int(time.time()) + 86400, device_id="dev"
+                )
+                save(auth_file, fresh)
+            return await super().send(method, url, **kwargs)
+
+    transport = SmokeRefreshedFirst(
+        [
+            (
+                "POST",
+                "/oauth/token/",
+                [
+                    Response(400, b'{"error":"invalid_grant"}'),
+                    ok({"access_token": "new", "refresh_token": "r3", "expires_in": 3600}),
+                ],
+            ),
+        ]
+    )
+    client = BoostyClient("podbox", str(auth_file), transport=transport)
+
+    await client.refresh()
+
+    assert [call["data"]["refresh_token"] for call in transport.calls] == ["r1", "r2"]
+    assert load(auth_file).refresh_token == "r3"
+
+
+@pytest.mark.asyncio
+async def test_rejected_refresh_with_an_unchanged_file_is_not_retried(auth_file):
+    client, transport = make_client(
+        auth_file, [("POST", "/oauth/token/", [Response(400, b'{"error":"invalid_grant"}')])]
+    )
+
+    with pytest.raises(BoostyAuthError, match="отклонён"):
+        await client.refresh()
+    assert len(transport.calls) == 1
+
+
+@pytest.mark.asyncio
 async def test_401_after_refresh_raises_auth_error(auth_file):
     client, transport = make_client(
         auth_file,
