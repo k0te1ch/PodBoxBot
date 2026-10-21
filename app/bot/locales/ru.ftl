@@ -176,8 +176,20 @@ rss_cannot_prepare = в ленте нет mp3 или номера выпуска
 rss_choice = { $user }: { $result }
 rss_expired = Уведомление устарело
 rss_feed_down = RSS не читается уже { $count } раз подряд: { $url }
-boosty_session_down = Вход в Boosty слетел, публикации на Boosty не пройдут. Войди на boosty.to и обнови secrets/boosty/boosty_auth.json (app/publishers/Boosty/SMOKE.md). Ошибка: { $error }
+boosty_session_down = Вход в Boosty слетел, публикации на Boosty не пройдут. Нажми «Обновить вход» или пришли /boosty. Ошибка: { $error }
 boosty_session_restored = Вход в Boosty снова работает
+boosty_login_button = 🔑 Обновить вход
+boosty_login_howto = Как обновить вход в Boosty:
+    1. Открой boosty.to на компьютере и войди под аккаунтом автора блога.
+    2. Открой консоль браузера (F12, вкладка Console) и вставь эту строку. Если браузер не даёт вставить, сначала набери allow pasting.
+    { $snippet }
+    3. Строка с куками уже в буфере обмена: пришли её сюда одним сообщением.
+    Сообщение с куками я сразу удалю. Подойдёт и заголовок Cookie из вкладки Network, и выгрузка кук расширением в JSON
+boosty_login_bad = Это не похоже на вход Boosty: { $reason }. Инструкция: /boosty
+boosty_login_no_file = Не могу записать файл входа Boosty: каталог secrets/boosty не подключён к боту. Нужна правка на сервере
+boosty_login_rejected = Boosty не пустил с этими куками. Обнови страницу boosty.to, скопируй заново и пришли ещё раз
+boosty_login_saved = Готово: вход в Boosty сохранён, блог { $blog } открывается. Публикатор подхватит его сам
+boosty_login_saved_unchecked = Вход в Boosty сохранён. Проверить его сейчас не вышло (блог не задан или Boosty не ответил): публикатор проверит сам и напишет, если вход не работает
 
 ## Заметки ведущих
 

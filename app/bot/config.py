@@ -161,6 +161,12 @@ class Settings(BaseSettings):
     PATREON_ENABLED: bool = False
     SPONSR_ENABLED: bool = False
 
+    # Вход в Boosty через бота: админ присылает куки, бот пишет файл токенов
+    # публишера (каталог secrets/boosty примонтирован и в бот) и проверяет вход
+    # на блоге BOOSTY_BLOG.
+    BOOSTY_AUTH_FILE: str = "/app/boosty/boosty_auth.json"
+    BOOSTY_BLOG: str | None = None
+
     # Секреты публишеров из общего .env. Бот ими не пользуется: они нужны,
     # чтобы вырезать их из логов и отчётов об ошибках (SECRET_SETTINGS ниже),
     # если значение придёт в тексте ошибки от публишера.
@@ -370,6 +376,8 @@ FORWARD_CHAT_USERNAME = settings.FORWARD_CHAT_USERNAME
 FORWARD_PIN_SILENT = settings.FORWARD_PIN_SILENT
 RICH_MESSAGES = settings.RICH_MESSAGES
 BOOSTY_ENABLED = settings.BOOSTY_ENABLED
+BOOSTY_AUTH_FILE = settings.BOOSTY_AUTH_FILE
+BOOSTY_BLOG = (settings.BOOSTY_BLOG or "").strip() or None
 VK_ENABLED = settings.VK_ENABLED
 PATREON_ENABLED = settings.PATREON_ENABLED
 SPONSR_ENABLED = settings.SPONSR_ENABLED

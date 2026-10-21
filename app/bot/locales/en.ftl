@@ -176,8 +176,20 @@ rss_cannot_prepare = no mp3 or episode number, upload the file with /start
 rss_choice = { $user }: { $result }
 rss_expired = This notification is outdated
 rss_feed_down = RSS feed failed { $count } times in a row: { $url }
-boosty_session_down = The Boosty login is gone, Boosty posts will fail. Sign in on boosty.to and update secrets/boosty/boosty_auth.json (app/publishers/Boosty/SMOKE.md). Error: { $error }
+boosty_session_down = The Boosty login is gone, Boosty posts will fail. Press Update login or send /boosty. Error: { $error }
 boosty_session_restored = The Boosty login works again
+boosty_login_button = 🔑 Update login
+boosty_login_howto = How to update the Boosty login:
+    1. Open boosty.to on a computer and sign in as the blog author.
+    2. Open the browser console (F12, Console tab) and paste this line. If the browser refuses to paste, type allow pasting first.
+    { $snippet }
+    3. The cookie line is now in the clipboard: send it here as one message.
+    I will delete the message with the cookies right away. A Cookie header from the Network tab or a JSON cookie export works too
+boosty_login_bad = This does not look like a Boosty login: { $reason }. Instructions: /boosty
+boosty_login_no_file = Cannot write the Boosty login file: secrets/boosty is not mounted into the bot. The server needs a fix
+boosty_login_rejected = Boosty did not accept these cookies. Reload boosty.to, copy them again and resend
+boosty_login_saved = Done: the Boosty login is saved and the { $blog } blog opens. The publisher will pick it up by itself
+boosty_login_saved_unchecked = The Boosty login is saved. It could not be checked right now (no blog set or Boosty did not answer): the publisher will check it and tell you if it does not work
 
 ## Host notes
 

@@ -109,6 +109,8 @@ services:
       - telegram-bot-api-data:/var/lib/telegram-bot-api
       - .env:/app/.env
       - files:/app/files
+      # Вход в Boosty через бота: бот пишет сюда файл токенов публишера.
+      - ./secrets/boosty:/app/boosty
 
   redis:
     logging: *default-logging

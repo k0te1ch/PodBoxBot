@@ -18,10 +18,11 @@ import os
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from urllib.parse import unquote
 
 from sagenza_tgbot_sdk.masking import register_secrets
 from sagenza_tgbot_sdk.resilience import PermanentError
+
+from shared.boosty_cookies import BrowserLogin, auth_file_data, to_epoch_seconds
 
 DEFAULT_USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36"
@@ -61,7 +62,7 @@ class AuthData:
         return cls(
             access_token=raw.get("access_token") or None,
             refresh_token=raw.get("refresh_token") or None,
-            expires_at=_to_epoch_seconds(raw.get("expires_at")),
+            expires_at=to_epoch_seconds(raw.get("expires_at")),
             device_id=raw.get("device_id") or None,
             user_agent=raw.get("user_agent") or None,
         )
@@ -69,21 +70,9 @@ class AuthData:
     @classmethod
     def from_cookies(cls, auth_cookie: str, client_id: str, user_agent: str | None = None) -> AuthData:
         """Из значения куки ``auth`` (URL-encoded JSON) и куки ``_clientId``."""
-        try:
-            raw = json.loads(unquote(auth_cookie.strip()))
-        except ValueError as e:
-            raise ValueError("Кука auth должна быть URL-encoded JSON с accessToken/refreshToken") from e
-        if not raw.get("accessToken") or not raw.get("refreshToken"):
-            raise ValueError("В куке auth нет accessToken/refreshToken — вы вошли в аккаунт?")
         if not client_id.strip():
             raise ValueError("Нужна кука _clientId: это device_id для refresh")
-        return cls(
-            access_token=raw["accessToken"],
-            refresh_token=raw["refreshToken"],
-            expires_at=_to_epoch_seconds(raw.get("expiresAt")),
-            device_id=client_id.strip(),
-            user_agent=user_agent,
-        )
+        return cls.from_dict(auth_file_data(BrowserLogin(auth_cookie, client_id.strip(), user_agent)))
 
     def apply_refresh(self, response: dict) -> None:
         """Обновляет токены из ответа ``/oauth/token/``."""
@@ -102,17 +91,6 @@ class AuthData:
 
     def to_dict(self) -> dict:
         return asdict(self)
-
-
-def _to_epoch_seconds(value) -> int | None:
-    """expires_at бывает в секундах (ответ refresh) и в мс (кука браузера)."""
-    if value in (None, ""):
-        return None
-    try:
-        number = int(float(value))
-    except (TypeError, ValueError):
-        return None
-    return number // 1000 if number > 10**11 else number
 
 
 def load(path: str | Path) -> AuthData:
