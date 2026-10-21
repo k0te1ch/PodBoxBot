@@ -176,6 +176,8 @@ rss_cannot_prepare = no mp3 or episode number, upload the file with /start
 rss_choice = { $user }: { $result }
 rss_expired = This notification is outdated
 rss_feed_down = RSS feed failed { $count } times in a row: { $url }
+boosty_session_down = The Boosty login is gone, Boosty posts will fail. Sign in on boosty.to and update secrets/boosty/boosty_auth.json (app/publishers/Boosty/SMOKE.md). Error: { $error }
+boosty_session_restored = The Boosty login works again
 
 ## Host notes
 
