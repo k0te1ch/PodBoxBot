@@ -29,6 +29,17 @@ async def handle_result_event(event):
         logger.warning(f"Result event with unknown status {status!r} ignored: {event}")
 
 
+@router.register("session")
+async def handle_session_event(event):
+    """Вход публишера на площадку слетел или вернулся (пока шлёт только Boosty)."""
+    import config
+    from services import redis, telegram_updater
+    from services.boosty_session import on_session_event
+    from services.i18n import DEFAULT_LOCALE
+
+    await on_session_event(event, telegram_updater.bot, redis, config.ADMINS_ID, DEFAULT_LOCALE)
+
+
 async def record_publish_metrics(event: dict, platform: str) -> None:
     """Итог публикации в метриках: успех, ошибка по шагу или повтор.
 

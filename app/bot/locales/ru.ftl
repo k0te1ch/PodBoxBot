@@ -176,6 +176,8 @@ rss_cannot_prepare = в ленте нет mp3 или номера выпуска
 rss_choice = { $user }: { $result }
 rss_expired = Уведомление устарело
 rss_feed_down = RSS не читается уже { $count } раз подряд: { $url }
+boosty_session_down = Вход в Boosty слетел, публикации на Boosty не пройдут. Войди на boosty.to и обнови secrets/boosty/boosty_auth.json (app/publishers/Boosty/SMOKE.md). Ошибка: { $error }
+boosty_session_restored = Вход в Boosty снова работает
 
 ## Заметки ведущих
 

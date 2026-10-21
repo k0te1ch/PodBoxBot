@@ -26,6 +26,7 @@ import time
 from datetime import UTC, datetime
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+from boosty_auth import BoostyAuthError
 from boosty_client import BoostyClient, BoostyPublishedNowError, PostContent
 from loguru import logger
 
@@ -93,14 +94,42 @@ class BoostyPublisher(BasePublisher):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.client = BoostyClient(BOOSTY_BLOG or "", BOOSTY_AUTH_FILE)
+        # Последнее состояние входа, о котором знает бот: None — ещё не сообщали.
+        self._session_ok: bool | None = None
 
     async def _ensure_auth(self) -> None:  # type: ignore[override]
         try:
             await self.client.ensure_auth()
-        except Exception:
-            self.metrics.session(ok=False, expires_at=self.client.expires_at)
+        except Exception as e:
+            await self._session_state(ok=False, error=e)
             raise
-        self.metrics.session(ok=True, expires_at=self.client.expires_at)
+        await self._session_state(ok=True)
+
+    async def _session_state(self, ok: bool, error: BaseException | None = None) -> None:
+        """Метрика входа и событие ``session`` боту, когда вход слетел или вернулся.
+
+        Боту уходит только смена состояния, и только отказ авторизации: сбой
+        сети при ежечасном обновлении входа не ломает, его повторит следующий
+        час. Без BOOSTY_BLOG площадка не настроена, и сообщать нечего.
+        """
+        self.metrics.session(ok=ok, expires_at=self.client.expires_at)
+        if not BOOSTY_BLOG or (not ok and not isinstance(error, BoostyAuthError)) or ok == self._session_ok:
+            return
+        event = BoostyEvent(
+            event_type="session",
+            username="publisher_boosty",
+            number="0",
+            title="",
+            comment="",
+            status="success" if ok else "failure",
+            error=None if ok else str(error),
+        )
+        try:
+            await self.producer.send(self.result_topic, event.model_dump())
+        except Exception as e:
+            logger.warning(f"Boosty session state was not sent to the bot: {e!r}")
+            return
+        self._session_ok = ok
 
     async def publish(self, event: BoostyEvent) -> None:  # type: ignore[override]
         if not event.path:
@@ -243,10 +272,10 @@ class BoostyPublisher(BasePublisher):
             await asyncio.sleep(_REFRESH_INTERVAL)
             try:
                 await self.client.refresh()
-                self.metrics.session(ok=True, expires_at=self.client.expires_at)
+                await self._session_state(ok=True)
             except Exception as e:
                 logger.warning(f"Boosty hourly token refresh failed: {e!r}")
-                self.metrics.session(ok=False, expires_at=self.client.expires_at)
+                await self._session_state(ok=False, error=e)
             await self.metrics.push()
 
     async def _check_session(self) -> None:
