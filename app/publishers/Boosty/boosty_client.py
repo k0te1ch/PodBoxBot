@@ -39,6 +39,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -141,6 +142,15 @@ class PostContent:
     advertiser_info: str = ""
 
 
+def _file_stamp(path: str) -> tuple[int, int] | None:
+    """Время изменения и размер файла: по ним видно, что файл переписали."""
+    try:
+        stat = os.stat(path)
+    except FileNotFoundError:
+        return None
+    return stat.st_mtime_ns, stat.st_size
+
+
 def _post_id(post: dict) -> str:
     return str(post.get("id") or post.get("int_id") or "")
 
@@ -155,6 +165,7 @@ class BoostyClient:
         self.auth_file = auth_file
         self.transport: Transport = transport or AiohttpTransport()
         self._auth: AuthData | None = None
+        self._auth_stamp: tuple[int, int] | None = None
         self._refresh_lock = asyncio.Lock()
 
     @property
@@ -166,36 +177,60 @@ class BoostyClient:
         """Грузит токены из файла и обновляет их, если скоро истекут."""
         if not self.blog_name:
             raise BoostyAuthError("BOOSTY_BLOG не задан")
-        if self._auth is None:
-            self._auth = await asyncio.to_thread(load, self.auth_file)
-            logger.debug(f"Boosty auth loaded for blog '{self.blog_name}'")
+        await self._load_if_changed()
         if self._auth.expires_soon():
             await self.refresh()
 
+    async def _load_if_changed(self) -> bool:
+        """Перечитывает файл токенов, если его переписал кто-то другой.
+
+        Файл главнее памяти: новый вход (``import-cookie``) или refresh из
+        смоука меняют его, и работающий сервис берёт свежую пару без
+        перезапуска. Возвращает True, если пара загружена заново.
+        """
+        stamp = _file_stamp(self.auth_file)
+        if self._auth is not None and stamp == self._auth_stamp:
+            return False
+        self._auth = await asyncio.to_thread(load, self.auth_file)
+        self._auth_stamp = stamp
+        logger.debug(f"Boosty auth loaded for blog '{self.blog_name}'")
+        return True
+
     async def refresh(self) -> None:
-        """Обменивает refresh_token на новую пару и пересохраняет файл."""
-        if self._auth is None:
-            self._auth = await asyncio.to_thread(load, self.auth_file)
+        """Обменивает refresh_token на новую пару и пересохраняет файл.
+
+        refresh_token одноразовый. Если Boosty его отклонил, а файл тем
+        временем переписали (новый вход, смоук), пробуем ещё раз со свежей
+        парой из файла.
+        """
         async with self._refresh_lock:
-            auth = self._auth
-            resp = await self.transport.send(
-                "POST",
-                f"{API_URL}/oauth/token/",
-                headers=self._headers(authorized=False),
-                data={
-                    "device_id": auth.device_id,
-                    "device_os": "web",
-                    "grant_type": "refresh_token",
-                    "refresh_token": auth.refresh_token,
-                },
-            )
+            await self._load_if_changed()
+            resp = await self._send_refresh()
+            if resp.status in (400, 401, 403) and await self._load_if_changed():
+                logger.info("Boosty refresh_token rejected, retrying with the token pair from the file")
+                resp = await self._send_refresh()
             if resp.status in (400, 401, 403):
                 raise BoostyAuthError(f"refresh_token отклонён (HTTP {resp.status}: {resp.json()!r})")
             if resp.status >= 400:
                 raise BoostyApiError("refresh", resp)
-            auth.apply_refresh(resp.json())
-            await asyncio.to_thread(save, self.auth_file, auth)
+            self._auth.apply_refresh(resp.json())
+            await asyncio.to_thread(save, self.auth_file, self._auth)
+            self._auth_stamp = _file_stamp(self.auth_file)
         logger.info("Boosty access token refreshed")
+
+    async def _send_refresh(self) -> Response:
+        auth = self._auth
+        return await self.transport.send(
+            "POST",
+            f"{API_URL}/oauth/token/",
+            headers=self._headers(authorized=False),
+            data={
+                "device_id": auth.device_id,
+                "device_os": "web",
+                "grant_type": "refresh_token",
+                "refresh_token": auth.refresh_token,
+            },
+        )
 
     def _headers(self, extra: dict | None = None, *, authorized: bool = True) -> dict[str, str]:
         auth = self._auth

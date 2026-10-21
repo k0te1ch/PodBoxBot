@@ -177,6 +177,8 @@ class Settings(BaseSettings):
     # раз берётся из него случайно. Годятся только реакции Telegram
     # (REACTION_EMOJI ниже): 👍 🫡 👌 🔥 можно, ✅ нельзя, такие молча пропускаются.
     # TOPICS_DAILY_LIMIT: пунктов от автора за последние 24 часа, 0 без лимита.
+    # TOPICS_MEMBERS_ONLY: предложения из лички бота принимаются только от
+    # участников TOPICS_CHAT (бот должен быть в нём).
     TOPICS_ENABLED: bool = False
     TOPICS_CHAT: str | None = None
     TOPICS_HASHTAG: str = "тема"
@@ -185,6 +187,7 @@ class Settings(BaseSettings):
     TOPICS_ACK_EMOJI: str = "👍 🫡 👌 ✅ 🔥"
     TOPICS_ACK_EPHEMERAL: bool = True
     TOPICS_DAILY_LIMIT: int = 3
+    TOPICS_MEMBERS_ONLY: bool = True
     TOPICS_MIN_LENGTH: int = 10
     TOPICS_MAX_LENGTH: int = 500
     # Анкета «Предложить тему или вопрос»: ephemeral — в группе, видна только
@@ -378,6 +381,7 @@ TOPICS_ACK_REACTION = settings.TOPICS_ACK_REACTION
 TOPICS_ACK_EMOJI = reaction_set(settings.TOPICS_ACK_EMOJI)
 TOPICS_ACK_EPHEMERAL = settings.TOPICS_ACK_EPHEMERAL
 TOPICS_DAILY_LIMIT = settings.TOPICS_DAILY_LIMIT
+TOPICS_MEMBERS_ONLY = settings.TOPICS_MEMBERS_ONLY
 TOPICS_MIN_LENGTH = settings.TOPICS_MIN_LENGTH
 TOPICS_MAX_LENGTH = settings.TOPICS_MAX_LENGTH
 TOPICS_FORM_MODE = settings.TOPICS_FORM_MODE
