@@ -56,19 +56,23 @@ def login_markup(locale: str) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[[button]])
 
 
-def save_login(text: str, auth_file: str) -> dict:
-    """Разобрать присланные куки и записать файл токенов публишера.
+def read_login(text: str) -> dict:
+    """Разобрать присланные куки в содержимое файла токенов публишера."""
+    data = auth_file_data(parse(text))
+    register_secrets(data["access_token"], data["refresh_token"])
+    return data
+
+
+def write_login(data: dict, auth_file: str) -> None:
+    """Записать файл токенов публишера.
 
     Запись атомарная: публишер перечитывает файл по времени изменения и не
     должен увидеть его наполовину записанным.
     """
-    data = auth_file_data(parse(text))
-    register_secrets(data["access_token"], data["refresh_token"])
     target = Path(auth_file)
     tmp = target.with_suffix(target.suffix + ".tmp")
     tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
     os.replace(tmp, target)
-    return data
 
 
 async def verify_login(data: dict, blog: str | None) -> bool | None:

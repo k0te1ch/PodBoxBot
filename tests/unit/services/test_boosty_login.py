@@ -47,7 +47,7 @@ def test_snippet_reads_both_cookies():
 def test_login_is_written_in_the_publisher_format(tmp_path):
     path = tmp_path / "boosty_auth.json"
 
-    boosty_session.save_login(SNIPPET_LINE, str(path))
+    boosty_session.write_login(boosty_session.read_login(SNIPPET_LINE), str(path))
 
     saved = json.loads(path.read_text(encoding="utf-8"))
     assert saved == {
@@ -111,6 +111,7 @@ async def test_rejected_cookies_are_reported(redis, auth_file):
         await handler.receive_cookies(msg)
 
     msg.answer.assert_awaited_once_with(t("boosty_login_rejected"))
+    assert not auth_file.exists()
 
 
 @pytest.mark.asyncio
