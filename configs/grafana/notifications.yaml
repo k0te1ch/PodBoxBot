@@ -13,6 +13,41 @@ contactPoints:
           chatid: $GRAFANA_ALERT_CHAT_ID
           parse_mode: HTML
           disable_web_page_preview: true
+          message: '{{ template "podboxbot.message" . }}'
+
+# Вид сообщения в Telegram: значок по важности (красный critical, жёлтый warning,
+# зелёный для снятых), жирный заголовок, суть и подсказка. Ссылок на Grafana нет:
+# она слушает localhost и с телефона недоступна. Сбой самой проверки правила
+# (DatasourceError) получает отдельную короткую строку вместо сырого текста ошибки.
+templates:
+  - orgID: 1
+    name: podboxbot
+    template: |
+      {{ define "podboxbot.alert" -}}
+      {{ if eq .Status "resolved" }}✅{{ else if eq .Labels.severity "critical" }}🔴{{ else }}🟡{{ end }} <b>{{ if eq .Labels.alertname "DatasourceError" }}Сбой проверки правила «{{ .Labels.rulename }}»{{ else }}{{ .Labels.alertname }}{{ end }}</b>
+      {{ if eq .Labels.alertname "DatasourceError" -}}
+      Grafana не смогла выполнить запрос, поэтому проверка пропущена. Сама публикация могла пройти нормально.
+      <code>{{ .Annotations.Error | html }}</code>
+      {{- else if eq .Status "firing" -}}
+      {{ .Annotations.summary }}
+      {{ .Annotations.description }}
+      {{- end }}
+      {{- end }}
+
+      {{ define "podboxbot.message" -}}
+      {{ if .Alerts.Firing -}}
+      <b>Требует внимания: {{ len .Alerts.Firing }}</b>
+      {{ range .Alerts.Firing }}
+      {{ template "podboxbot.alert" . }}
+      {{ end }}
+      {{- end }}
+      {{- if .Alerts.Resolved -}}
+      <b>Снято: {{ len .Alerts.Resolved }}</b>
+      {{ range .Alerts.Resolved }}
+      {{ template "podboxbot.alert" . }}
+      {{ end }}
+      {{- end }}
+      {{- end }}
 
 policies:
   - orgId: 1
