@@ -42,7 +42,7 @@ groups:
         condition: C
         for: 10m
         noDataState: NoData
-        execErrState: Error
+        execErrState: OK
         annotations:
           summary: "Диск {{ $labels.mountpoint }} заполнен на {{ humanize $values.A.Value }}%."
           description: >-
@@ -75,7 +75,7 @@ groups:
         condition: C
         for: 0s
         noDataState: OK
-        execErrState: Error
+        execErrState: OK
         annotations:
           summary: >-
             Публикация не удалась: {{ reReplaceAll "_publisher$" "" $labels.job }},
@@ -108,7 +108,7 @@ groups:
         condition: C
         for: 5m
         noDataState: OK
-        execErrState: Error
+        execErrState: OK
         annotations:
           summary: Сервис Boosty не может войти в аккаунт, публикации на Boosty не пройдут.
           description: >-
@@ -139,7 +139,7 @@ groups:
         condition: C
         for: 15m
         noDataState: OK
-        execErrState: Error
+        execErrState: OK
         annotations:
           summary: "Процесс бота занимает {{ humanize1024 $values.A.Value }}B памяти дольше 15 минут."
           description: >-

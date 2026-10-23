@@ -472,6 +472,11 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=admin
       # Интерфейс Grafana на русском для всех, кто не выбрал язык в профиле.
       - GF_USERS_DEFAULT_LANGUAGE=ru-RU
+      # База самой Grafana на SQLite: при одновременной записи состояний алертов
+      # и чтении запроса она отвечала "database is locked" (алерт DatasourceError).
+      # WAL разводит читателей и писателя, повторы переживают короткие блокировки.
+      - GF_DATABASE_WAL=true
+      - GF_DATABASE_QUERY_RETRIES=5
       # Доставка алертов в Telegram (configs/grafana/notifications.yaml)
       - GRAFANA_ALERT_BOT_TOKEN=${TELEGRAM_API_TOKEN}
       - GRAFANA_ALERT_CHAT_ID=${GRAFANA_ALERT_CHAT_ID:-0}
