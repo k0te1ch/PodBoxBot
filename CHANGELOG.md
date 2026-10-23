@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.1](https://github.com/k0te1ch/PodBoxBot/compare/v0.11.0...v0.11.1) (2026-10-23)
+
+
+### Bug Fixes
+
+* **grafana:** readable Telegram alerts and no false DatasourceError pages ([#184](https://github.com/k0te1ch/PodBoxBot/issues/184)) ([4dee406](https://github.com/k0te1ch/PodBoxBot/commit/4dee406b789a88fc2f15da6f6561ccbe7eaabd56))
+
 ## [0.11.0](https://github.com/k0te1ch/PodBoxBot/compare/v0.10.0...v0.11.0) (2026-10-21)
 
 
