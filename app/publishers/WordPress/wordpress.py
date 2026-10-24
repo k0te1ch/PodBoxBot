@@ -232,16 +232,21 @@ class WordPress(WordPressHttpMixin, PodloveMixin):
             for time_str, chapter in info.get("chapters") or []
         )
         # Шаблон без Chapters: без пустого заголовка «Таймлайн».
-        timeline = f"<b><i>Таймлайн:</i></b>\n{chapters}" if chapters else ""
+        timeline = f"<b><i>Таймлайн:</i></b>\n{chapters.rstrip()}" if chapters else ""
         date_str = self._format_recording_date(info, datetime.now(self._timezone))
         return {
             "post_title": self.post_title(number),
-            "content": f"""<span style="font-size: large;">{info["title"].replace(number + ". ", "")}</span>
+            "content": f"""<span style="font-size: x-large;"><strong>{info["title"].replace(number + ". ", "")}</strong></span>
+
 <b><i>Описание:</i></b>
 {info["comment"]}
+
 <!--more-->{timeline}
+
 Всё это вы услышите в {number}-м эпизоде подкаста «Разговорный жанр».
+
 [podlove-template template="subscriptions"]
+
 <span style="font-size: small;">Дата записи: {date_str}</span>""",
             "post_name": self.post_title(number),
             "post_category[]": "3",
