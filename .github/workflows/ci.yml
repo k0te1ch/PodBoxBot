@@ -83,8 +83,6 @@ jobs:
           printf '%s\n' "$SDK_DEPLOY_KEY" > ~/sdk_deploy_key
           export GIT_SSH_COMMAND="ssh -i $HOME/sdk_deploy_key -o StrictHostKeyChecking=accept-new"
           git config --global url."git@github.com:Sagenza/sagenza-tgbot-sdk".insteadOf "https://github.com/k0te1ch/sagenza-tgbot-sdk"
-          ssh -i "$HOME/sdk_deploy_key" -o StrictHostKeyChecking=accept-new -T git@github.com 2>&1 | head -3 || true
-          git ls-remote git@github.com:Sagenza/sagenza-tgbot-sdk.git HEAD 2>&1 | head -3 || true
           poetry config virtualenvs.create false
           poetry config system-git-client true
           poetry install --only main,testing --no-root
