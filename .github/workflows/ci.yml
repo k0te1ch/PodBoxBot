@@ -82,7 +82,7 @@ jobs:
           install -m 600 /dev/null ~/sdk_deploy_key
           printf '%s\n' "$SDK_DEPLOY_KEY" > ~/sdk_deploy_key
           export GIT_SSH_COMMAND="ssh -i $HOME/sdk_deploy_key -o StrictHostKeyChecking=accept-new"
-          git config --global url."git@github.com:k0te1ch/sagenza-tgbot-sdk".insteadOf "https://github.com/k0te1ch/sagenza-tgbot-sdk"
+          git config --global url."git@github.com:Sagenza/sagenza-tgbot-sdk".insteadOf "https://github.com/k0te1ch/sagenza-tgbot-sdk"
           poetry config virtualenvs.create false
           poetry config system-git-client true
           poetry install --only main,testing --no-root
@@ -113,7 +113,7 @@ jobs:
           install -m 600 /dev/null ~/sdk_deploy_key
           printf '%s\n' "$SDK_DEPLOY_KEY" > ~/sdk_deploy_key
           export GIT_SSH_COMMAND="ssh -i $HOME/sdk_deploy_key -o StrictHostKeyChecking=accept-new"
-          git config --global url."git@github.com:k0te1ch/sagenza-tgbot-sdk".insteadOf "https://github.com/k0te1ch/sagenza-tgbot-sdk"
+          git config --global url."git@github.com:Sagenza/sagenza-tgbot-sdk".insteadOf "https://github.com/k0te1ch/sagenza-tgbot-sdk"
           poetry config virtualenvs.create false
           poetry config system-git-client true
           poetry install --only main --no-root
@@ -143,7 +143,7 @@ jobs:
           install -m 600 /dev/null ~/sdk_deploy_key
           printf '%s\n' "$SDK_DEPLOY_KEY" > ~/sdk_deploy_key
           export GIT_SSH_COMMAND="ssh -i $HOME/sdk_deploy_key -o StrictHostKeyChecking=accept-new"
-          git config --global url."git@github.com:k0te1ch/sagenza-tgbot-sdk".insteadOf "https://github.com/k0te1ch/sagenza-tgbot-sdk"
+          git config --global url."git@github.com:Sagenza/sagenza-tgbot-sdk".insteadOf "https://github.com/k0te1ch/sagenza-tgbot-sdk"
           poetry config virtualenvs.create false
           poetry config system-git-client true
           poetry install --only main --no-root
@@ -173,7 +173,7 @@ jobs:
           install -m 600 /dev/null ~/sdk_deploy_key
           printf '%s\n' "$SDK_DEPLOY_KEY" > ~/sdk_deploy_key
           export GIT_SSH_COMMAND="ssh -i $HOME/sdk_deploy_key -o StrictHostKeyChecking=accept-new"
-          git config --global url."git@github.com:k0te1ch/sagenza-tgbot-sdk".insteadOf "https://github.com/k0te1ch/sagenza-tgbot-sdk"
+          git config --global url."git@github.com:Sagenza/sagenza-tgbot-sdk".insteadOf "https://github.com/k0te1ch/sagenza-tgbot-sdk"
           poetry config virtualenvs.create false
           poetry config system-git-client true
           poetry install --only main --no-root
@@ -203,7 +203,7 @@ jobs:
           install -m 600 /dev/null ~/sdk_deploy_key
           printf '%s\n' "$SDK_DEPLOY_KEY" > ~/sdk_deploy_key
           export GIT_SSH_COMMAND="ssh -i $HOME/sdk_deploy_key -o StrictHostKeyChecking=accept-new"
-          git config --global url."git@github.com:k0te1ch/sagenza-tgbot-sdk".insteadOf "https://github.com/k0te1ch/sagenza-tgbot-sdk"
+          git config --global url."git@github.com:Sagenza/sagenza-tgbot-sdk".insteadOf "https://github.com/k0te1ch/sagenza-tgbot-sdk"
           poetry config virtualenvs.create false
           poetry config system-git-client true
           poetry install --only main --no-root
@@ -233,7 +233,7 @@ jobs:
           install -m 600 /dev/null ~/sdk_deploy_key
           printf '%s\n' "$SDK_DEPLOY_KEY" > ~/sdk_deploy_key
           export GIT_SSH_COMMAND="ssh -i $HOME/sdk_deploy_key -o StrictHostKeyChecking=accept-new"
-          git config --global url."git@github.com:k0te1ch/sagenza-tgbot-sdk".insteadOf "https://github.com/k0te1ch/sagenza-tgbot-sdk"
+          git config --global url."git@github.com:Sagenza/sagenza-tgbot-sdk".insteadOf "https://github.com/k0te1ch/sagenza-tgbot-sdk"
           poetry config virtualenvs.create false
           poetry config system-git-client true
           poetry install --only main --no-root
@@ -263,7 +263,7 @@ jobs:
           install -m 600 /dev/null ~/sdk_deploy_key
           printf '%s\n' "$SDK_DEPLOY_KEY" > ~/sdk_deploy_key
           export GIT_SSH_COMMAND="ssh -i $HOME/sdk_deploy_key -o StrictHostKeyChecking=accept-new"
-          git config --global url."git@github.com:k0te1ch/sagenza-tgbot-sdk".insteadOf "https://github.com/k0te1ch/sagenza-tgbot-sdk"
+          git config --global url."git@github.com:Sagenza/sagenza-tgbot-sdk".insteadOf "https://github.com/k0te1ch/sagenza-tgbot-sdk"
           poetry config virtualenvs.create false
           poetry config system-git-client true
           poetry install --only main --no-root
@@ -294,7 +294,7 @@ jobs:
           install -m 600 /dev/null ~/sdk_deploy_key
           printf '%s\n' "$SDK_DEPLOY_KEY" > ~/sdk_deploy_key
           export GIT_SSH_COMMAND="ssh -i $HOME/sdk_deploy_key -o StrictHostKeyChecking=accept-new"
-          git config --global url."git@github.com:k0te1ch/sagenza-tgbot-sdk".insteadOf "https://github.com/k0te1ch/sagenza-tgbot-sdk"
+          git config --global url."git@github.com:Sagenza/sagenza-tgbot-sdk".insteadOf "https://github.com/k0te1ch/sagenza-tgbot-sdk"
           poetry config virtualenvs.create false
           poetry config system-git-client true
           poetry install --only main --no-root
