@@ -39,7 +39,7 @@ RUN --mount=type=secret,id=sdk_deploy_key,required=false \
     poetry config system-git-client true && \
     if [ -s /run/secrets/sdk_deploy_key ]; then \
       export GIT_SSH_COMMAND="ssh -i /run/secrets/sdk_deploy_key -o StrictHostKeyChecking=accept-new" && \
-      git config --global url."git@github.com:k0te1ch/sagenza-tgbot-sdk".insteadOf "https://github.com/k0te1ch/sagenza-tgbot-sdk"; \
+      git config --global url."git@github.com:Sagenza/sagenza-tgbot-sdk".insteadOf "https://github.com/k0te1ch/sagenza-tgbot-sdk"; \
     fi; \
     poetry install --only main --no-root; \
     status=$?; rm -f /root/.gitconfig; exit $status
