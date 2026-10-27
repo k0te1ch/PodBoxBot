@@ -160,7 +160,7 @@ async def _mark(callback: CallbackQuery, data: ListCallback, locale: str) -> Non
         # номерам на его кнопках.
         removal = await _removal_under(message)
         page = await marked_page(view, _numbers_on(message.reply_markup), locale, removal)
-        await rich.edit(callback.bot, message.chat.id, message.message_id, page.html, page.text, markup)
+        await rich.edit(callback.bot, message.chat.id, message.message_id, page.html, page.text, markup, page.media)
     if view.last_message_id not in (None, message.message_id):
         await _recount(callback, view, locale)
 

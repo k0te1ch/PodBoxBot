@@ -224,6 +224,7 @@ topics_column_kind = Тип
 topics_column_text = Текст
 topics_column_author = От кого
 topics_column_when = Когда
+topics_attachment = вложение
 topics_list_title = Список тем и вопросов:
 topics_list_empty = Список пуст: пока никто ничего не предложил
 topics_marked = Отмечено: { $numbers }

@@ -18,7 +18,7 @@ from loguru import logger
 from config import TIMEZONE
 from services.i18n import t
 from services.topics.listing import MARK as MARKED_PREFIX
-from services.topics.listing import Page, item_line, list_pages, table_html
+from services.topics.listing import Page, item_line, list_pages, page_media, table_html
 from services.topics.runtime import count_event, report_list_size, topic_list, view_store
 from services.topics.views import ListView, Removal
 from utils import rich
@@ -129,7 +129,7 @@ def with_footer(page: Page, lines: list[str]) -> Page:
     if not lines:
         return page
     html = page.html + "".join(f"<p>{escape(line)}</p>" for line in lines)
-    return Page(page.text + "\n\n" + "\n".join(escape(line) for line in lines), page.numbers, html)
+    return Page(page.text + "\n\n" + "\n".join(escape(line) for line in lines), page.numbers, html, page.media)
 
 
 def marked_text(view: ListView, locale: str) -> str:
@@ -172,10 +172,10 @@ async def send_list(
         last = index == len(pages) - 1
         markup = page_markup(view, page, locale, last=last, private=private, undo=undo if last else None)
         if in_place:
-            await rich.edit(bot, chat_id, replace.message_id, page.html, page.text, markup)
+            await rich.edit(bot, chat_id, replace.message_id, page.html, page.text, markup, page.media)
             message_id = replace.message_id
         else:
-            sent = await rich.send(bot, chat_id, page.html, page.text, markup)
+            sent = await rich.send(bot, chat_id, page.html, page.text, markup, page.media)
             message_id = sent.message_id
     view.last_message_id, view.last_numbers = int(message_id), pages[-1].numbers
     # Снимок запоминается после показа: если отправка сорвалась, «удали N»
@@ -202,7 +202,12 @@ async def marked_page(view: ListView, numbers: list[int], locale: str, removal: 
         else:
             lines.append(item_line(number, item, locale))
     html = table_html(numbered, view.marked, locale, title=title, timezone=TIMEZONE)
-    page = Page("\n".join(lines), [number for number, _item in numbered], html)
+    page = Page(
+        "\n".join(lines),
+        [number for number, _item in numbered],
+        html,
+        page_media([item for _number, item in numbered]),
+    )
     return with_footer(page, [removal_line(removal, locale)] if removal else [])
 
 

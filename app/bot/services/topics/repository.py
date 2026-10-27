@@ -99,6 +99,8 @@ def to_item(suggestion: Suggestion) -> Item:
         created_at=suggestion.created_at,
         chat_id=int(extra["chat_id"]) if "chat_id" in extra else None,
         message_id=int(extra["message_id"]) if "message_id" in extra else None,
+        photo=extra.get("photo") or None,
+        media_link=extra.get("media_link") or None,
     )
 
 
@@ -108,6 +110,10 @@ def _extra(item: Item) -> dict[str, str]:
         extra["chat_id"] = str(item.chat_id)
     if item.message_id is not None:
         extra["message_id"] = str(item.message_id)
+    if item.photo:
+        extra["photo"] = item.photo
+    if item.media_link:
+        extra["media_link"] = item.media_link
     return extra
 
 

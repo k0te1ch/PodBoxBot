@@ -8,6 +8,9 @@
   (``TOPICS_ACK_EPHEMERAL``). При отказе (лимит, длина, бан) автор получает
   эфемерный ответ: это видит только он. Пост от имени канала считается по
   каналу: у него свой лимит, и его можно забанить.
+* Фото в сообщении (или в сообщении, на которое оно отвечает) закрепляется за
+  пунктом и встаёт в список под его текстом. Видео и прочие тяжёлые вложения
+  в список не тянутся: пункт получает ссылку на сообщение в Telegram.
 * Админ отвечает на любое сообщение чата командой ``/тема`` или ``/вопрос``
   (``/topic``, ``/question``), и оно попадает в список без лимитов. Текст
   после команды заменяет текст сообщения. Команду от не-админа этот хендлер
@@ -33,6 +36,7 @@ from services.i18n import t
 from services.topics import Added, Item, Kind, Refusal, Source
 from services.topics.delivery import send_ephemeral
 from services.topics.listing import item_text
+from services.topics.media import attachments
 from services.topics.runtime import (
     all_hashtags,
     author_of,
@@ -148,6 +152,7 @@ async def add_by_reply(msg: Message, command: CommandObject, bot: Bot, metrics: 
     target = msg.reply_to_message
     kind = kind_of_command(command.command)
     locale = language_of(msg.from_user)
+    photo, media_link = attachments(target, msg)
     item = Item(
         text=command.args or strip_hashtags(target.text or target.caption, all_hashtags()),
         kind=kind,
@@ -155,6 +160,8 @@ async def add_by_reply(msg: Message, command: CommandObject, bot: Bot, metrics: 
         source=Source.REPLY,
         chat_id=msg.chat.id,
         message_id=target.message_id,
+        photo=photo,
+        media_link=media_link,
     )
     result = await topic_list(bot).add(item, trusted=True)
     await record_added(result, kind, Source.REPLY, metrics)
@@ -189,6 +196,7 @@ async def _answer_admin(bot: Bot, command: Message, text: str) -> None:
 async def collect_from_chat(msg: Message, bot: Bot, kind: Kind, metrics: Any = None):
     """Сообщение с хештегом в чате тем. Админа лимит и бан не касаются."""
     trusted = is_admin(msg)
+    photo, media_link = attachments(msg, msg.reply_to_message if _is_reply(msg) else None)
     item = Item(
         text=strip_hashtags(msg.text or msg.caption, all_hashtags()),
         kind=kind,
@@ -196,6 +204,8 @@ async def collect_from_chat(msg: Message, bot: Bot, kind: Kind, metrics: Any = N
         source=Source.HASHTAG,
         chat_id=msg.chat.id,
         message_id=msg.message_id,
+        photo=photo,
+        media_link=media_link,
     )
     result = await topic_list(bot).add(item, trusted=trusted)
     await record_added(result, kind, Source.HASHTAG, metrics)

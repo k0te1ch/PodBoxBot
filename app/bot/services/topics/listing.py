@@ -10,8 +10,10 @@
 
 import html
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
+
+from aiogram.types import InputMediaPhoto, InputRichMessageMedia
 
 from services.i18n import DEFAULT_LOCALE, t
 from services.topics.models import Item
@@ -44,6 +46,8 @@ class Page:
     numbers: list[int]
     html: str = ""
     """Rich-вариант сообщения (:mod:`utils.rich`); *text* его запасной вид."""
+    media: list[InputRichMessageMedia] = field(default_factory=list)
+    """Фото пунктов, на которые ссылается *html* (``tg://photo?id=``)."""
 
 
 def kind_label(item: Item, locale: str = DEFAULT_LOCALE) -> str:
@@ -55,8 +59,36 @@ def item_text(item: Item, locale: str = DEFAULT_LOCALE) -> str:
     return f"{kind_label(item, locale)} - {html.escape(item.text)}"
 
 
+def attachment_link(item: Item, locale: str = DEFAULT_LOCALE) -> str:
+    """Ссылка на сообщение с видео или файлом; пусто, если вложения нет."""
+    if not item.media_link:
+        return ""
+    return f' (<a href="{html.escape(item.media_link)}">{t("topics_attachment", locale)}</a>)'
+
+
 def item_line(number: int, item: Item, locale: str = DEFAULT_LOCALE) -> str:
-    return f"{number}) {item_text(item, locale)}"
+    return f"{number}) {item_text(item, locale)}{attachment_link(item, locale)}"
+
+
+def photo_id(item: Item) -> str:
+    return f"i{item.id}"
+
+
+def page_media(items: list[Item]) -> list[InputRichMessageMedia]:
+    """Фото пунктов для rich-сообщения: по одному на пункт."""
+    return [
+        InputRichMessageMedia(id=photo_id(item), media=InputMediaPhoto(media=item.photo))
+        for item in items
+        if item.photo
+    ]
+
+
+def _text_cell(item: Item, text: str) -> str:
+    """Текст пункта; фото встаёт под ним, ссылка на вложение следом."""
+    cell = text
+    if item.photo:
+        cell += f'<img src="tg://photo?id={photo_id(item)}">'
+    return cell + attachment_link(item)
 
 
 def _when(item: Item, timezone) -> str:
@@ -74,7 +106,7 @@ def table_html(numbered: list[tuple[int, Item]], marked: list[int], locale: str,
         cells = [
             f"{MARK}{number}" if number in marked else str(number),
             kind_label(item, locale),
-            f"<s>{text}</s>" if number in marked else text,
+            _text_cell(item, f"<s>{text}</s>" if number in marked else text),
             html.escape(item.author.name),
             _when(item, timezone),
         ]
@@ -110,6 +142,7 @@ def list_pages(
     for index, page in enumerate(pages):
         numbered = [(number, by_number[number]) for number in page.numbers]
         page.html = table_html(numbered, marked, locale, title=index == 0, timezone=timezone)
+        page.media = page_media([item for _number, item in numbered])
     return pages
 
 
