@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.11.1](https://github.com/k0te1ch/PodBoxBot/compare/v0.11.0...v0.11.1) (2026-10-27)
+
+
+### Bug Fixes
+
+* **ci:** clone sagenza-tgbot-sdk from its new owner over ssh ([#187](https://github.com/k0te1ch/PodBoxBot/issues/187)) ([2461347](https://github.com/k0te1ch/PodBoxBot/commit/246134700b68952be5cfa86f8d2193bae7e70df1))
+* **grafana:** readable Telegram alerts and no false DatasourceError pages ([#184](https://github.com/k0te1ch/PodBoxBot/issues/184)) ([4dee406](https://github.com/k0te1ch/PodBoxBot/commit/4dee406b789a88fc2f15da6f6561ccbe7eaabd56))
+* **wordpress:** large bold post heading and blank lines between blocks ([#186](https://github.com/k0te1ch/PodBoxBot/issues/186)) ([d23c87d](https://github.com/k0te1ch/PodBoxBot/commit/d23c87d999a5e1ea4af9094404a5d4b9299f5ada))
+
 ## [0.11.0](https://github.com/k0te1ch/PodBoxBot/compare/v0.10.0...v0.11.0) (2026-10-21)
 
 
