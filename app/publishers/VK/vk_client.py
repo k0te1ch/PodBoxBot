@@ -1,5 +1,9 @@
 """Клиент официального VK API для поста VK Donut на стене сообщества.
 
+Основной режим публикации (``VK_MEDIA=podcast``, эпизод в разделе подкастов
+под замком для донов) живёт в :mod:`vk_podcast`: у API нет методов загрузки
+подкастов. Здесь запасные режимы на официальном API.
+
 Почему так, а не иначе:
 
 * Раздел аудио закрыт для сторонних приложений с 2016 года, а загрузка через
@@ -62,7 +66,7 @@ class VkPermanentError(VkApiError, PermanentError):
     pass
 
 
-def _raise_for_error(method: str, body: dict) -> None:
+def raise_for_error(method: str, body: dict) -> None:
     error = body.get("error")
     if not error:
         return
@@ -136,7 +140,7 @@ class VkClient:
         resp = await self.http.post(f"{API_URL}/{method}", data=data)
         resp.raise_for_status()
         body = resp.json()
-        _raise_for_error(method, body)
+        raise_for_error(method, body)
         return body["response"]
 
     async def _upload_file(self, url: str, field: str, path: str, content_type: str) -> dict:

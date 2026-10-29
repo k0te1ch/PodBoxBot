@@ -98,12 +98,16 @@ class SharedSettings(BaseSettings):
     BOOSTY_RETRY_ATTEMPTS: int = 3
     BOOSTY_RETRY_BACKOFF: float = 10.0
 
-    # VK Donut: официальный VK API, пост на стене сообщества только для донов
+    # VK Donut: эпизод в подкастах сообщества только для донов (сессия vk.ru)
+    # или запасной пост через официальный VK API
     VK_ACCESS_TOKEN: str | None = None  # user-токен админа сообщества (scope wall,docs,offline)
     VK_GROUP_ID: int | None = None  # id сообщества без минуса
     VK_API_VERSION: str = "5.199"
-    VK_DONUT_PAID_DURATION: int = -1  # -1 — пост навсегда только для донов, иначе дни до открытия
-    VK_MEDIA: str = "video"  # как прикрепить mp3: video (mp4 с обложкой, плеер) | doc (файл) | none
+    VK_DONUT_PAID_DURATION: int = -1  # режимы video/doc: -1 — пост только для донов, иначе дни до открытия
+    VK_MEDIA: str = "podcast"  # podcast (эпизод подкаста) | video (mp4 с обложкой) | doc (файл) | none
+    VK_SESSION_FILE: str = "/app/data/vk_session.json"  # куки vk.ru + User-Agent для режима podcast
+    VK_PODCAST_PRIVACY: int = 2  # доступ к эпизоду: 2 — только донам, 0 — всем
+    VK_PODCAST_COVER_ID: str | None = None  # обложка из галереи подкаста (-<group>_<id>); пусто — первая
     VK_COVER_PATH: str = "/app/static/pscover.jpg"  # кадр для mp4 в режиме video
     VK_UPLOAD_TOPIC: str = "publisher.vk.upload"
     VK_RESULT_TOPIC: str = "publisher.vk.result"
@@ -123,6 +127,7 @@ class SharedSettings(BaseSettings):
     # Sponsr: API нет, работаем как веб-редактор по сессионной куке
     SPONSR_SESSION_FILE: str = "/app/data/sponsr_session.json"  # кука SESS + User-Agent
     SPONSR_PROJECT: str | None = None  # slug проекта (sponsr.ru/<slug>)
+    SPONSR_LEVEL_ID: str | None = None  # уровень подписки для замка; пусто — выбранный в редакторе по умолчанию
     SPONSR_UPLOAD_TOPIC: str = "publisher.sponsr.upload"
     SPONSR_RESULT_TOPIC: str = "publisher.sponsr.result"
     SPONSR_RETRY_ATTEMPTS: int = 3

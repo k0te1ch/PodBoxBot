@@ -1,9 +1,8 @@
 """Sponsr publisher: подписан на publisher.sponsr.upload, публикует послешоу
 для подписчиков проекта, шлёт result в publisher.sponsr.result.
 
-Уровень интеграции — запросы веб-редактора по куке SESS (см. sponsr_client).
-Пока запросы публикации не сняты с HAR, событие завершается понятной
-ошибкой, а не зависает.
+Уровень интеграции: запросы веб-редактора по куке SESS (см. sponsr_client),
+сверенные с записью ручной публикации.
 """
 
 from __future__ import annotations
@@ -31,7 +30,7 @@ class SponsrPublisher(PaywalledPublisher):
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self.client = SponsrClient(config.SPONSR_SESSION_FILE, config.SPONSR_PROJECT)
+        self.client = SponsrClient(config.SPONSR_SESSION_FILE, config.SPONSR_PROJECT, config.SPONSR_LEVEL_ID)
 
     async def _ensure_auth(self) -> None:  # type: ignore[override]
         await self.client.ensure_auth()
@@ -42,7 +41,10 @@ class SponsrPublisher(PaywalledPublisher):
             event,
             "publish",
             lambda: self.client.publish(
-                title=event.title, content=html_text(event.comment, event.chapters), path=path
+                title=event.title,
+                content=html_text(event.comment, event.chapters),
+                teaser=(event.comment or "").strip().split("\n")[0],
+                path=path,
             ),
         )
         return post_id, self.client.post_url(post_id)

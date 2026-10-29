@@ -14,7 +14,7 @@ from patreon_client import PatreonClient
 from shared.config import config
 from shared.kafka.models.paywalled_event import PatreonEvent
 from shared.publishers.paywalled import PaywalledPublisher, handle_with
-from shared.publishers.post_text import html_text
+from shared.publishers.post_text import text_lines
 
 
 class PatreonPublisher(PaywalledPublisher):
@@ -40,18 +40,14 @@ class PatreonPublisher(PaywalledPublisher):
         rule_ids = await self.call_with_retry(event, "access_rules", self.client.access_rules)
         post_id = await self.call_with_retry(event, "create_draft", self.client.create_draft)
         await self.call_with_retry(event, "upload_audio", lambda: self.client.upload_audio(post_id, path))
-        await self.call_with_retry(
+        url = await self.call_with_retry(
             event,
             "publish",
             lambda: self.client.publish(
-                post_id,
-                title=event.title,
-                content=html_text(event.comment, event.chapters),
-                teaser=(event.comment or "").split("\n")[0],
-                rule_ids=rule_ids,
+                post_id, title=event.title, lines=text_lines(event.comment, event.chapters), rule_ids=rule_ids
             ),
         )
-        return post_id, self.client.post_url(post_id)
+        return post_id, url or self.client.post_url(post_id)
 
     async def fetch_post(self, post_id: str) -> dict | None:
         return await self.client.get_post(post_id)

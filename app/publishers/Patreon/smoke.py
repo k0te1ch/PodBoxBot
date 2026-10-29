@@ -60,10 +60,9 @@ async def publish(args: argparse.Namespace) -> int:
         print(f"черновик: {post_id}")
         await client.upload_audio(post_id, args.mp3)
         print("аудио загружено")
-        await client.publish(
-            post_id, title=args.title, content="<p>Тестовый пост, будет удалён.</p>", teaser="", rule_ids=rules
-        )
-        print(f"пост: {client.post_url(post_id)} (найден через API: {bool(await client.get_post(post_id))})")
+        url = await client.publish(post_id, title=args.title, lines=["Тестовый пост, будет удалён."], rule_ids=rules)
+        found = bool(await client.get_post(post_id))
+        print(f"пост: {url or client.post_url(post_id)} (найден через API: {found})")
     finally:
         await client.close()
     return 0

@@ -1,10 +1,18 @@
 # Sponsr: доступ и калибровка
 
 API у Sponsr нет. Publisher работает как веб-редактор по сессионной куке
-`SESS` (так же авторизуется открытый клиент sponsrdump). Сессия и проверка
-входа готовы, а запросы публикации нигде не описаны и без кабинета автора их
-не снять — угадывать их мы не стали. Пока они не дописаны, событие Sponsr
-заканчивается понятной ошибкой «запросы публикации ещё не сняты с редактора».
+`SESS` (так же авторизуется открытый клиент sponsrdump). Запросы сверены с
+записью ручной публикации поста с mp3 для подписчиков:
+
+1. страница `/<slug>/manage/post/new/`: id проекта и уровень подписки,
+   выбранный по умолчанию;
+2. `resumable-file`: mp3 кусками по 5 МБ, после каждого
+   `upload-file-info/update-chunk-file`, затем `complete-file`, ожидание
+   `file-state` = `completed` и `update-file-state`;
+3. `post-save/new`: форма редактора, замок — `level_id` (уровень подписки),
+   `media_file` — загруженный файл.
+
+Проверка на живом аккаунте (смоук ниже) ещё не проходила.
 
 ## Что нужно от владельца
 
@@ -17,16 +25,23 @@ API у Sponsr нет. Publisher работает как веб-редактор 
    docker compose run --rm publisher_sponsr python smoke.py check
    ```
 
-3. HAR ручной публикации: DevTools → Network → Preserve log, опубликовать
-   тестовый пост с аудио только для подписчиков, «Save all as HAR» в
-   `secrets/sponsr/sponsr.har`, затем:
+   `check` печатает id проекта и уровень подписки для замка. Нужен другой
+   уровень: `SPONSR_LEVEL_ID` в `.env` (value из списка «Кому доступен» в
+   редакторе).
 
-   ```sh
-   docker compose run --rm publisher_sponsr python smoke.py har /app/data/sponsr.har
-   ```
+## Проверка
 
-   Выжимка (методы, пути, имена полей, CSRF-заголовки — без значений)
-   достаточна, чтобы дописать `SponsrClient.publish`. HAR содержит сессию:
-   не коммитьте его и удалите после разбора.
+Тестовая публикация (пост увидят подписчики, удалите его):
 
-Кнопка в боте включается `SPONSR_ENABLED=true` только после этого.
+```sh
+docker compose run --rm -v "$PWD/test.mp3:/app/files/test.mp3" \
+  publisher_sponsr python smoke.py publish --mp3 /app/files/test.mp3 --yes
+```
+
+Если шаг упал, запишите HAR ручной публикации (DevTools → Network →
+Preserve log, «Save all as HAR» в `secrets/sponsr/sponsr.har`) и выполните
+`python smoke.py har /app/data/sponsr.har`: выжимка покажет методы, пути и
+имена полей без значений. HAR содержит сессию: не коммитьте его и удалите
+после разбора.
+
+Кнопка в боте включается `SPONSR_ENABLED=true` после успешного прогона.
