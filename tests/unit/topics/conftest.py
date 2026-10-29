@@ -100,6 +100,8 @@ def _group_message(
     msg.chat.title = "Test group"
     msg.reply_to_message = reply_to
     msg.forum_topic_created = None
+    for attachment in ("photo", "video", "animation", "document", "video_note", "audio", "voice"):
+        setattr(msg, attachment, None)
     msg.react = AsyncMock()
     msg.reply = AsyncMock()
     msg.delete = AsyncMock()

@@ -14,7 +14,7 @@ from html import escape
 
 from aiogram import Bot
 from aiogram.exceptions import TelegramBadRequest
-from aiogram.types import InlineKeyboardMarkup, InputRichMessage, LinkPreviewOptions, Message
+from aiogram.types import InlineKeyboardMarkup, InputRichMessage, InputRichMessageMedia, LinkPreviewOptions, Message
 from loguru import logger
 
 import config as bot_config
@@ -49,13 +49,20 @@ def table(headers: list[str], rows: list[list[str]]) -> str:
 
 
 async def send(
-    bot: Bot, chat_id: int | str, html: str, text: str, reply_markup: InlineKeyboardMarkup | None = None
+    bot: Bot,
+    chat_id: int | str,
+    html: str,
+    text: str,
+    reply_markup: InlineKeyboardMarkup | None = None,
+    media: list[InputRichMessageMedia] | None = None,
 ) -> Message:
     """Rich-сообщение; если нельзя, обычное с текстом *text*."""
     if enabled():
         try:
             return await bot.send_rich_message(
-                chat_id=chat_id, rich_message=InputRichMessage(html=html), reply_markup=reply_markup
+                chat_id=chat_id,
+                rich_message=InputRichMessage(html=html, media=media or None),
+                reply_markup=reply_markup,
             )
         except TelegramBadRequest as error:
             logger.warning(f"rich message was not sent, falling back to text: {error!r}")
@@ -71,6 +78,7 @@ async def edit(
     html: str,
     text: str,
     reply_markup: InlineKeyboardMarkup | None = None,
+    media: list[InputRichMessageMedia] | None = None,
 ) -> None:
     """Правит сообщение на месте: rich, а если нельзя, обычным текстом.
 
@@ -83,7 +91,7 @@ async def edit(
             await bot.edit_message_text(
                 chat_id=chat_id,
                 message_id=message_id,
-                rich_message=InputRichMessage(html=html),
+                rich_message=InputRichMessage(html=html, media=media or None),
                 reply_markup=reply_markup,
             )
             return

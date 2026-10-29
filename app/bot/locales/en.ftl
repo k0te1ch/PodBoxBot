@@ -224,6 +224,7 @@ topics_column_kind = Kind
 topics_column_text = Text
 topics_column_author = From
 topics_column_when = When
+topics_attachment = attachment
 topics_list_title = Topics and questions:
 topics_list_empty = The list of topics and questions is empty: nobody has suggested anything yet
 topics_marked = Ticked: { $numbers }

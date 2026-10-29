@@ -50,6 +50,10 @@ class Item:
     created_at: float = field(default_factory=time.time)
     chat_id: int | None = None
     message_id: int | None = None
+    photo: str | None = None
+    """``file_id`` фото, привязанного к пункту: оно встаёт в список рядом с текстом."""
+    media_link: str | None = None
+    """Ссылка на сообщение с тяжёлым вложением (видео, файл): в список его не тянем."""
 
     @property
     def origin(self) -> tuple[int, int] | None:
