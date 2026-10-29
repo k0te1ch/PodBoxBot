@@ -2,6 +2,8 @@
 
 docker compose run --rm publisher_sponsr python smoke.py import-cookie
 docker compose run --rm publisher_sponsr python smoke.py check
+docker compose run --rm -v "$PWD/test.mp3:/app/files/test.mp3" \
+  publisher_sponsr python smoke.py publish --mp3 /app/files/test.mp3 --yes
 docker compose run --rm publisher_sponsr python smoke.py har /app/data/sponsr.har
 """
 
@@ -32,11 +34,31 @@ def har(args: argparse.Namespace) -> int:
     return 0
 
 
+def _client() -> SponsrClient:
+    return SponsrClient(config.SPONSR_SESSION_FILE, config.SPONSR_PROJECT, config.SPONSR_LEVEL_ID)
+
+
 async def check(_args: argparse.Namespace) -> int:
-    client = SponsrClient(config.SPONSR_SESSION_FILE, config.SPONSR_PROJECT)
+    client = _client()
     try:
-        await client.ensure_auth()
-        print(f"сессия принята, проект: {client.post_url('').rstrip('/')}")
+        project_id = await client.ensure_auth()
+        print(f"сессия принята, проект {client.post_url('').rstrip('/')} (id {project_id})")
+        print(f"уровень подписки для замка: {client.level_id or 'не найден, задайте SPONSR_LEVEL_ID'}")
+    finally:
+        await client.close()
+    return 0
+
+
+async def publish(args: argparse.Namespace) -> int:
+    if not args.yes:
+        print("Публикация настоящего поста для подписчиков: добавьте --yes, если готовы.")
+        return 2
+    client = _client()
+    try:
+        post_id = await client.publish(
+            title=args.title, content="<p>Тестовый пост, будет удалён.</p>", teaser="Тест", path=args.mp3
+        )
+        print(f"пост: {client.post_url(post_id)} (найден через API: {bool(await client.get_post(post_id))})")
     finally:
         await client.close()
     return 0
@@ -47,6 +69,10 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("import-cookie", help="записать сессию из куки браузера")
     sub.add_parser("check", help="проверить сессию")
+    pub = sub.add_parser("publish", help="опубликовать тестовый пост для подписчиков")
+    pub.add_argument("--mp3", required=True)
+    pub.add_argument("--title", default="Смоук PodBoxBot")
+    pub.add_argument("--yes", action="store_true")
     har_cmd = sub.add_parser("har", help="выжимка запросов редактора из HAR")
     har_cmd.add_argument("file")
     args = parser.parse_args(argv)
@@ -55,7 +81,7 @@ def main(argv: list[str] | None = None) -> int:
         return import_cookie(args)
     if args.command == "har":
         return har(args)
-    return asyncio.run(check(args))
+    return asyncio.run(publish(args) if args.command == "publish" else check(args))
 
 
 if __name__ == "__main__":

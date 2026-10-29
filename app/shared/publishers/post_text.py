@@ -30,3 +30,9 @@ def html_text(comment: str, chapters: list[list[str]] | None) -> str:
     if lines:
         paragraphs.append("<p>" + "<br>".join(escape(line) for line in lines) + "</p>")
     return "".join(paragraphs)
+
+
+def text_lines(comment: str, chapters: list[list[str]] | None) -> list[str]:
+    """Непустые строки описания и таймкоды по строке (абзацы редактора Patreon)."""
+    lines = [line.strip() for line in (comment or "").split("\n") if line.strip()]
+    return lines + chapter_lines(chapters)
