@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.0](https://github.com/k0te1ch/PodBoxBot/compare/v0.11.1...v0.12.0) (2026-10-29)
+
+
+### Features
+
+* **publishers:** align paywalled clients with recorded editor requests ([#191](https://github.com/k0te1ch/PodBoxBot/issues/191)) ([06fb837](https://github.com/k0te1ch/PodBoxBot/commit/06fb837fba9fe2ec7ee32d73ee3d788277bbd17f))
+
 ## [0.11.1](https://github.com/k0te1ch/PodBoxBot/compare/v0.11.0...v0.11.1) (2026-10-27)
 
 
