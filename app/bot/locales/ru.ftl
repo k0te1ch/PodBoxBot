@@ -140,6 +140,7 @@ help_text =
 admin_panel = Админка
 bot_restart = Перезапустить
 bot_logs = Логи
+admin_boosty_login = 🔑 Вход в Boosty
 bot_restarting = Перезапускаюсь, вернусь через минуту
 logs_failed = Не получилось собрать логи
 
