@@ -23,6 +23,7 @@ from services.i18n import t
 from services.redis import redis
 from services.topics.runtime import language_of
 from shared.boosty_cookies import SNIPPET, CookieError, looks_like_cookies
+from utils.safe_text import safe_text
 
 router = Router(name=os.path.splitext(os.path.basename(__file__))[0])
 router.message.filter(F.chat.type == ChatType.PRIVATE, IsAdmin)
@@ -70,7 +71,7 @@ async def receive_cookies(msg: Message):
         await asyncio.to_thread(write_login, data, config.BOOSTY_AUTH_FILE)
     except OSError as e:
         logger.error(f"boosty login: cannot write {config.BOOSTY_AUTH_FILE}: {e!r}")
-        await msg.answer(t("boosty_login_no_file", locale))
+        await msg.answer(t("boosty_login_no_file", locale, reason=safe_text(e)))
         return
     logger.info(f"boosty login: new token file written by {msg.from_user.id}")
     await redis.delete(DOWN_KEY)

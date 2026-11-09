@@ -84,7 +84,11 @@ services:
       - .env:/app/.env
       - files:/app/files
       # Вход в Boosty через бота: бот пишет сюда файл токенов публишера.
-      - ./secrets/boosty:/app/boosty
+      # Точка монтирования совпадает с публишером (/app/data): оба читают
+      # один ключ BOOSTY_AUTH_FILE из общего .env, и единый путь работает
+      # в обоих контейнерах (раньше бот монтировал в /app/boosty, и явный
+      # BOOSTY_AUTH_FILE из .env указывал боту в несуществующий каталог).
+      - ./secrets/boosty:/app/data
 
   redis:
     logging: *default-logging
