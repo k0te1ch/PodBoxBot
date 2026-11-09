@@ -140,6 +140,7 @@ help_text =
 admin_panel = Admin
 bot_restart = Restart
 bot_logs = Logs
+admin_boosty_login = 🔑 Boosty login
 bot_restarting = Bot is restarting
 logs_failed = Error: could not collect the logs
 

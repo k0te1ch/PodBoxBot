@@ -21,6 +21,7 @@ from dataclasses import fields
 from typing import Any
 
 from aiogram import F, Router
+from aiogram.enums import ParseMode
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import Command
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message, User
@@ -154,6 +155,15 @@ async def _help(ctx: MenuContext) -> None:
     await ctx.put(ctx.text("help_text"), InlineKeyboardMarkup(inline_keyboard=[[back]]))
 
 
+async def _boosty_login(ctx: MenuContext) -> None:
+    """Кнопка «Обновить вход в Boosty» в админке: инструкция новым сообщением,
+    чтобы сама панель осталась на месте."""
+    from handlers.boosty_login_handler import instructions
+
+    await ctx.answer()
+    await ctx.message.answer(instructions(ctx.locale), parse_mode=ParseMode.HTML)
+
+
 def build_menus() -> BotMenus:
     admin_menu = Menu(
         ADMIN_MENU,
@@ -163,6 +173,12 @@ def build_menus() -> BotMenus:
             Button("admin_service", id="service", handler=open_service_message, row=True, visible_if=is_admin),
             Button("bot_logs", id="logs", handler=send_logs, visible_if=is_admin),
             Button("bot_restart", id="restart", handler=restart, confirm=True, visible_if=is_admin),
+            Button(
+                "admin_boosty_login",
+                id="boosty_login",
+                handler=_boosty_login,
+                visible_if=_platform_visible("BOOSTY_ENABLED"),
+            ),
         ],
     )
     home_menu = Menu(
