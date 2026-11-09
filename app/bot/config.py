@@ -162,10 +162,15 @@ class Settings(BaseSettings):
     SPONSR_ENABLED: bool = False
 
     # Вход в Boosty через бота: админ присылает куки, бот пишет файл токенов
-    # публишера (каталог secrets/boosty примонтирован и в бот) и проверяет вход
-    # на блоге BOOSTY_BLOG.
-    BOOSTY_AUTH_FILE: str = "/app/boosty/boosty_auth.json"
+    # публишера и проверяет вход на блоге BOOSTY_BLOG. Путь должен совпадать
+    # с публишером: compose монтирует secrets/boosty в /app/data обоих
+    # контейнеров, а ключ BOOSTY_AUTH_FILE один на оба сервиса из общего .env.
+    BOOSTY_AUTH_FILE: str = "/app/data/boosty_auth.json"
     BOOSTY_BLOG: str | None = None
+    # Периодическая проверка входа из бота: пока паблишер узнаёт о слетевшем
+    # входе только когда пытается опубликовать, бот проверяет файл токенов сам
+    # и будит админов заранее. 0 выключает проверку.
+    BOOSTY_WATCH_INTERVAL: int = 21600  # 6 часов
 
     # Секреты публишеров из общего .env. Бот ими не пользуется: они нужны,
     # чтобы вырезать их из логов и отчётов об ошибках (SECRET_SETTINGS ниже),
@@ -378,6 +383,7 @@ RICH_MESSAGES = settings.RICH_MESSAGES
 BOOSTY_ENABLED = settings.BOOSTY_ENABLED
 BOOSTY_AUTH_FILE = settings.BOOSTY_AUTH_FILE
 BOOSTY_BLOG = (settings.BOOSTY_BLOG or "").strip() or None
+BOOSTY_WATCH_INTERVAL = settings.BOOSTY_WATCH_INTERVAL
 VK_ENABLED = settings.VK_ENABLED
 PATREON_ENABLED = settings.PATREON_ENABLED
 SPONSR_ENABLED = settings.SPONSR_ENABLED

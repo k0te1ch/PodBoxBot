@@ -40,6 +40,10 @@ MAIN_MODULE_NAME = os.path.basename(__file__)[:-3]
 from config import (
     ADMINS_ID,
     API_TOKEN,
+    BOOSTY_AUTH_FILE,
+    BOOSTY_BLOG,
+    BOOSTY_ENABLED,
+    BOOSTY_WATCH_INTERVAL,
     DEBUG,
     DEVELOPER,
     DISK_ALERT_PERCENT,
@@ -203,6 +207,28 @@ async def start_rss_watcher(bot: Bot) -> None:
     background.spawn(watcher.run(), name="rss-watcher")
 
 
+async def start_boosty_watch(bot: Bot) -> None:
+    """Периодически проверяет вход в Boosty и будит админов, если он слетел.
+
+    Паблишер узнаёт о мёртвом входе только в момент публикации; бот ловит это
+    заранее по файлу токенов. Выключается вместе с площадкой или интервалом 0.
+    """
+    if not BOOSTY_ENABLED or not BOOSTY_BLOG or not BOOSTY_WATCH_INTERVAL:
+        return
+    if isinstance(redis, _NoneModule):
+        logger.warning("Boosty is enabled but Redis is not configured: Boosty watch disabled")
+        return
+    from services.boosty_session import watch_boosty_login
+    from services.i18n import DEFAULT_LOCALE
+
+    background.spawn(
+        watch_boosty_login(
+            bot, redis, ADMINS_ID, DEFAULT_LOCALE, BOOSTY_AUTH_FILE, BOOSTY_BLOG, BOOSTY_WATCH_INTERVAL
+        ),
+        name="boosty-watch",
+    )
+
+
 async def report_topics_list_size() -> None:
     """Размер списка тем и вопросов в метриках сразу после старта, а не с
     первого изменения. Нужен Redis, как и всему списку."""
@@ -287,6 +313,7 @@ def _get_dp_obj(bot, redis):
 
     dp.startup.register(on_startup)
     dp.startup.register(start_rss_watcher)
+    dp.startup.register(start_boosty_watch)
     dp.startup.register(report_topics_list_size)
 
     logger.debug("Dispatcher is configured")
