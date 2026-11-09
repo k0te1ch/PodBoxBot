@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.0](https://github.com/k0te1ch/PodBoxBot/compare/v0.12.0...v0.13.0) (2026-11-09)
+
+
+### Features
+
+* **boosty:** open the login instructions from the admin panel ([#206](https://github.com/k0te1ch/PodBoxBot/issues/206)) ([eb1837e](https://github.com/k0te1ch/PodBoxBot/commit/eb1837e941abb6314f35c26513ac141fd7e6af60))
+
 ## [0.12.0](https://github.com/k0te1ch/PodBoxBot/compare/v0.11.1...v0.12.0) (2026-11-09)
 
 
