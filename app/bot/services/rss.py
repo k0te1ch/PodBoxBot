@@ -3,7 +3,10 @@
 Лента читается раз в ``RSS_POLL_INTERVAL`` секунд. Всё состояние в Redis,
 чтобы после рестарта не прислать то же самое ещё раз:
 
-* ``rss:seen`` — guid уже обработанных эпизодов;
+* ``rss:seen`` — guid уже обработанных эпизодов, а для эпизодов с
+  известным номером ещё и ``num:<number>``: сайт однажды переписал guid
+  старых выпусков (2026-11-27, UUID → permalink с ``&#038;``), и дедупликация
+  только по guid прислала админам весь архив заново;
 * ``rss:initialized`` — первый опрос прошёл. Первый опрос только запоминает
   всю ленту и молчит, иначе админам пришёл бы весь архив;
 * ``rss:published`` — номера эпизодов, которые бот выложил сам через /start,
@@ -100,6 +103,10 @@ def parse_feed(xml: bytes) -> list[Episode]:
         title = _text(item, "title")
         link = _text(item, "link")
         guid = _text(item, "guid") or link
+        if guid:
+            # WordPress отдаёт permalink-guid с HTML-сущностями (&#038;);
+            # без unescape одна и та же запись даёт разные строки.
+            guid = html.unescape(guid)
         if not guid:
             continue
         enclosure = item.find("enclosure")
@@ -203,18 +210,22 @@ class RssWatcher:
     async def process(self, episodes: list[Episode]) -> list[Episode]:
         """Отбирает новые эпизоды и помечает их виденными; первый прогон молчит."""
         guids = [e.guid for e in episodes]
+        numbers = [self._number_key(e) for e in episodes]
         if not await self.redis.exists(INITIALIZED_KEY):
             if guids:
-                await self.redis.sadd(SEEN_KEY, *guids)
+                await self.redis.sadd(SEEN_KEY, *guids, *[n for n in numbers if n])
             await self.redis.set(INITIALIZED_KEY, "1")
             logger.info(f"rss: first run, remembered {len(guids)} episodes without notifying")
             return []
         published = await self.redis.smembers(PUBLISHED_KEY)
         fresh = []
         for episode in episodes:
-            if await self.redis.sismember(SEEN_KEY, episode.guid):
+            number_key = self._number_key(episode)
+            if await self.redis.sismember(SEEN_KEY, episode.guid) or (
+                number_key and await self.redis.sismember(SEEN_KEY, number_key)
+            ):
                 continue
-            await self.redis.sadd(SEEN_KEY, episode.guid)
+            await self.redis.sadd(SEEN_KEY, episode.guid, *([number_key] if number_key else []))
             # Чужие шоу из общей ленты (Outcast и т.п.) админам не показываем.
             if episode.type_episode is None:
                 logger.info(f"rss: {episode.title!r} is not a PodBox episode, skipping")
@@ -227,6 +238,11 @@ class RssWatcher:
             bot_metrics.rss_episode(episode.type_episode, "feed")
             fresh.append(episode)
         return fresh
+
+    @staticmethod
+    def _number_key(episode: Episode) -> str | None:
+        """Ключ дедупликации по номеру: guid сайт может переписать, номер выпуска — нет."""
+        return f"num:{episode.number}" if episode.number else None
 
     async def notify(self, episode: Episode) -> None:
         await save_episode(self.redis, episode)

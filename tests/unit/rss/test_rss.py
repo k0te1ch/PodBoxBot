@@ -164,6 +164,33 @@ async def test_seen_survives_restart(bot, redis):
 
 
 @pytest.mark.asyncio
+async def test_guid_change_does_not_resend_old_episode(bot, redis):
+    """Сайт переписал guid старого выпуска — номер уже виден, повторно не шлём."""
+    watcher = _watcher(bot, redis)
+    await watcher.process(parse_feed(FEED))
+
+    same_episode_new_guid = Episode(
+        guid="https://podbox.ru/?post_type=podcast&#038;p=9821",
+        title="Episode 43: Fresh one",
+        number="43",
+        type_episode="main",
+    )
+    assert await watcher.process([same_episode_new_guid]) == []
+
+
+def test_guid_entities_are_unescaped():
+    """WordPress отдаёт guid-permalink с &#038;; храним и дедуплицируем нормализованное значение."""
+    xml = b"""<rss><channel><item><title>767. Episode</title>
+        <guid>https://podbox.ru/?post_type=podcast&amp;#038;p=9821</guid>
+        <enclosure url="https://x/0767_rz_27112026.mp3"/></item></channel></rss>"""
+
+    episode = parse_feed(xml)[0]
+
+    assert episode.guid == "https://podbox.ru/?post_type=podcast&p=9821"
+    assert episode.number == "767"
+
+
+@pytest.mark.asyncio
 async def test_episode_published_by_bot_is_not_offered(bot, redis):
     watcher = _watcher(bot, redis)
     await watcher.process([])
