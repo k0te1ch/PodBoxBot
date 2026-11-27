@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.1](https://github.com/k0te1ch/PodBoxBot/compare/v0.13.0...v0.13.1) (2026-11-27)
+
+
+### Bug Fixes
+
+* **rss:** dedupe episodes by number, not only guid ([#211](https://github.com/k0te1ch/PodBoxBot/issues/211)) ([c90cf33](https://github.com/k0te1ch/PodBoxBot/commit/c90cf336a7eade10050c32e20a2a6dee9a7c1177))
+
 ## [0.13.0](https://github.com/k0te1ch/PodBoxBot/compare/v0.12.0...v0.13.0) (2026-11-09)
 
 
